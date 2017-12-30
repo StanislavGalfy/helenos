@@ -281,6 +281,22 @@ static void iplink_ev_change_addr(iplink_t *iplink, ipc_callid_t iid,
 	async_answer_0(iid, EOK);
 }
 
+int iplink_get_nic_svcid(iplink_t *iplink, service_id_t *rnic_svcid)
+{
+	async_exch_t *exch = async_exchange_begin(iplink->sess);
+	
+	service_id_t nic_svcid;
+	int rc = async_req_0_1(exch, IPLINK_GET_NIC_SVCID, &nic_svcid);
+	
+	async_exchange_end(exch);
+	
+	if (rc != EOK)
+		return rc;
+	
+	*rnic_svcid = nic_svcid;
+	return EOK;
+}
+
 static void iplink_cb_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
 {
 	iplink_t *iplink = (iplink_t *) arg;

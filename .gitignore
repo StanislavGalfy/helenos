@@ -441,3 +441,8 @@ tools/sparc64-linux-gnu
 tools/binutils-*.tar.bz2
 tools/gcc-*.tar.bz2
 tools/gdb-*.tar.gz
+uspace/overlay/
+common.h.new
+nbproject/
+uspace/dist/*
+uspace/srv/sys/socket/socket

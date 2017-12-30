@@ -64,6 +64,7 @@ static int slip_get_mtu(iplink_srv_t *, size_t *);
 static int slip_get_mac48(iplink_srv_t *, addr48_t *);
 static int slip_addr_add(iplink_srv_t *, inet_addr_t *);
 static int slip_addr_remove(iplink_srv_t *, inet_addr_t *);
+static int slip_get_nic_svcid(iplink_srv_t *, service_id_t *);
 
 static iplink_srv_t slip_iplink;
 
@@ -75,7 +76,8 @@ static iplink_ops_t slip_iplink_ops = {
 	.get_mtu = slip_get_mtu,
 	.get_mac48 = slip_get_mac48,
 	.addr_add = slip_addr_add,
-	.addr_remove = slip_addr_remove
+	.addr_remove = slip_addr_remove,
+        .get_nic_svcid = slip_get_nic_svcid
 };
 
 static uint8_t slip_send_buf[SLIP_MTU + 2];
@@ -191,6 +193,12 @@ int slip_addr_remove(iplink_srv_t *srv, inet_addr_t *addr)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "slip_addr_remove()");
 	return EOK;
+}
+
+int slip_get_nic_svcid(iplink_srv_t *srv, service_id_t *nic_svcid)
+{
+    *nic_svcid = 0;
+    return EOK;
 }
 
 static void usage(void)

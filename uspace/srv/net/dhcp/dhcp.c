@@ -377,7 +377,8 @@ static int dhcp_cfg_create(service_id_t iplink, dhcp_offer_t *offer)
 	if (offer->router.addr != 0) {
 		inet_naddr_set(0, 0, &defr);
 
-		rc = inetcfg_sroute_create("dhcpdef", &defr, &offer->router, &sroute_id);
+		rc = inetcfg_sroute_create("dhcpdef", &defr, &offer->router,
+                        RTPROT_KERNEL, &sroute_id);
 		if (rc != EOK) {
 			log_msg(LOG_DEFAULT, LVL_ERROR, "Error creating "
 			    "default route %s: %s.", "dhcpdef", str_error(rc));

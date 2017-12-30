@@ -98,7 +98,7 @@ static int inetcfg_addr_delete(sysarg_t addr_id)
 {
 	inet_addrobj_t *addr;
 
-	addr = inet_addrobj_get_by_id(addr_id);
+	addr = inet_addrobj_get_by_id(addr_id, false);
 	if (addr == NULL)
 		return ENOENT;
 
@@ -108,11 +108,12 @@ static int inetcfg_addr_delete(sysarg_t addr_id)
 	return EOK;
 }
 
-static int inetcfg_addr_get(sysarg_t addr_id, inet_addr_info_t *ainfo)
-{
+static int inetcfg_addr_get(sysarg_t addr_id, inet_addr_info_t *ainfo,
+    inet_addr_status_t inet_addr_status) {
+    
 	inet_addrobj_t *addr;
 
-	addr = inet_addrobj_get_by_id(addr_id);
+	addr = inet_addrobj_get_by_id(addr_id, inet_addr_status);
 	if (addr == NULL)
 		return ENOENT;
 
@@ -144,9 +145,10 @@ static int inetcfg_addr_get_id(char *name, sysarg_t link_id, sysarg_t *addr_id)
 	return EOK;
 }
 
-static int inetcfg_get_addr_list(sysarg_t **addrs, size_t *count)
+static int inetcfg_get_addr_list(sysarg_t **addrs, size_t *count, 
+    inet_addr_status_t inet_addr_status)
 {
-	return inet_addrobj_get_id_list(addrs, count);
+	return inet_addrobj_get_id_list(addrs, count, inet_addr_status);
 }
 
 static int inetcfg_get_link_list(sysarg_t **addrs, size_t *count)
@@ -154,9 +156,10 @@ static int inetcfg_get_link_list(sysarg_t **addrs, size_t *count)
 	return inet_link_get_id_list(addrs, count);
 }
 
-static int inetcfg_get_sroute_list(sysarg_t **sroutes, size_t *count)
+static int inetcfg_get_sroute_list(sysarg_t **sroutes, size_t *count,
+    inet_sroute_status_t inet_sroute_status)
 {
-	return inet_sroute_get_id_list(sroutes, count);
+	return inet_sroute_get_id_list(sroutes, count, inet_sroute_status);
 }
 
 static int inetcfg_link_add(sysarg_t link_id)
@@ -175,6 +178,7 @@ static int inetcfg_link_get(sysarg_t link_id, inet_link_info_t *linfo)
 
 	linfo->name = str_dup(ilink->svc_name);
 	linfo->def_mtu = ilink->def_mtu;
+        linfo->nic_svcid = ilink->nic_svcid;
 	if (ilink->mac_valid) {
 		addr48(ilink->mac, linfo->mac_addr);
 	} else {
@@ -190,7 +194,7 @@ static int inetcfg_link_remove(sysarg_t link_id)
 }
 
 static int inetcfg_sroute_create(char *name, inet_naddr_t *dest,
-    inet_addr_t *router, sysarg_t *sroute_id)
+    inet_addr_t *router, unsigned char rtm_protocol, sysarg_t *sroute_id)
 {
 	inet_sroute_t *sroute;
 
@@ -203,6 +207,7 @@ static int inetcfg_sroute_create(char *name, inet_naddr_t *dest,
 	sroute->dest = *dest;
 	sroute->router = *router;
 	sroute->name = str_dup(name);
+        sroute->rtm_protocol = rtm_protocol;
 	inet_sroute_add(sroute);
 
 	*sroute_id = sroute->id;
@@ -213,7 +218,7 @@ static int inetcfg_sroute_delete(sysarg_t sroute_id)
 {
 	inet_sroute_t *sroute;
 
-	sroute = inet_sroute_get_by_id(sroute_id);
+	sroute = inet_sroute_get_by_id(sroute_id, INET_SROUTE_STATUS_ACTIVE);
 	if (sroute == NULL)
 		return ENOENT;
 
@@ -223,17 +228,19 @@ static int inetcfg_sroute_delete(sysarg_t sroute_id)
 	return EOK;
 }
 
-static int inetcfg_sroute_get(sysarg_t sroute_id, inet_sroute_info_t *srinfo)
+static int inetcfg_sroute_get(sysarg_t sroute_id, inet_sroute_info_t *srinfo, 
+    inet_sroute_status_t inet_sroute_status)
 {
 	inet_sroute_t *sroute;
 
-	sroute = inet_sroute_get_by_id(sroute_id);
+	sroute = inet_sroute_get_by_id(sroute_id, inet_sroute_status);
 	if (sroute == NULL)
 		return ENOENT;
 
 	srinfo->dest = sroute->dest;
 	srinfo->router = sroute->router;
 	srinfo->name = str_dup(sroute->name);
+        srinfo->rtm_protocol = sroute->rtm_protocol;
 
 	return EOK;
 }
@@ -313,6 +320,7 @@ static void inetcfg_addr_get_srv(ipc_callid_t iid, ipc_call_t *icall)
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_addr_get_srv()");
 	
 	sysarg_t addr_id = IPC_GET_ARG1(*icall);
+        sysarg_t inet_addr_status = IPC_GET_ARG2(*icall);
 	
 	inet_addr_info_t ainfo;
 	
@@ -320,7 +328,7 @@ static void inetcfg_addr_get_srv(ipc_callid_t iid, ipc_call_t *icall)
 	ainfo.ilink = 0;
 	ainfo.name = NULL;
 	
-	int rc = inetcfg_addr_get(addr_id, &ainfo);
+	int rc = inetcfg_addr_get(addr_id, &ainfo, inet_addr_status);
 	if (rc != EOK) {
 		async_answer_0(iid, rc);
 		return;
@@ -400,6 +408,8 @@ static void inetcfg_get_addr_list_srv(ipc_callid_t callid, ipc_call_t *call)
 	sysarg_t *id_buf;
 	int rc;
 
+        sysarg_t inet_addr_status = IPC_GET_ARG1(*call);
+        
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_get_addr_list_srv()");
 
 	if (!async_data_read_receive(&rcallid, &max_size)) {
@@ -408,7 +418,7 @@ static void inetcfg_get_addr_list_srv(ipc_callid_t callid, ipc_call_t *call)
 		return;
 	}
 
-	rc = inetcfg_get_addr_list(&id_buf, &count);
+	rc = inetcfg_get_addr_list(&id_buf, &count, inet_addr_status);
 	if (rc != EOK) {
 		async_answer_0(rcallid, rc);
 		async_answer_0(callid, rc);
@@ -468,6 +478,8 @@ static void inetcfg_get_sroute_list_srv(ipc_callid_t callid, ipc_call_t *call)
 	sysarg_t *id_buf;
 	int rc;
 
+        sysarg_t inet_sroute_status = IPC_GET_ARG1(*call);
+        
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_get_sroute_list_srv()");
 
 	if (!async_data_read_receive(&rcallid, &max_size)) {
@@ -476,7 +488,7 @@ static void inetcfg_get_sroute_list_srv(ipc_callid_t callid, ipc_call_t *call)
 		return;
 	}
 
-	rc = inetcfg_get_sroute_list(&id_buf, &count);
+	rc = inetcfg_get_sroute_list(&id_buf, &count, inet_sroute_status);
 	if (rc != EOK) {
 		async_answer_0(rcallid, rc);
 		async_answer_0(callid, rc);
@@ -555,7 +567,7 @@ static void inetcfg_link_get_srv(ipc_callid_t callid, ipc_call_t *call)
 
 	free(linfo.name);
 
-	async_answer_1(callid, retval, linfo.def_mtu);
+	async_answer_2(callid, retval, linfo.def_mtu, linfo.nic_svcid);
 }
 
 static void inetcfg_link_remove_srv(ipc_callid_t callid, ipc_call_t *call)
@@ -576,6 +588,8 @@ static void inetcfg_sroute_create_srv(ipc_callid_t iid,
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_sroute_create_srv()");
 
+        unsigned char rtm_protocol = IPC_GET_ARG1(*icall);
+        
 	ipc_callid_t callid;
 	size_t size;
 	if (!async_data_write_receive(&callid, &size)) {
@@ -627,7 +641,7 @@ static void inetcfg_sroute_create_srv(ipc_callid_t iid,
 	}
 	
 	sysarg_t sroute_id = 0;
-	rc = inetcfg_sroute_create(name, &dest, &router, &sroute_id);
+	rc = inetcfg_sroute_create(name, &dest, &router, rtm_protocol, &sroute_id);
 	free(name);
 	async_answer_1(iid, rc, sroute_id);
 }
@@ -650,6 +664,7 @@ static void inetcfg_sroute_get_srv(ipc_callid_t iid, ipc_call_t *icall)
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_sroute_get_srv()");
 	
 	sysarg_t sroute_id = IPC_GET_ARG1(*icall);
+        sysarg_t inet_sroute_status = IPC_GET_ARG2(*icall);
 	
 	inet_sroute_info_t srinfo;
 	
@@ -657,7 +672,7 @@ static void inetcfg_sroute_get_srv(ipc_callid_t iid, ipc_call_t *icall)
 	inet_addr_any(&srinfo.router);
 	srinfo.name = NULL;
 	
-	int rc = inetcfg_sroute_get(sroute_id, &srinfo);
+	int rc = inetcfg_sroute_get(sroute_id, &srinfo, inet_sroute_status);
 	if (rc != EOK) {
 		async_answer_0(iid, rc);
 		return;
@@ -713,7 +728,8 @@ static void inetcfg_sroute_get_srv(ipc_callid_t iid, ipc_call_t *icall)
 	    min(size, str_size(srinfo.name)));
 	free(srinfo.name);
 	
-	async_answer_0(iid, rc);
+        sysarg_t rtm_protocol = srinfo.rtm_protocol;
+	async_answer_1(iid, rc, rtm_protocol);
 }
 
 static void inetcfg_sroute_get_id_srv(ipc_callid_t callid, ipc_call_t *call)

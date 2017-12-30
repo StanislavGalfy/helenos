@@ -44,10 +44,25 @@
 #include "sroute.h"
 #include "inetsrv.h"
 #include "inet_link.h"
+#include "types/inetcfg.h"
 
 static FIBRIL_MUTEX_INITIALIZE(sroute_list_lock);
 static LIST_INITIALIZE(sroute_list);
+static LIST_INITIALIZE(del_sroute_list);
 static sysarg_t sroute_id = 0;
+
+static inet_sroute_t *inet_sroute_find_deleted(inet_sroute_t *sroute) {
+        list_foreach(del_sroute_list, sroute_list, inet_sroute_t, del_sroute) {
+                if (!inet_naddrs_compare(&sroute->dest, &del_sroute->dest))
+                        continue;
+                if (!inet_addr_compare(&sroute->router, &del_sroute->router))
+                        continue;
+                if (sroute->rtm_protocol != del_sroute->rtm_protocol)
+                        continue;
+                return del_sroute;
+        }
+        return NULL;    
+}
 
 inet_sroute_t *inet_sroute_new(void)
 {
@@ -78,6 +93,11 @@ void inet_sroute_add(inet_sroute_t *sroute)
 {
 	fibril_mutex_lock(&sroute_list_lock);
 	list_append(&sroute->sroute_list, &sroute_list);
+        inet_sroute_t *del_sroute = inet_sroute_find_deleted(sroute);
+        if (del_sroute != NULL) {
+                list_remove(&del_sroute->sroute_list);
+                inet_sroute_delete(del_sroute);
+        }
 	fibril_mutex_unlock(&sroute_list_lock);
 }
 
@@ -85,6 +105,7 @@ void inet_sroute_remove(inet_sroute_t *sroute)
 {
 	fibril_mutex_lock(&sroute_list_lock);
 	list_remove(&sroute->sroute_list);
+        list_append(&sroute->sroute_list, &del_sroute_list);
 	fibril_mutex_unlock(&sroute_list_lock);
 }
 
@@ -163,13 +184,26 @@ inet_sroute_t *inet_sroute_find_by_name(const char *name)
  * @param id	Address object ID
  * @return	Address object
  */
-inet_sroute_t *inet_sroute_get_by_id(sysarg_t id)
+inet_sroute_t *inet_sroute_get_by_id(sysarg_t id,
+    inet_sroute_status_t inet_sroute_status)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_sroute_get_by_id(%zu)", (size_t)id);
 
 	fibril_mutex_lock(&sroute_list_lock);
+        
+        list_t *list;
+        switch(inet_sroute_status) {
+            case INET_ADDR_STATUS_ACTIVE:
+                list = &sroute_list;
+                break;
+            case INET_ADDR_STATUS_DELETED:
+                list = &del_sroute_list;
+                break;
+            default:
+                return NULL;
+        }
 
-	list_foreach(sroute_list, sroute_list, inet_sroute_t, sroute) {
+	list_foreach(*list, sroute_list, inet_sroute_t, sroute) {
 		if (sroute->id == id) {
 			fibril_mutex_unlock(&sroute_list_lock);
 			return sroute;
@@ -182,13 +216,26 @@ inet_sroute_t *inet_sroute_get_by_id(sysarg_t id)
 }
 
 /** Get IDs of all static routes. */
-int inet_sroute_get_id_list(sysarg_t **rid_list, size_t *rcount)
+int inet_sroute_get_id_list(sysarg_t **rid_list, size_t *rcount,
+    inet_sroute_status_t inet_sroute_status)
 {
 	sysarg_t *id_list;
 	size_t count, i;
 
 	fibril_mutex_lock(&sroute_list_lock);
-	count = list_count(&sroute_list);
+        list_t *list;
+        switch(inet_sroute_status) {
+            case INET_ADDR_STATUS_ACTIVE:
+                list = &sroute_list;
+                break;
+            case INET_ADDR_STATUS_DELETED:
+                list = &del_sroute_list;
+                break;
+            default:
+                return EINVAL;
+        }
+        
+	count = list_count(list);
 
 	id_list = calloc(count, sizeof(sysarg_t));
 	if (id_list == NULL) {
@@ -197,7 +244,7 @@ int inet_sroute_get_id_list(sysarg_t **rid_list, size_t *rcount)
 	}
 
 	i = 0;
-	list_foreach(sroute_list, sroute_list, inet_sroute_t, sroute) {
+	list_foreach(*list, sroute_list, inet_sroute_t, sroute) {
 		id_list[i++] = sroute->id;
 	}
 

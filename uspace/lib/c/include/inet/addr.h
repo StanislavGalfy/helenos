@@ -76,7 +76,12 @@ typedef struct {
 } inet_naddr_t;
 
 extern const addr32_t addr32_broadcast_all_hosts;
+extern const addr32_t addr32_ospf_multicast;
+extern const addr32_t addr32_rip_multicast;
+
 extern const addr48_t addr48_broadcast;
+extern const addr48_t addr48_ospf_multicast;
+extern const addr48_t addr48_rip_multicast;
 
 extern void addr48(const addr48_t, addr48_t);
 extern void addr128(const addr128_t, addr128_t);
@@ -109,6 +114,7 @@ extern int inet_addr_is_any(const inet_addr_t *);
 
 extern int inet_naddr_compare(const inet_naddr_t *, const inet_addr_t *);
 extern int inet_naddr_compare_mask(const inet_naddr_t *, const inet_addr_t *);
+extern int inet_naddrs_compare (const inet_naddr_t *, const inet_naddr_t *);
 
 extern int inet_addr_parse(const char *, inet_addr_t *, char **);
 extern int inet_naddr_parse(const char *, inet_naddr_t *, char **);

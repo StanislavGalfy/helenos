@@ -110,6 +110,7 @@ typedef struct {
 	size_t def_mtu;
 	addr48_t mac;
 	bool mac_valid;
+        service_id_t nic_svcid;
 } inet_link_t;
 
 typedef struct {
@@ -129,6 +130,8 @@ typedef struct {
 	/** Router via which to route packets */
 	inet_addr_t router;
 	char *name;
+        
+        unsigned char rtm_protocol;
 } inet_sroute_t;
 
 typedef enum {
@@ -155,6 +158,7 @@ extern int inet_recv_packet(inet_packet_t *);
 extern int inet_route_packet(inet_dgram_t *, uint8_t, uint8_t, int);
 extern int inet_get_srcaddr(inet_addr_t *, uint8_t, inet_addr_t *);
 extern int inet_recv_dgram_local(inet_dgram_t *, uint8_t);
+extern int inet_recv_dgram(inet_dgram_t *, uint8_t, uint8_t, bool);
 
 #endif
 

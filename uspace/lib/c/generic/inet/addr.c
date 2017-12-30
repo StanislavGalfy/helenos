@@ -39,21 +39,34 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <malloc.h>
 #include <bitops.h>
 #include <inttypes.h>
 
 #define INET_PREFIXSTRSIZE  5
 
 #define INET6_ADDRSTRLEN (8 * 4 + 7 + 1)
-
+/*
 #if !(defined(__BE__) ^ defined(__LE__))
 	#error The architecture must be either big-endian or little-endian.
 #endif
-
+*/
 const addr32_t addr32_broadcast_all_hosts = 0xffffffff;
+
+const addr32_t addr32_ospf_multicast = 0xe0000005;
+
+const addr32_t addr32_rip_multicast = 0xe0000009;
 
 const addr48_t addr48_broadcast = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+};
+
+const addr48_t addr48_ospf_multicast = {
+	0x01, 0x00, 0x5e, 0x00, 0x00, 0x05
+};
+
+const addr48_t addr48_rip_multicast = {
+	0x01, 0x00, 0x5e, 0x00, 0x00, 0x09
 };
 
 static const addr48_t inet_addr48_solicited_node = {
@@ -284,6 +297,24 @@ int inet_naddr_compare_mask(const inet_naddr_t *naddr, const inet_addr_t *addr)
 		}
 
 		return 1;
+	default:
+		return 0;
+	}
+}
+
+int inet_naddrs_compare (const inet_naddr_t *naddr_a, const inet_naddr_t *naddr_b) 
+{              
+        if (naddr_a->prefix != naddr_b->prefix)
+                return 0;
+
+        if (naddr_a->version != naddr_b->version)
+                return 0;
+
+	switch (naddr_a->version) {
+	case ip_v4:
+		return (naddr_a->addr == naddr_b->addr);
+	case ip_v6:
+		return addr128_compare(naddr_a->addr6, naddr_b->addr6);
 	default:
 		return 0;
 	}

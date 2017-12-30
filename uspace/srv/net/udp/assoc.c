@@ -241,7 +241,8 @@ void udp_assoc_set_iplink(udp_assoc_t *assoc, service_id_t iplink)
  *			ENOMEM if out of resources
  *			EIO if no route to destination exists
  */
-int udp_assoc_send(udp_assoc_t *assoc, inet_ep_t *remote, udp_msg_t *msg)
+int udp_assoc_send(udp_assoc_t *assoc, inet_addr_t *local, inet_ep_t *remote,
+    udp_msg_t *msg)
 {
 	udp_pdu_t *pdu;
 	inet_ep2_t epp;
@@ -254,6 +255,9 @@ int udp_assoc_send(udp_assoc_t *assoc, inet_ep_t *remote, udp_msg_t *msg)
 	epp = assoc->ident;
 	if (remote != NULL)
 		epp.remote = *remote;
+        
+        if (local != NULL)
+                epp.local.addr = *local;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_assoc_send - check addr any");
 

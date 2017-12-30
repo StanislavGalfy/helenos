@@ -41,6 +41,7 @@
 #endif
 
 #include "sys/types.h"
+#include "posix/alloca.h"
 
 #include <_bits/NULL.h>
 

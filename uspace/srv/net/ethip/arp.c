@@ -95,13 +95,25 @@ void arp_received(ethip_nic_t *nic, eth_frame_t *frame)
 
 int arp_translate(ethip_nic_t *nic, addr32_t src_addr, addr32_t ip_addr,
     addr48_t mac_addr)
-{
-	/* Broadcast address */
+{    
+        if (ip_addr == addr32_ospf_multicast) {
+		addr48(addr48_ospf_multicast, mac_addr);
+		return EOK;
+        }
+        
+        if (ip_addr == addr32_rip_multicast) {
+		addr48(addr48_rip_multicast, mac_addr);
+		return EOK;
+        }
+    
 	if (ip_addr == addr32_broadcast_all_hosts) {
 		addr48(addr48_broadcast, mac_addr);
 		return EOK;
 	}
-
+        
+        inet_addr_t inet_addr;
+        inet_addr_set(ip_addr, &inet_addr);
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "arp translate");
 	int rc = atrans_lookup(ip_addr, mac_addr);
 	if (rc == EOK)
 		return EOK;

@@ -219,6 +219,14 @@ static void iplink_send6_srv(iplink_srv_t *srv, ipc_callid_t iid,
 	async_answer_0(iid, rc);
 }
 
+static void iplink_get_nic_svcid_srv(iplink_srv_t *srv, ipc_callid_t iid,
+    ipc_call_t *icall) 
+{
+	service_id_t nic_svcid;
+	int rc = srv->ops->get_nic_svcid(srv, &nic_svcid);
+	async_answer_1(iid, rc, nic_svcid);
+}
+
 void iplink_srv_init(iplink_srv_t *srv)
 {
 	fibril_mutex_initialize(&srv->lock);
@@ -292,6 +300,9 @@ int iplink_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
 		case IPLINK_ADDR_REMOVE:
 			iplink_addr_remove_srv(srv, callid, &call);
 			break;
+                case IPLINK_GET_NIC_SVCID:
+                        iplink_get_nic_svcid_srv(srv, callid, &call);
+                        break;
 		default:
 			async_answer_0(callid, EINVAL);
 		}

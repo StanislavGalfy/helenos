@@ -60,18 +60,23 @@ EXTRA_CLEAN = \
 EXTRA_OUTPUT = $(FIXED_C_LIBRARY) $(FIXED_POSIX_LIBRARY) $(MERGED_C_LIBRARY)
 
 SOURCES = \
+	source/alloca.c \
 	source/ctype.c \
 	source/dlfcn.c \
 	source/errno.c \
 	source/fcntl.c \
 	source/fnmatch.c \
 	source/getopt.c \
+	source/inet/inetcfg.c \
 	source/locale.c \
+	source/sys/socket.c \
+	source/sys/temp.c \
 	source/pthread/condvar.c \
 	source/pthread/keys.c \
 	source/pthread/mutex.c \
 	source/pthread/threads.c \
 	source/pwd.c \
+	source/setjmp.c \
 	source/signal.c \
 	source/stdio.c \
 	source/stdio/scanf.c \

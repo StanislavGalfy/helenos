@@ -219,8 +219,11 @@ static int udp_assoc_create_impl(udp_client_t *client, inet_ep2_t *epp,
 	if (assoc == NULL)
 		return EIO;
 
-	if (epp->local_link != 0)
+	if (epp->local_link != 0) {
 		udp_assoc_set_iplink(assoc, epp->local_link);
+                assoc->local_out_addr = epp->local.addr;
+                inet_addr_any(&epp->local.addr);
+        }
 
 	rc = udp_cassoc_create(client, assoc, &cassoc);
 	if (rc != EOK) {
@@ -307,7 +310,7 @@ static int udp_assoc_set_nolocal_impl(udp_client_t *client, sysarg_t assoc_id)
  * @return EOK on success or negative error code
  */
 static int udp_assoc_send_msg_impl(udp_client_t *client, sysarg_t assoc_id,
-    inet_ep_t *dest, void *data, size_t size)
+    inet_addr_t * source, inet_ep_t *dest, void *data, size_t size)
 {
 	udp_msg_t msg;
 	udp_cassoc_t *cassoc;
@@ -319,7 +322,7 @@ static int udp_assoc_send_msg_impl(udp_client_t *client, sysarg_t assoc_id,
 
 	msg.data = data;
 	msg.data_size = size;
-	rc = udp_assoc_send(cassoc->assoc, dest, &msg);
+	rc = udp_assoc_send(cassoc->assoc, source, dest, &msg);
 	if (rc != EOK)
 		return rc;
 
@@ -451,6 +454,7 @@ static void udp_assoc_send_msg_srv(udp_client_t *client, ipc_callid_t iid,
 {
 	ipc_callid_t callid;
 	size_t size;
+        inet_addr_t source;
 	inet_ep_t dest;
 	sysarg_t assoc_id;
 	void *data;
@@ -458,6 +462,27 @@ static void udp_assoc_send_msg_srv(udp_client_t *client, ipc_callid_t iid,
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_assoc_send_msg_srv()");
 
+ 	/* Receive source */
+
+	if (!async_data_write_receive(&callid, &size)) {
+		async_answer_0(callid, EREFUSED);
+		async_answer_0(iid, EREFUSED);
+		return;
+	}
+
+	if (size != sizeof(inet_addr_t)) {
+		async_answer_0(callid, EINVAL);
+		async_answer_0(iid, EINVAL);
+		return;
+	}
+
+	rc = async_data_write_finalize(callid, &source, size);
+	if (rc != EOK) {
+		async_answer_0(callid, rc);
+		async_answer_0(iid, rc);
+		return;
+	}       
+        
 	/* Receive dest */
 
 	if (!async_data_write_receive(&callid, &size)) {
@@ -509,7 +534,7 @@ static void udp_assoc_send_msg_srv(udp_client_t *client, ipc_callid_t iid,
 
 	assoc_id = IPC_GET_ARG1(*icall);
 
-	rc = udp_assoc_send_msg_impl(client, assoc_id, &dest, data, size);
+	rc = udp_assoc_send_msg_impl(client, assoc_id, &source, &dest, data, size);
 	if (rc != EOK) {
 		async_answer_0(iid, rc);
 		free(data);

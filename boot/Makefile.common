@@ -121,6 +121,7 @@ RD_SRVS_NON_ESSENTIAL = \
 	$(USPACE_PATH)/srv/net/slip/slip \
 	$(USPACE_PATH)/srv/net/tcp/tcp \
 	$(USPACE_PATH)/srv/net/udp/udp \
+        $(USPACE_PATH)/srv/sys/socket/socket \
 	$(USPACE_PATH)/srv/taskmon/taskmon \
 	$(USPACE_PATH)/srv/test/chardev-test/chardev-test \
 	$(USPACE_PATH)/srv/volsrv/volsrv
@@ -245,7 +246,14 @@ RD_DATA_ESSENTIAL = \
 
 RD_DATA_NON_ESSENTIAL = \
 	$(USPACE_PATH)/app/modplay/demo.xm \
-	$(USPACE_PATH)/app/viewer/logo.tga
+	$(USPACE_PATH)/app/viewer/logo.tga \
+	$(USPACE_PATH)/app/bird/configure-net.sh \
+        $(USPACE_PATH)/app/bird/ospf-bird.conf \
+	$(USPACE_PATH)/app/bird/rip-bird.conf \
+	$(USPACE_PATH)/app/bird/basic-ospf-bird.sh \
+        $(USPACE_PATH)/app/bird/basic-rip-bird.sh \
+	$(USPACE_PATH)/app/bird/triangle-ospf-bird.sh \
+        $(USPACE_PATH)/app/bird/triangle-rip-bird.sh \
 
 
 COMPONENTS = \

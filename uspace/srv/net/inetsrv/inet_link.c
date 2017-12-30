@@ -196,7 +196,13 @@ int inet_link_open(service_id_t sid)
 		    ilink->svc_name);
 		goto error;
 	}
-	
+        
+        rc = iplink_get_nic_svcid(ilink->iplink, &ilink->nic_svcid);
+	if (rc != EOK) {
+		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed determinning nic "
+                        "service id of link '%d'", ilink->nic_svcid);
+		goto error;
+	}	
 	/*
 	 * Get the MAC address of the link. If the link has a MAC
 	 * address, we assume that it supports NDP.

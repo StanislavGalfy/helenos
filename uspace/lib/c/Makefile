@@ -166,7 +166,8 @@ GENERIC_SOURCES = \
 	generic/qsort.c \
 	generic/uuid.c \
 	generic/vbd.c \
-	generic/vol.c
+	generic/vol.c \
+	generic/sys/socket.c
 
 ifeq ($(CONFIG_RTLD),y)
 	GENERIC_SOURCES += \

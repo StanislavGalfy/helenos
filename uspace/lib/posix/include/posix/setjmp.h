@@ -30,10 +30,18 @@
  * @{
  */
 
-/*
- * Just a pass-through to libc setjmp.
- */
+#ifndef POSIX_SETJMP_H_
+#define POSIX_SETJMP_H_
+
+#ifndef __POSIX_DEF__
+#define __POSIX_DEF__(x) x
+#endif
+
 #include "libc/setjmp.h"
+
+void __POSIX_DEF__(longjmp)(jmp_buf env, int val);
+
+#endif
 
 /** @}
  */

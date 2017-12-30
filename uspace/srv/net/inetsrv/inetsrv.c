@@ -68,6 +68,16 @@ static inet_naddr_t solicited_node_mask = {
 	.prefix = 104
 };
 
+static inet_addr_t ospf_multicast = {
+	.version = ip_v4,
+	.addr = 0xe0000005
+};
+
+static inet_addr_t rip_multicast = {
+	.version = ip_v4,
+	.addr = 0xe0000009
+};
+
 static inet_addr_t broadcast4_all_hosts = {
 	.version = ip_v4,
 	.addr = 0xffffffff
@@ -178,12 +188,12 @@ int inet_route_packet(inet_dgram_t *dgram, uint8_t proto, uint8_t ttl,
 		/* Send packet directly to the specified IP link */
 		ilink = inet_link_get_by_id(dgram->iplink);
 		if (ilink == 0)
-			return ENOENT;
+                        return ENOENT;
 
 		if (dgram->src.version != ip_v4 ||
 			dgram->dest.version != ip_v4)
 			return EINVAL;
-
+                
 		return inet_link_send_dgram(ilink, dgram->src.addr,
 		    dgram->dest.addr, dgram, proto, ttl, df);
 	}
@@ -203,6 +213,7 @@ int inet_route_packet(inet_dgram_t *dgram, uint8_t proto, uint8_t ttl,
 static int inet_send(inet_client_t *client, inet_dgram_t *dgram,
     uint8_t proto, uint8_t ttl, int df)
 {
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "source: %x, destination %x", dgram->src.addr, dgram->dest.addr);
 	return inet_route_packet(dgram, proto, ttl, df);
 }
 
@@ -508,33 +519,53 @@ int inet_recv_dgram_local(inet_dgram_t *dgram, uint8_t proto)
 	return inet_ev_recv(client, dgram);
 }
 
-int inet_recv_packet(inet_packet_t *packet)
+int inet_recv_dgram(inet_dgram_t *dgram, uint8_t proto, uint8_t ttl, bool df)
 {
 	inet_addrobj_t *addr;
-	inet_dgram_t dgram;
 
-	addr = inet_addrobj_find(&packet->dest, iaf_addr);
+	addr = inet_addrobj_find(&dgram->dest, iaf_addr);
 	if ((addr != NULL) ||
-	    (inet_naddr_compare_mask(&solicited_node_mask, &packet->dest)) ||
-	    (inet_addr_compare(&multicast_all_nodes, &packet->dest)) || 
-	    (inet_addr_compare(&broadcast4_all_hosts, &packet->dest))) {
+                (inet_addr_compare(&ospf_multicast, &dgram->dest)) ||
+                (inet_addr_compare(&rip_multicast, &dgram->dest)) ||
+		(inet_naddr_compare_mask(&solicited_node_mask, &dgram->dest)) ||
+		(inet_addr_compare(&multicast_all_nodes, &dgram->dest)) ||
+		(inet_addr_compare(&broadcast4_all_hosts, &dgram->dest))) {
 		/* Destined for one of the local addresses */
+			return inet_recv_dgram_local(dgram, proto);
+	}
 
-		/* Check if packet is a complete datagram */
-		if (packet->offs == 0 && !packet->mf) {
-			/* It is complete deliver it immediately */
-			dgram.iplink = packet->link_id;
-			dgram.src = packet->src;
-			dgram.dest = packet->dest;
-			dgram.tos = packet->tos;
-			dgram.data = packet->data;
-			dgram.size = packet->size;
+	/* Try to forward the datagram */
+        
+        if (ttl == 1) {
+                log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_recv_dgram refused ...");
+                return EREFUSED;
+        }
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "Routing ...");
+        dgram->iplink = 0;
+        return inet_route_packet(dgram, proto, ttl - 1, df);
 
-			return inet_recv_dgram_local(&dgram, packet->proto);
-		} else {
-			/* It is a fragment, queue it for reassembly */
-			inet_reass_queue_packet(packet);
-		}
+	return ENOENT;
+}
+
+int inet_recv_packet(inet_packet_t *packet)
+{
+	inet_dgram_t dgram;
+        
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_recv_packet()");
+
+	/* Check if packet is a complete datagram */
+	if (packet->offs == 0 && !packet->mf) {
+		/* It is complete deliver it immediately */
+		dgram.src = packet->src;
+		dgram.dest = packet->dest;
+		dgram.tos = packet->tos;
+		dgram.data = packet->data;
+		dgram.size = packet->size;
+		dgram.iplink = packet->link_id;
+
+		return inet_recv_dgram(&dgram, packet->proto, packet->ttl, packet->df);
+	} else {
+		inet_reass_queue_packet(packet);
 	}
 
 	return ENOENT;

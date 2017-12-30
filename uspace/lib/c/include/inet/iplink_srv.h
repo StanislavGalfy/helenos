@@ -61,6 +61,7 @@ typedef struct iplink_ops {
 	int (*set_mac48)(iplink_srv_t *, addr48_t *);
 	int (*addr_add)(iplink_srv_t *, inet_addr_t *);
 	int (*addr_remove)(iplink_srv_t *, inet_addr_t *);
+        int (*get_nic_svcid)(iplink_srv_t *, service_id_t *);
 } iplink_ops_t;
 
 extern void iplink_srv_init(iplink_srv_t *);

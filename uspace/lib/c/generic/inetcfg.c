@@ -175,12 +175,14 @@ int inetcfg_addr_delete(sysarg_t addr_id)
 	return rc;
 }
 
-int inetcfg_addr_get(sysarg_t addr_id, inet_addr_info_t *ainfo)
+int inetcfg_addr_get(sysarg_t addr_id, inet_addr_info_t *ainfo,
+    inet_addr_status_t inet_addr_status)
 {
 	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
 	
 	ipc_call_t answer;
-	aid_t req = async_send_1(exch, INETCFG_ADDR_GET, addr_id, &answer);
+	aid_t req = async_send_2(exch, INETCFG_ADDR_GET, addr_id,
+                (sysarg_t)inet_addr_status, &answer);
 	
 	ipc_call_t answer_naddr;
 	aid_t req_naddr = async_data_read(exch, &ainfo->naddr,
@@ -248,10 +250,11 @@ int inetcfg_addr_get_id(const char *name, sysarg_t link_id, sysarg_t *addr_id)
 	return retval;
 }
 
-int inetcfg_get_addr_list(sysarg_t **addrs, size_t *count)
+int inetcfg_get_addr_list(sysarg_t **addrs, size_t *count,
+    inet_addr_status_t inet_addr_status)
 {
-	return inetcfg_get_ids_internal(INETCFG_GET_ADDR_LIST,
-	    0, addrs, count);
+        return inetcfg_get_ids_internal(INETCFG_GET_ADDR_LIST,
+	    (sysarg_t)inet_addr_status, addrs, count);
 }
 
 int inetcfg_get_link_list(sysarg_t **links, size_t *count)
@@ -260,10 +263,11 @@ int inetcfg_get_link_list(sysarg_t **links, size_t *count)
 	    0, links, count);
 }
 
-int inetcfg_get_sroute_list(sysarg_t **sroutes, size_t *count)
+int inetcfg_get_sroute_list(sysarg_t **sroutes, size_t *count,
+        inet_sroute_status_t inet_sroute_status)
 {
 	return inetcfg_get_ids_internal(INETCFG_GET_SROUTE_LIST,
-	    0, sroutes, count);
+	    (sysarg_t)inet_sroute_status, sroutes, count);
 }
 
 int inetcfg_link_add(sysarg_t link_id)
@@ -310,6 +314,7 @@ int inetcfg_link_get(sysarg_t link_id, inet_link_info_t *linfo)
 
 	linfo->name = str_dup(name_buf);
 	linfo->def_mtu = IPC_GET_ARG1(answer);
+        linfo->nic_svcid = IPC_GET_ARG2(answer);
 
 	return EOK;
 }
@@ -325,12 +330,13 @@ int inetcfg_link_remove(sysarg_t link_id)
 }
 
 int inetcfg_sroute_create(const char *name, inet_naddr_t *dest,
-    inet_addr_t *router, sysarg_t *sroute_id)
+    inet_addr_t *router, sysarg_t rtm_protocol, sysarg_t *sroute_id)
 {
 	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
 	
 	ipc_call_t answer;
-	aid_t req = async_send_0(exch, INETCFG_SROUTE_CREATE, &answer);
+	aid_t req = async_send_1(exch, INETCFG_SROUTE_CREATE, rtm_protocol,
+                &answer);
 	
 	int rc = async_data_write_start(exch, dest, sizeof(inet_naddr_t));
 	if (rc != EOK) {
@@ -373,12 +379,14 @@ int inetcfg_sroute_delete(sysarg_t sroute_id)
 	return rc;
 }
 
-int inetcfg_sroute_get(sysarg_t sroute_id, inet_sroute_info_t *srinfo)
+int inetcfg_sroute_get(sysarg_t sroute_id, inet_sroute_info_t *srinfo,
+    inet_sroute_status_t inet_sroute_status)
 {
 	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
 	
 	ipc_call_t answer;
-	aid_t req = async_send_1(exch, INETCFG_SROUTE_GET, sroute_id, &answer);
+	aid_t req = async_send_2(exch, INETCFG_SROUTE_GET, sroute_id,
+            (sysarg_t)inet_sroute_status, &answer);
 	
 	ipc_call_t answer_dest;
 	aid_t req_dest = async_data_read(exch, &srinfo->dest,
@@ -434,6 +442,8 @@ int inetcfg_sroute_get(sysarg_t sroute_id, inet_sroute_info_t *srinfo)
 	
 	srinfo->name = str_dup(name_buf);
 	
+        srinfo->rtm_protocol = IPC_GET_ARG1(answer);
+        
 	return EOK;
 }
 

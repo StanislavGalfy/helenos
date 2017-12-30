@@ -251,15 +251,23 @@ int udp_assoc_set_nolocal(udp_assoc_t *assoc)
  *
  * @return EOK on success or negative error code
  */
-int udp_assoc_send_msg(udp_assoc_t *assoc, inet_ep_t *dest, void *data,
-    size_t bytes)
+int udp_assoc_send_msg(udp_assoc_t *assoc, inet_addr_t *source, 
+    inet_ep_t *dest, void *data, size_t bytes)
 {
 	async_exch_t *exch;
 
 	exch = async_exchange_begin(assoc->udp->sess);
 	aid_t req = async_send_1(exch, UDP_ASSOC_SEND_MSG, assoc->id, NULL);
 
-	int rc = async_data_write_start(exch, (void *)dest,
+        int rc = async_data_write_start(exch, (void *)source,
+	    sizeof(inet_addr_t));
+	if (rc != EOK) {
+		async_exchange_end(exch);
+		async_forget(req);
+		return rc;
+	}
+        
+	rc = async_data_write_start(exch, (void *)dest,
 	    sizeof(inet_ep_t));
 	if (rc != EOK) {
 		async_exchange_end(exch);

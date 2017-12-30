@@ -219,8 +219,12 @@ int udp_pdu_encode(inet_ep2_t *epp, udp_msg_t *msg, udp_pdu_t **pdu)
 		return ENOMEM;
 
 	npdu->iplink = epp->local_link;
-	npdu->src = epp->local.addr;
+        npdu->src = epp->local.addr;
 	npdu->dest = epp->remote.addr;
+        /* WARNING <<<
+        if (npdu->dest.addr == 0x010000FF)
+            npdu->src.addr = 0x01000001;
+        */
 
 	npdu->data_size = sizeof(udp_header_t) + msg->data_size;
 	npdu->data = calloc(1, npdu->data_size);

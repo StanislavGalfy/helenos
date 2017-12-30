@@ -59,6 +59,7 @@ typedef enum {
 #define SERVICE_NAME_NETCONF  "net/netconf"
 #define SERVICE_NAME_UDP      "net/udp"
 #define SERVICE_NAME_TCP      "net/tcp"
+#define SERVICE_NAME_SOCKET   "sys/socket"
 #define SERVICE_NAME_VBD      "vbd"
 #define SERVICE_NAME_VOLSRV   "volsrv"
 

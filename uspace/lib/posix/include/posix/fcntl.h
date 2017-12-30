@@ -93,6 +93,8 @@
 #undef FD_CLOEXEC
 #define FD_CLOEXEC         1 /* Close on exec. */
 
+#define O_NONBLOCK 0x4000
+
 extern int __POSIX_DEF__(open)(const char *pathname, int flags, ...);
 extern int __POSIX_DEF__(fcntl)(int fd, int cmd, ...);
 

@@ -183,7 +183,7 @@ void comm_close(void)
 
 int comm_send(void *data, size_t size)
 {
-	int rc = udp_assoc_send_msg(assoc, &remote, data, size);
+	int rc = udp_assoc_send_msg(assoc, NULL, &remote, data, size);
 	if (rc != EOK)
 		return EIO;
 

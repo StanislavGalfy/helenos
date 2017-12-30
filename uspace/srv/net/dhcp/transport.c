@@ -83,7 +83,7 @@ int dhcp_send(dhcp_transport_t *dt, void *msg, size_t size)
 	ep.port = dhcp_server_port;
 	inet_addr_set(addr32_broadcast_all_hosts, &ep.addr);
 
-	rc = udp_assoc_send_msg(dt->assoc, &ep, msg, size);
+	rc = udp_assoc_send_msg(dt->assoc, NULL, &ep, msg, size);
 	if (rc != EOK) {
 		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed sending message");
 		return rc;

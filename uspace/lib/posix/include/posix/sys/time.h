@@ -39,6 +39,8 @@
 
 #include "libc/sys/time.h"
 
+#define CLOCK_MONOTONIC	1
+
 #endif
 
 /** @}

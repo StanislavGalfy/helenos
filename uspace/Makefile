@@ -110,6 +110,7 @@ DIRS = \
 	srv/net/slip \
 	srv/net/tcp \
 	srv/net/udp \
+	srv/sys/socket \
 	srv/ns \
 	srv/taskmon \
 	srv/vfs \

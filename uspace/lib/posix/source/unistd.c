@@ -42,6 +42,7 @@
 #include "posix/errno.h"
 #include "posix/string.h"
 #include "posix/fcntl.h"
+#include "posix/sys/socket.h"
 
 #include "libc/task.h"
 #include "libc/thread.h"
@@ -52,6 +53,8 @@
 #include <libarch/config.h>
 
 aoff64_t posix_pos[MAX_OPEN_FILES];
+
+#define VFS_MAX_OPEN_FILES 128
 
 /* Array of environment variable strings (NAME=VALUE). */
 char **posix_environ = NULL;
@@ -194,12 +197,16 @@ posix_gid_t posix_getgid(void)
  */
 int posix_close(int fildes)
 {
-	posix_pos[fildes] = 0;
-	int rc = rcerrno(vfs_put, fildes);
-	if (rc != EOK)
-		return -1;
-	else
-		return 0;
+        if (fildes < VFS_MAX_OPEN_FILES) {
+            posix_pos[fildes] = 0;
+            int rc = rcerrno(vfs_put, fildes);
+            if (rc != EOK)
+                    return -1;
+            else
+                    return 0;
+        }
+        else
+            return posix_sockclose(fildes);
 }
 
 /**

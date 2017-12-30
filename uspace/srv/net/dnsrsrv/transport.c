@@ -196,7 +196,7 @@ int dns_request(dns_message_t *req, dns_message_t **rresp)
 
 	while (ntry < REQ_RETRY_MAX) {
 		log_msg(LOG_DEFAULT, LVL_DEBUG, "dns_request: Send DNS message");
-		rc = udp_assoc_send_msg(transport_assoc, &ep, req_data,
+		rc = udp_assoc_send_msg(transport_assoc, NULL, &ep, req_data,
 		    req_size);
 		if (rc != EOK) {
 			log_msg(LOG_DEFAULT, LVL_DEBUG, "Error sending message: %s", str_error(rc));

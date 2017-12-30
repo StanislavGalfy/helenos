@@ -215,12 +215,13 @@ int ieee80211_disconnect(async_sess_t *dev_sess)
 	size_t count;
 	
 	/* Remove previous DHCP address. */
-	rc = inetcfg_get_addr_list(&addr_list, &count);
+	rc = inetcfg_get_addr_list(&addr_list, &count, INET_ADDR_STATUS_ACTIVE);
 	if (rc != EOK)
 		return rc;
 	
 	for (size_t i = 0; i < count; i++) {
-		rc = inetcfg_addr_get(addr_list[i], &addr_info);
+		rc = inetcfg_addr_get(addr_list[i], &addr_info,
+                    INET_ADDR_STATUS_ACTIVE);
 		if (rc != EOK)
 			return rc;
 		
@@ -245,12 +246,14 @@ int ieee80211_disconnect(async_sess_t *dev_sess)
 	 * dropped.
 	 */
 	/* Remove previous DHCP static route. */
-	rc = inetcfg_get_sroute_list(&route_list, &count);
+	rc = inetcfg_get_sroute_list(&route_list, &count,
+            INET_SROUTE_STATUS_ACTIVE);
 	if (rc != EOK)
 		return rc;
 	
 	for (size_t i = 0; i < count; i++) {
-		rc = inetcfg_sroute_get(route_list[i], &route_info);
+		rc = inetcfg_sroute_get(route_list[i], &route_info,
+                    INET_SROUTE_STATUS_ACTIVE);
 		if (rc != EOK)
 			return rc;
 		

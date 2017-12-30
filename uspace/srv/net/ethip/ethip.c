@@ -61,6 +61,7 @@ static int ethip_get_mac48(iplink_srv_t *srv, addr48_t *mac);
 static int ethip_set_mac48(iplink_srv_t *srv, addr48_t *mac);
 static int ethip_addr_add(iplink_srv_t *srv, inet_addr_t *addr);
 static int ethip_addr_remove(iplink_srv_t *srv, inet_addr_t *addr);
+static int ethip_get_nic_svcid(iplink_srv_t *srv, service_id_t *);
 
 static void ethip_client_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg);
 
@@ -73,7 +74,8 @@ static iplink_ops_t ethip_iplink_ops = {
 	.get_mac48 = ethip_get_mac48,
 	.set_mac48 = ethip_set_mac48,
 	.addr_add = ethip_addr_add,
-	.addr_remove = ethip_addr_remove
+	.addr_remove = ethip_addr_remove,
+        .get_nic_svcid = ethip_get_nic_svcid
 };
 
 static int ethip_init(void)
@@ -307,6 +309,14 @@ static int ethip_addr_remove(iplink_srv_t *srv, inet_addr_t *addr)
 	ethip_nic_t *nic = (ethip_nic_t *) srv->arg;
 	
 	return ethip_nic_addr_remove(nic, addr);
+}
+
+static int ethip_get_nic_svcid(iplink_srv_t *srv, service_id_t *nic_svcid)
+{
+        ethip_nic_t *nic = (ethip_nic_t *) srv->arg;
+
+        *nic_svcid = nic->svc_id;
+        return EOK;
 }
 
 int main(int argc, char *argv[])

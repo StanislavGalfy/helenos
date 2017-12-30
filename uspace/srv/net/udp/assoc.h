@@ -47,7 +47,7 @@ extern void udp_assoc_remove(udp_assoc_t *);
 extern void udp_assoc_addref(udp_assoc_t *);
 extern void udp_assoc_delref(udp_assoc_t *);
 extern void udp_assoc_set_iplink(udp_assoc_t *, service_id_t);
-extern int udp_assoc_send(udp_assoc_t *, inet_ep_t *, udp_msg_t *);
+extern int udp_assoc_send(udp_assoc_t *, inet_addr_t *, inet_ep_t *, udp_msg_t *);
 extern int udp_assoc_recv(udp_assoc_t *, udp_msg_t **, inet_ep_t *);
 extern void udp_assoc_received(inet_ep2_t *, udp_msg_t *);
 extern void udp_assoc_reset(udp_assoc_t *);

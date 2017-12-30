@@ -37,6 +37,7 @@
 
 #include <async.h>
 #include <inet/addr.h>
+#include <ipc/loc.h>
 
 struct iplink_ev_ops;
 
@@ -91,6 +92,7 @@ extern int iplink_get_mtu(iplink_t *, size_t *);
 extern int iplink_get_mac48(iplink_t *, addr48_t *);
 extern int iplink_set_mac48(iplink_t *, addr48_t);
 extern void *iplink_get_userptr(iplink_t *);
+extern int iplink_get_nic_svcid(iplink_t *, service_id_t *);
 
 #endif
 

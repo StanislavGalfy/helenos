@@ -41,6 +41,7 @@
 #include <errno.h>
 #include <task.h>
 #include <stdlib.h>
+#include <malloc.h>
 #include <macros.h>
 #include <str.h>
 #include <loc.h>
@@ -351,6 +352,7 @@ int main(int argc, char *argv[])
 	srv_start("/srv/dnsrsrv");
 	srv_start("/srv/dhcp");
 	srv_start("/srv/nconfsrv");
+        srv_start("/srv/socket");
 	
 	srv_start("/srv/clipboard");
 	srv_start("/srv/remcons");

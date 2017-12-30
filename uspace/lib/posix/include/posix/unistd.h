@@ -42,6 +42,7 @@
 
 #include "sys/types.h"
 #include "stddef.h"
+#include <posix/sys/select.h>
 
 #define SEEK_SET  0
 #define SEEK_CUR  1

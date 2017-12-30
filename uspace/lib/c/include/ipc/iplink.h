@@ -44,7 +44,8 @@ typedef enum {
 	IPLINK_SEND,
 	IPLINK_SEND6,
 	IPLINK_ADDR_ADD,
-	IPLINK_ADDR_REMOVE
+	IPLINK_ADDR_REMOVE,
+        IPLINK_GET_NIC_SVCID
 } iplink_request_t;
 
 typedef enum {

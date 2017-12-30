@@ -56,6 +56,7 @@ static int loopip_get_mtu(iplink_srv_t *srv, size_t *mtu);
 static int loopip_get_mac48(iplink_srv_t *srv, addr48_t *mac);
 static int loopip_addr_add(iplink_srv_t *srv, inet_addr_t *addr);
 static int loopip_addr_remove(iplink_srv_t *srv, inet_addr_t *addr);
+static int loopip_get_nic_svcid(iplink_srv_t *srv, service_id_t *nic_svcid);
 
 static void loopip_client_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg);
 
@@ -67,7 +68,8 @@ static iplink_ops_t loopip_iplink_ops = {
 	.get_mtu = loopip_get_mtu,
 	.get_mac48 = loopip_get_mac48,
 	.addr_add = loopip_addr_add,
-	.addr_remove = loopip_addr_remove
+	.addr_remove = loopip_addr_remove,
+        .get_nic_svcid = loopip_get_nic_svcid
 };
 
 static iplink_srv_t loopip_iplink;
@@ -243,6 +245,12 @@ static int loopip_addr_add(iplink_srv_t *srv, inet_addr_t *addr)
 static int loopip_addr_remove(iplink_srv_t *srv, inet_addr_t *addr)
 {
 	return EOK;
+}
+
+static int loopip_get_nic_svcid(iplink_srv_t *srv, service_id_t *nic_svcid)
+{
+    *nic_svcid = 0;
+    return EOK;
 }
 
 int main(int argc, char *argv[])

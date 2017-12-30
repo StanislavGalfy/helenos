@@ -196,7 +196,8 @@ static int sroute_create(int argc, char *argv[])
 		return EINVAL;
 	}
 
-	rc = inetcfg_sroute_create(route_name, &dest, &router, &sroute_id);
+	rc = inetcfg_sroute_create(route_name, &dest, &router, RTPROT_STATIC,
+                &sroute_id);
 	if (rc != EOK) {
 		printf(NAME ": Failed creating static route '%s': %s\n",
 		    route_name, str_error(rc));
@@ -258,7 +259,7 @@ static int addr_list(void)
 	ainfo.name = NULL;
 	linfo.name = NULL;
 
-	rc = inetcfg_get_addr_list(&addr_list, &count);
+	rc = inetcfg_get_addr_list(&addr_list, &count, INET_ADDR_STATUS_ACTIVE);
 	if (rc != EOK) {
 		printf(NAME ": Failed getting address list.\n");
 		return rc;
@@ -275,7 +276,7 @@ static int addr_list(void)
 	    "Def-MTU\n");
 
 	for (i = 0; i < count; i++) {
-		rc = inetcfg_addr_get(addr_list[i], &ainfo);
+		rc = inetcfg_addr_get(addr_list[i], &ainfo, INET_ADDR_STATUS_ACTIVE);
 		if (rc != EOK) {
 			printf("Failed getting properties of address %zu.\n",
 			    (size_t)addr_list[i]);
@@ -408,7 +409,8 @@ static int sroute_list(void)
 
 	srinfo.name = NULL;
 
-	rc = inetcfg_get_sroute_list(&sroute_list, &count);
+	rc = inetcfg_get_sroute_list(&sroute_list, &count,
+            INET_SROUTE_STATUS_ACTIVE);
 	if (rc != EOK) {
 		printf(NAME ": Failed getting address list.\n");
 		return rc;
@@ -424,7 +426,8 @@ static int sroute_list(void)
 	table_printf(table, "Dest/Width\t" "Router-Addr\t" "Route-Name\n");
 
 	for (i = 0; i < count; i++) {
-		rc = inetcfg_sroute_get(sroute_list[i], &srinfo);
+		rc = inetcfg_sroute_get(sroute_list[i], &srinfo,
+                    INET_SROUTE_STATUS_ACTIVE);
 		if (rc != EOK) {
 			printf("Failed getting properties of static route %zu.\n",
 			    (size_t)sroute_list[i]);
