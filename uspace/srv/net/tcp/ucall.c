@@ -301,13 +301,13 @@ void tcp_uc_status(tcp_conn_t *conn, tcp_conn_status_t *cstatus)
  */
 void tcp_uc_delete(tcp_conn_t *conn)
 {
-	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_uc_delete()");
+	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_uc_delete() <<<<<<<<<<<<<<<<<<<<");
 	tcp_conn_delete(conn);
 }
 
 void tcp_uc_set_cb(tcp_conn_t *conn, tcp_cb_t *cb, void *arg)
 {
-	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_uc_set_cb(%p, %p, %p)",
+	log_msg(LOG_DEFAULT, LVL_DEBUG, "\n\n\ntcp_uc_set_cb(%p, %p, %p)\n\n\n",
 	    conn, cb, arg);
 
 	conn->cb = cb;

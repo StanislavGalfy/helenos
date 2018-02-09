@@ -40,7 +40,9 @@
 #include <loc.h>
 #include <stdlib.h>
 #include <types/socket/socket.h>
+#include <types/socket/select.h>
 #include <macros.h>
+#include <stdio.h>
 
 #include "service.h"
 #include "tools.h"
@@ -48,6 +50,7 @@
 #include "raw_socket.h"
 #include "udp_socket.h"
 #include "unix_socket.h"
+#include "tcp_socket.h"
 
 #define NAME "socket"
 
@@ -81,21 +84,48 @@ int (*socket_create[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (int, int, int, int);
 int (*socket_bind[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
     const struct sockaddr *, socklen_t);
 
+/** Array of socket listen functions */
+int (*socket_listen[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX])(common_socket_t *, int);
+
 /** Array of socket connect functions */
 int (*socket_connect[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
     const struct sockaddr *, socklen_t);
 
+/** Array of socket accept functions */
+int (*socket_accept[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, int *,
+    const struct sockaddr *, socklen_t *);
+
 /** Array of socket setsockopt functions */
 int (*socket_setsockopt[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
-    int, int, const void*, socklen_t);
+    int, int, const void *, socklen_t);
+
+/** Array of socket getsockname functions */
+int (*socket_getsockname[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX])(common_socket_t *, 
+    const struct sockaddr *, socklen_t *);
+
+/** Array of socket fdisset functions */
+ssize_t (*socket_fdisset[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
+        sysarg_t *);
+
+/** Array of socket fdisset functions */
+bool (*socket_read_avail[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (
+        common_socket_t *);
 
 /** Array of socket sendmsg functions */
 ssize_t (*socket_sendmsg[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
-    const struct msghdr*, int);
+    const struct msghdr *, int);
 
 /** Array of socket recvmsg functions */
 int (*socket_recvmsg[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
-    struct msghdr*, int, size_t *);
+    struct msghdr *, int, size_t *);
+
+/** Array of socket sendmsg functions */
+ssize_t (*socket_write[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
+    void *, size_t, size_t *);
+
+/** Array of socket recvmsg functions */
+ssize_t (*socket_read[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
+    void *, size_t, size_t *);
 
 /** Array of socket close functions */
 int (*socket_close[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX])(common_socket_t *);
@@ -218,6 +248,39 @@ static void socket_bind_srv(ipc_callid_t iid, ipc_call_t *icall)
         free(addr);    
 }
 
+/** Listens on socket
+ * 
+ * @param iid - async request ID
+ * @param icall - async request data
+ */
+static void socket_listen_srv(ipc_callid_t iid, ipc_call_t *icall) 
+{    
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, " ");
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "socket_listen_srv()");
+
+        // Get parameters transfered as sysarg_t
+        int sockfd = IPC_GET_ARG1(*icall);
+        int backlog = IPC_GET_ARG2(*icall);
+
+        // Find socket and call close implementation based on domain and type  
+        fibril_mutex_lock(&socket_lock);    
+        common_socket_t *socket = get_socket_by_id(sockfd);
+                if (socket == NULL) {
+                async_answer_0(iid, EBADF);
+                fibril_mutex_unlock(&socket_lock);
+                return;
+        }
+        if (socket_listen[socket->domain][socket->type] == NULL) {
+                async_answer_0(iid, EOPNOTSUPP);
+                fibril_mutex_unlock(&socket_lock);
+                return;
+        }
+        int retval = socket_listen[socket->domain][socket->type](socket, backlog);
+        fibril_mutex_unlock(&socket_lock);
+
+        async_answer_0(iid, retval);
+}
+
 /** 
  * 
  * @param iid - async request ID
@@ -281,6 +344,73 @@ static void socket_connect_srv(ipc_callid_t iid, ipc_call_t *icall)
         free(addr);    
 }
 
+/** Accept socket connection
+ * 
+ * @param iid - async request ID
+ * @param icall - async request data
+ */
+static void socket_accept_srv(ipc_callid_t iid, ipc_call_t *icall) 
+{
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, " ");
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "socket_accept_srv()");
+
+        // Get parameters transfered as sysarg_t
+        int sockfd = IPC_GET_ARG1(*icall);
+        size_t addrlen = IPC_GET_ARG2(*icall);
+        
+        ipc_callid_t callid;
+
+        void *addr = malloc(addrlen);
+        if (addr == NULL) {
+                async_answer_0(callid, ENOMEM);
+                async_answer_0(iid, ENOMEM);
+                return;
+        }
+
+        // Find socket and call accept implementation based on domain and type
+        fibril_mutex_lock(&socket_lock);
+        common_socket_t *socket = get_socket_by_id(sockfd);
+        if (socket == NULL) {
+                fibril_mutex_unlock(&socket_lock);
+                async_answer_0(callid, EBADF);
+                async_answer_0(iid, EBADF);
+                free(addr);
+                return;
+        }
+
+        if (socket_connect[socket->domain][socket->type] == NULL) {
+                fibril_mutex_unlock(&socket_lock);
+                async_answer_0(callid, EOPNOTSUPP);
+                async_answer_0(iid, EOPNOTSUPP);
+                free(addr);
+                return;
+        }
+        int fd;
+        int retval = socket_accept[socket->domain][socket->type](socket, &fd, 
+                addr, &addrlen);
+        
+        bool rv = async_data_read_receive(&callid, &addrlen);
+        if (!rv) {
+                fibril_mutex_unlock(&socket_lock);
+                async_answer_0(callid, EREFUSED);
+                async_answer_0(iid, EREFUSED);
+                free(addr);
+                return;
+        }
+        int rc = async_data_read_finalize(callid, addr, addrlen);
+        if (rc != EOK) {
+                fibril_mutex_unlock(&socket_lock);
+                async_answer_0(callid, rc);
+                async_answer_0(iid, rc);
+                free(addr);
+                return;
+        }
+        fibril_mutex_unlock(&socket_lock);
+
+        async_answer_2(iid, retval, fd, addrlen);
+        free(addr);    
+}
+
 /**
  * 
  * @param iid - async request ID
@@ -341,6 +471,72 @@ static void socket_setsockopt_srv(ipc_callid_t iid, ipc_call_t *icall)
         fibril_mutex_unlock(&socket_lock);
         async_answer_0(iid, retval);
         free(optval);
+}
+
+/** Accept socket connection
+ * 
+ * @param iid - async request ID
+ * @param icall - async request data
+ */
+static void socket_getsockname_srv(ipc_callid_t iid, ipc_call_t *icall) 
+{
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, " ");
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "socket_getsockname_srv()");
+
+        // Get parameters transfered as sysarg_t
+        int sockfd = IPC_GET_ARG1(*icall);
+        size_t addrlen = IPC_GET_ARG2(*icall);
+        
+        ipc_callid_t callid;
+
+        void *addr = malloc(addrlen);
+        if (addr == NULL) {
+                async_answer_0(callid, ENOMEM);
+                async_answer_0(iid, ENOMEM);
+                return;
+        }
+
+        // Find socket and call accept implementation based on domain and type
+        fibril_mutex_lock(&socket_lock);
+        common_socket_t *socket = get_socket_by_id(sockfd);
+        if (socket == NULL) {
+                fibril_mutex_unlock(&socket_lock);
+                async_answer_0(callid, EBADF);
+                async_answer_0(iid, EBADF);
+                free(addr);
+                return;
+        }
+
+        if (socket_getsockname[socket->domain][socket->type] == NULL) {
+                fibril_mutex_unlock(&socket_lock);
+                async_answer_0(callid, EOPNOTSUPP);
+                async_answer_0(iid, EOPNOTSUPP);
+                free(addr);
+                return;
+        }
+        int retval = socket_getsockname[socket->domain][socket->type](socket,
+                addr, &addrlen);
+        
+        bool rv = async_data_read_receive(&callid, &addrlen);
+        if (!rv) {
+                fibril_mutex_unlock(&socket_lock);
+                async_answer_0(callid, EREFUSED);
+                async_answer_0(iid, EREFUSED);
+                free(addr);
+                return;
+        }
+        int rc = async_data_read_finalize(callid, addr, addrlen);
+        if (rc != EOK) {
+                fibril_mutex_unlock(&socket_lock);
+                async_answer_0(callid, rc);
+                async_answer_0(iid, rc);
+                free(addr);
+                return;
+        }
+        fibril_mutex_unlock(&socket_lock);
+
+        async_answer_1(iid, retval, addrlen);
+        free(addr);      
 }
 
 /** Sends message through socket.
@@ -583,13 +779,122 @@ static void socket_recvmsg_srv(ipc_callid_t iid, ipc_call_t *icall)
         free_msghdr(msg);
 }
 
+static void socket_write_srv(ipc_callid_t iid, ipc_call_t *icall) 
+{
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, " ");    
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "socket_write_srv()");    
+    
+        int sockfd = IPC_GET_ARG1(*icall);
+        size_t count;
+        
+        ipc_callid_t callid;
+        bool rv = async_data_write_receive(&callid, &count);
+        if (!rv) {
+                async_answer_0(callid, EREFUSED);
+                async_answer_0(iid, EREFUSED);
+                return;
+        }  
+
+        void *buf = malloc(count);
+        if (buf == NULL) {
+                async_answer_0(callid, ENOMEM);
+                async_answer_0(iid, ENOMEM);
+                return;
+        }
+
+        int rc = async_data_write_finalize(callid, buf, count);
+        if (rc != EOK) {
+                async_answer_0(callid, rc);
+                async_answer_0(iid, rc);
+                free(buf);
+                return;
+        }
+        
+        fibril_mutex_lock(&socket_lock);    
+        common_socket_t *socket = get_socket_by_id(sockfd);
+        if (socket == NULL) {
+                async_answer_0(iid, EBADF);
+                free(buf);
+                fibril_mutex_unlock(&socket_lock);
+                return;
+        }
+        if (socket_write[socket->domain][socket->type] == NULL) {
+                async_answer_0(iid, EOPNOTSUPP);
+                free(buf);
+                fibril_mutex_unlock(&socket_lock);
+                return;
+        }
+        size_t nsent;
+        int retval = socket_write[socket->domain][socket->type](socket, buf,
+                count, &nsent);
+        free(buf);
+        
+        fibril_mutex_unlock(&socket_lock);
+        async_answer_1(iid, retval, nsent);
+}
+
+static void socket_read_srv(ipc_callid_t iid, ipc_call_t *icall)
+{
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, " ");    
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "socket_read_srv()");
+    
+        int sockfd = IPC_GET_ARG1(*icall);
+        size_t count = IPC_GET_ARG2(*icall);
+        
+        void *buf = malloc(count);
+        if (buf == NULL) {
+                async_answer_0(iid, ENOMEM);
+                return;
+        }
+        
+        fibril_mutex_lock(&socket_lock);    
+        common_socket_t *socket = get_socket_by_id(sockfd);
+        if (socket == NULL) {
+                async_answer_0(iid, EBADF);
+                free(buf);
+                fibril_mutex_unlock(&socket_lock);
+                return;
+        }
+        if (socket_write[socket->domain][socket->type] == NULL) {
+                async_answer_0(iid, EOPNOTSUPP);
+                free(buf);
+                fibril_mutex_unlock(&socket_lock);
+                return;
+        }
+        size_t nrecv = 0;
+        int retval = socket_read[socket->domain][socket->type](socket, buf,
+                count, &nrecv);
+        
+        ipc_callid_t callid;
+        bool rv = async_data_read_receive(&callid, &count);
+        if (!rv) {
+                async_answer_0(callid, EREFUSED);
+                async_answer_0(iid, EREFUSED);
+                free(buf);
+                return;
+        }
+        
+        int rc = async_data_read_finalize(callid, buf, nrecv);
+        if (rc != EOK) { 
+                async_answer_0(callid, rc);
+                async_answer_0(iid, rc);
+                free(buf);
+                return;
+        }                
+        
+        free(buf);
+        
+        fibril_mutex_unlock(&socket_lock);
+        async_answer_1(iid, retval, nrecv);        
+}
+
 /** Checks if message can be received on a socket.
  * 
  * @param iid - async request ID
  * @param icall - async request data
  */
 static void socket_sockfdisset_srv(ipc_callid_t iid, ipc_call_t *icall) 
-{    
+{
         // Get parameters transfered as sysarg_t
         int sockfd = IPC_GET_ARG1(*icall);
 
@@ -597,13 +902,19 @@ static void socket_sockfdisset_srv(ipc_callid_t iid, ipc_call_t *icall)
         fibril_mutex_lock(&socket_lock);    
         common_socket_t *socket = get_socket_by_id(sockfd);
         if (socket == NULL) {
-                async_answer_0(iid, retval);
+                async_answer_0(iid, EBADF);
                 fibril_mutex_unlock(&socket_lock);
                 return;
         }
-        retval = !list_empty(&socket->msg_queue);
+        if (socket_fdisset[socket->domain][socket->type] == NULL) {
+                async_answer_0(iid, EOPNOTSUPP);
+                fibril_mutex_unlock(&socket_lock);
+                return;
+        }
+        sysarg_t fdisset;
+        retval = socket_fdisset[socket->domain][socket->type](socket, &fdisset);
         fibril_mutex_unlock(&socket_lock);
-        async_answer_0(iid, retval);
+        async_answer_1(iid, retval, fdisset);
 }
 
 /** Closes socket
@@ -628,6 +939,7 @@ static void socket_close_srv(ipc_callid_t iid, ipc_call_t *icall)
                 return;
         }
         if (socket_close[socket->domain][socket->type] == NULL) {
+                log_msg(LOG_DEFAULT, LVL_DEBUG, "socket_close_srv() EOPNOTSUPP!!!");
                 async_answer_0(iid, EOPNOTSUPP);
                 fibril_mutex_unlock(&socket_lock);
                 return;
@@ -636,6 +948,157 @@ static void socket_close_srv(ipc_callid_t iid, ipc_call_t *icall)
         fibril_mutex_unlock(&socket_lock);
 
         async_answer_0(iid, retval);
+}
+
+static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall) 
+{
+        //int nfds = IPC_GET_ARG1(*icall);
+        bool is_readfds = IPC_GET_ARG2(*icall);
+        //bool is_writefds =  IPC_GET_ARG3(*icall);
+        //bool is_exceptfds = IPC_GET_ARG4(*icall);
+        //bool is_timeout = IPC_GET_ARG5(*icall);
+        //struct timeval timeout;
+        
+        size_t size;
+        ipc_callid_t callid;
+        
+        bool rv;
+        int rc;
+        
+        if (is_readfds) {
+                fd_set readfds_in;
+                fd_set readfds_out;
+                memset(&readfds_out.fds_bits, 0, sizeof(readfds_out.fds_bits));
+
+                //receive read file descriptors
+                rv = async_data_write_receive(&callid, &size);
+                if (!rv) {
+                        async_answer_0(callid, EREFUSED);
+                        async_answer_0(iid, EREFUSED);
+                        return;
+                }
+
+                rc = async_data_write_finalize(callid, &readfds_in, size);
+                if (rc != EOK) {
+                        async_answer_0(callid, rc);
+                        async_answer_0(iid, rc);
+                        return;
+                }
+
+                list_foreach(socket_list, link, common_socket_t, socket) {
+                        if (socket_read_avail[socket->domain][socket->type]) {
+                                bool read_avail = socket_read_avail 
+                                        [socket->domain][socket->type](socket);
+                                
+                                readfds_out.fds_bits[socket->id] = read_avail & 
+                                        readfds_in.fds_bits[socket->id];
+                        }
+                }
+
+                //send read file descriptors
+                rv = async_data_read_receive(&callid, &size);
+                if (!rv) {
+                        //fibril_mutex_unlock(&socket_lock);
+                        async_answer_0(callid, EREFUSED);
+                        async_answer_0(iid, EREFUSED);
+                        return;
+                }
+                rc = async_data_read_finalize(callid, &readfds_out, size);
+                if (rc != EOK) {
+                        //fibril_mutex_unlock(&socket_lock);
+                        async_answer_0(callid, rc);
+                        async_answer_0(iid, rc);
+                        return;
+                }
+        }
+        
+        async_answer_0(iid, EOK);
+        /*
+        if (is_writefds) {
+                fd_set writefds;
+                fd_set exceptfds;
+            
+                //receive write file descriptors
+                rv = async_data_write_receive(&callid, &size);
+                if (!rv) {
+                        async_answer_0(callid, EREFUSED);
+                        async_answer_0(iid, EREFUSED);
+                        return;
+                }
+
+                rc = async_data_write_finalize(callid, &writefds, size);
+                if (rc != EOK) {
+                        async_answer_0(callid, rc);
+                        async_answer_0(iid, rc);
+                        return;
+                }
+                //send write file descriptors
+                rv = async_data_read_receive(&callid, &size);
+                if (!rv) {
+                        //fibril_mutex_unlock(&socket_lock);
+                        async_answer_0(callid, EREFUSED);
+                        async_answer_0(iid, EREFUSED);
+                        return;
+                }
+                rc = async_data_read_finalize(callid, &writefds, size);
+                if (rc != EOK) {
+                        //fibril_mutex_unlock(&socket_lock);
+                        async_answer_0(callid, rc);
+                        async_answer_0(iid, rc);
+                        return;
+                }
+        }
+
+        if (is_exceptfds) {
+                //receive except file descriptors
+                rv = async_data_write_receive(&callid, &size);
+                if (!rv) {
+                        async_answer_0(callid, EREFUSED);
+                        async_answer_0(iid, EREFUSED);
+                        return;
+                }
+
+                rc = async_data_write_finalize(callid, &exceptfds, size);
+                if (rc != EOK) {
+                        async_answer_0(callid, rc);
+                        async_answer_0(iid, rc);
+                        return;
+                }
+
+                //send except file descriptors
+                rv = async_data_read_receive(&callid, &size);
+                if (!rv) {
+                        //fibril_mutex_unlock(&socket_lock);
+                        async_answer_0(callid, EREFUSED);
+                        async_answer_0(iid, EREFUSED);
+                        return;
+                }
+                rc = async_data_read_finalize(callid, &exceptfds, size);
+                if (rc != EOK) {
+                        //fibril_mutex_unlock(&socket_lock);
+                        async_answer_0(callid, rc);
+                        async_answer_0(iid, rc);
+                        return;
+                }
+        }
+
+        if (is_timeout) {
+                //receive timeval
+                rv = async_data_write_receive(&callid, &size);
+                if (!rv) {
+                        async_answer_0(callid, EREFUSED);
+                        async_answer_0(iid, EREFUSED);
+                        return;
+                }
+
+                rc = async_data_write_finalize(callid, &timeout, size);
+                if (rc != EOK) {
+                        async_answer_0(callid, rc);
+                        async_answer_0(iid, rc);
+                        return;
+                }
+        }
+         */
 }
 
 /** Handle Socket client connection.
@@ -682,11 +1145,20 @@ static void socket_client_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
                 case SOCKET_BIND:
                         socket_bind_srv(callid, &call);
                         break;
+                case SOCKET_LISTEN:
+                        socket_listen_srv(callid, &call);
+                        break;
                 case SOCKET_CONNECT:
                         socket_connect_srv(callid, &call);
                         break;
+                case SOCKET_ACCEPT:
+                        socket_accept_srv(callid, &call);
+                        break;
                 case SOCKET_SETSOCKOPT:
                         socket_setsockopt_srv(callid, &call);
+                        break;
+                case SOCKET_GETSOCKNAME:
+                        socket_getsockname_srv(callid, &call);
                         break;
                 case SOCKET_SENDMSG:
                         socket_sendmsg_srv(callid, &call);
@@ -694,11 +1166,20 @@ static void socket_client_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
                 case SOCKET_RECVMSG:
                         socket_recvmsg_srv(callid, &call);
                         break;
+                case SOCKET_WRITE:
+                        socket_write_srv(callid, &call);
+                        break;
+                case SOCKET_READ:
+                        socket_read_srv(callid, &call);
+                        break;
                 case SOCKET_FDISSET:
                         socket_sockfdisset_srv(callid, &call);
                         break;
                 case SOCKET_CLOSE:
                         socket_close_srv(callid, &call);
+                        break;
+                case SOCKET_SELECT:
+                        socket_select_srv(callid, &call);
                         break;
                 }
         }
@@ -729,22 +1210,39 @@ int socket_service_init(void)
 
         socket_create[AF_INET][SOCK_RAW] = raw_socket;
         socket_setsockopt[AF_INET][SOCK_RAW] = raw_socket_setsockopt;
-        socket_recvmsg[AF_INET][SOCK_RAW] = raw_socket_recvmsg;
+        socket_fdisset[AF_INET][SOCK_RAW] = raw_socket_fdisset;
+        socket_read_avail[AF_INET][SOCK_RAW] = raw_socket_read_avail;
         socket_sendmsg[AF_INET][SOCK_RAW] = raw_socket_sendmsg;
+        socket_recvmsg[AF_INET][SOCK_RAW] = raw_socket_recvmsg;
         socket_close[AF_INET][SOCK_RAW] = raw_socket_close;
 
         socket_create[AF_INET][SOCK_DGRAM] = udp_socket;
         socket_setsockopt[AF_INET][SOCK_DGRAM] = udp_socket_setsockopt;
         socket_bind[AF_INET][SOCK_DGRAM] = udp_socket_bind;
-        socket_recvmsg[AF_INET][SOCK_DGRAM] = udp_socket_recvmsg;
+        socket_read_avail[AF_INET][SOCK_DGRAM] = udp_socket_read_avail;
         socket_sendmsg[AF_INET][SOCK_DGRAM] = udp_socket_sendmsg;
+        socket_recvmsg[AF_INET][SOCK_DGRAM] = udp_socket_recvmsg;
         socket_close[AF_INET][SOCK_DGRAM] = udp_socket_close;
 
+        socket_create[AF_INET][SOCK_STREAM] = tcp_socket;
+        socket_setsockopt[AF_INET][SOCK_STREAM] = udp_socket_setsockopt;
+        socket_bind[AF_INET][SOCK_STREAM] = tcp_socket_bind;
+        socket_listen[AF_INET][SOCK_STREAM] = tcp_socket_listen;
+        socket_connect[AF_INET][SOCK_STREAM] = tcp_socket_connect;
+        socket_accept[AF_INET][SOCK_STREAM] = tcp_socket_accept;
+        socket_read_avail[AF_INET][SOCK_STREAM] = tcp_socket_read_avail;
+        socket_write[AF_INET][SOCK_STREAM] = tcp_socket_write;
+        socket_read[AF_INET][SOCK_STREAM] = tcp_socket_read;
+        socket_close[AF_INET][SOCK_STREAM] = tcp_socket_close;
+        socket_getsockname[AF_INET][SOCK_STREAM] = tcp_socket_getsockname;
+        
         socket_create[AF_UNIX][SOCK_STREAM] = unix_socket;
         socket_bind[AF_UNIX][SOCK_STREAM] = unix_socket_bind;
+        socket_listen[AF_UNIX][SOCK_STREAM] = unix_socket_listen;
         socket_connect[AF_UNIX][SOCK_STREAM] = unix_socket_connect;
+        socket_read_avail[AF_UNIX][SOCK_STREAM] = unix_socket_read_avail;
         socket_close[AF_UNIX][SOCK_STREAM] = unix_socket_close;
-
+        
         return EOK;
 }
 

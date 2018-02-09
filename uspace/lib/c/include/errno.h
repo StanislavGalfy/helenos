@@ -48,7 +48,8 @@ extern errno_t *__errno(void) __attribute__((const));
 #define EOPNOTSUPP      (-95)
 #define EALREADYBOUND   (-96)
 #define EWOULDBLOCK     (-97)
-#define ECONNREFUSED    (-98)
+#define ECONNREFUSED    (-11010)
+#define EISCONN         (-11020)
 #define ENOPROTOOPT     (-99)
 
 #endif

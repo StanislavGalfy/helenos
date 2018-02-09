@@ -32,34 +32,52 @@
 /** @file
  */
 
-#ifndef RAW_SOCKET_H_
-#define RAW_SOCKET_H_
+#ifndef TCP_SOCKET_H_
+#define TCP_SOCKET_H_
 
-#include <types/inet.h>
-#include <types/socket/socket.h>
+#include <types/socket/in.h>
 
 #include "common_socket.h"
 
-/** Raw socket */
+/** Raw message */
+typedef struct {
+        /** Link to message queue of a particular socket */
+        link_t conn_queue_link;
+
+        /** Datagram received from inet */
+        tcp_conn_t *tcp_conn;
+        
+        fibril_condvar_t tcp_conn_fcv;
+} tcp_sock_conn_t;
+
+/** TCP socket*/
 typedef struct {
     /** Common socket attributes */
     common_socket_t socket;
-    /** Ip link service ID socket is bound to */
-    service_id_t iplink;
-    /** Queue of messages received by the socket */
-    list_t msg_queue; 
-} raw_socket_t;
+    
+    bool is_listener;
+    
+    inet_ep_t ep;
+    
+    tcp_sock_conn_t *tcp_sock_conn;
+    
+    list_t tcp_conn_queue;
+    
+} tcp_socket_t;
 
-int raw_socket (int, int, int, int);
-int raw_socket_setsockopt(common_socket_t *, int, int, const void *, socklen_t);
-int raw_socket_fdisset(common_socket_t *, sysarg_t *);
-bool raw_socket_read_avail(common_socket_t *);
-int raw_socket_sendmsg(common_socket_t *, const struct msghdr *, int);
-int raw_socket_inet_ev_recv(inet_dgram_t*);
-int raw_socket_recvmsg(common_socket_t *, struct msghdr *, int, size_t *);
-int raw_socket_close(common_socket_t *); 
+int tcp_socket(int, int, int, int);
+int tcp_socket_setsockopt(common_socket_t *, int, int, const void *, socklen_t);
+int tcp_socket_bind(common_socket_t *, const struct sockaddr *, socklen_t);
+int tcp_socket_listen(common_socket_t *, int);
+int tcp_socket_connect(common_socket_t *, const struct sockaddr *, socklen_t);
+int tcp_socket_getsockname(common_socket_t *, const struct sockaddr *,
+        socklen_t *);
+int tcp_socket_accept(common_socket_t *, int *, const struct sockaddr *,
+        socklen_t *);
+bool tcp_socket_read_avail(common_socket_t *);
+int tcp_socket_write(common_socket_t *, void *, size_t, size_t *);
+int tcp_socket_read(common_socket_t *, void *, size_t, size_t *);
+int tcp_socket_close(common_socket_t *);
 
 #endif
 
-/** @}
- */

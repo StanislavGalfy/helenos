@@ -50,6 +50,8 @@ list_t socket_list;
 fibril_mutex_t socket_lock;
 /** UDP structure used for communication with UDP service */
 udp_t *socket_udp;
+/** TCP structure used for communication with TCP service */
+tcp_t *socket_tcp;
 
 /** Structure with callback passed when initializing inet */
 static inet_ev_ops_t inet_ev_ops = {
@@ -78,6 +80,11 @@ int sockets_init()
                log_msg(LOG_DEFAULT, LVL_ERROR, "Error initializing UDP");
                return rc;
         };
+        rc = tcp_create(&socket_tcp);
+        if (rc != EOK) {
+               log_msg(LOG_DEFAULT, LVL_ERROR, "Error initializing TCP");
+               return rc;
+        };
         return rc;
 }
 
@@ -100,7 +107,6 @@ void common_socket_init(common_socket_t *socket, int domain, int type,
         socket->protocol = protocol;
 
         link_initialize(&socket->link);
-        list_initialize(&socket->msg_queue);
 
         list_append(&socket->link, &socket_list);
 }

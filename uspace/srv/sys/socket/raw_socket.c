@@ -80,7 +80,8 @@ int raw_socket (int domain, int type, int protocol, int session_id)
         raw_socket_t *raw_socket = (raw_socket_t *) calloc(1, sizeof(
                 raw_socket_t));
         common_socket_init(&raw_socket->socket, AF_INET, SOCK_RAW, protocol,
-                session_id);    
+                session_id);
+        list_initialize(&raw_socket->msg_queue);
         return raw_socket->socket.id;
 }
 
@@ -169,6 +170,20 @@ int raw_socket_setsockopt(common_socket_t *socket, int level, int optname,
         return retval;
 }
 
+int raw_socket_fdisset(common_socket_t *socket, sysarg_t *fdisset) 
+{
+        raw_socket_t *raw_socket = (raw_socket_t*)socket;
+        *fdisset = !list_empty(&raw_socket->msg_queue);
+        return EOK;
+}
+
+bool raw_socket_read_avail(common_socket_t *socket) 
+{
+        raw_socket_t *raw_socket = (raw_socket_t*)socket;
+        return !list_empty(&raw_socket->msg_queue);
+}
+
+
 /** Sends message through raw socket
  * 
  * @param socket - socket to send the message through
@@ -237,7 +252,9 @@ int raw_socket_inet_ev_recv(inet_dgram_t *dgram)
         list_foreach(socket_list, link, common_socket_t, socket) {
                 if (socket->domain != AF_INET || socket->type != SOCK_RAW)
                         continue;
-                if (((raw_socket_t*)socket)->iplink != dgram->iplink)
+                
+                raw_socket_t *raw_socket = (raw_socket_t*)socket;
+                if (raw_socket->iplink != dgram->iplink)
                         continue;
 
                 raw_msg_t* raw_msg = malloc(sizeof(raw_msg_t));
@@ -261,7 +278,7 @@ int raw_socket_inet_ev_recv(inet_dgram_t *dgram)
                 memcpy(raw_msg->dgram.data, dgram->data, dgram->size);
                 raw_msg->dgram.size = dgram->size;
 
-                list_append(&raw_msg->msg_queue_link, &socket->msg_queue);
+                list_append(&raw_msg->msg_queue_link, &raw_socket->msg_queue);
         }
         
         return EOK;
@@ -284,6 +301,8 @@ int raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket link: %d",
             ((raw_socket_t*)socket)->iplink);
         
+        raw_socket_t *raw_socket = (raw_socket_t*)socket;
+        
         if (msg->msg_namelen < sizeof(struct sockaddr_in))
                 return EINVAL;   
         if (msg->msg_iovlen < 1)
@@ -292,7 +311,7 @@ int raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
                 return EINVAL;
 
         // Get first message from the queue
-        raw_msg_t *raw_msg = (raw_msg_t*)list_first(&socket->msg_queue);
+        raw_msg_t *raw_msg = (raw_msg_t*)list_first(&raw_socket->msg_queue);
         if (raw_msg == NULL) {
                 log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * empty socket message"
                         " queue ");            
@@ -358,8 +377,9 @@ int raw_socket_close(common_socket_t* socket)
         list_remove(&raw_socket->socket.link);
         free_socket_id(raw_socket->socket.id);
 
-        while (!list_empty(&socket->msg_queue)) {
-                raw_msg_t *raw_msg =  (raw_msg_t*)list_first(&socket->msg_queue);
+        while (!list_empty(&raw_socket->msg_queue)) {
+                raw_msg_t *raw_msg =  (raw_msg_t*)list_first(
+                        &raw_socket->msg_queue);
                 list_remove(&raw_msg->msg_queue_link);
                 if (raw_msg->dgram.data != NULL)
                         free(raw_msg->dgram.data);

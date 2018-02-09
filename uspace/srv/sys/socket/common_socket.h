@@ -38,6 +38,7 @@
 #include <fibril_synch.h>
 #include <inet/inet.h>
 #include <inet/udp.h>
+#include <inet/tcp.h>
 
 /** Structure with attributes common for all types of sockets */
 typedef struct {
@@ -53,8 +54,6 @@ typedef struct {
         int type;
         /** Socket protocol */
         int protocol;
-        /** Queue of messages received by the socket */
-        list_t msg_queue; 
 } common_socket_t;
 
 /** List of all sockets */
@@ -63,6 +62,8 @@ extern list_t socket_list;
 extern fibril_mutex_t socket_lock;
 /** UDP structure used for communication with UDP service */
 extern udp_t *socket_udp;
+/** TCP structure used for communication with TCP service */
+extern tcp_t *socket_tcp;
 
 int sockets_init(void);
 void common_socket_init(common_socket_t*, int, int, int, int);

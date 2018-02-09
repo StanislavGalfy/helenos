@@ -8,6 +8,7 @@ SOURCES = \
 	tools.c \
 	raw_socket.c \
 	udp_socket.c \
+	tcp_socket.c \
 	unix_socket.c \
 	common_socket.c
 

@@ -41,6 +41,7 @@
 #include <inet/inetcfg.h>
 #include <stdlib.h>
 #include <types/socket/in.h>
+#include <stdio.h>
 
 /** Macro to handle return code from async_data_write_start call */
 #define CHECK_RC() \
@@ -296,6 +297,44 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
         return rsize;
 }
 
+ssize_t sockwrite(int sockfd, const void *buf, size_t count) 
+{
+        async_exch_t *exch = async_exchange_begin(sess);
+        
+        ipc_call_t answer;
+        aid_t req = async_send_1(exch, SOCKET_WRITE, sockfd, &answer);
+        
+        int rc = async_data_write_start(exch, buf, count);
+        CHECK_RC();
+
+        async_exchange_end(exch);
+        int retval;
+        async_wait_for(req, &retval);
+        CHECK_RETVAL();
+
+        size_t nsent = IPC_GET_ARG1(answer);
+        return nsent;
+}
+
+ssize_t sockread(int sockfd, void *buf, size_t count) 
+{   
+        async_exch_t *exch = async_exchange_begin(sess);
+        
+        ipc_call_t answer;
+        aid_t req = async_send_2(exch, SOCKET_READ, sockfd, count, &answer);
+
+        int rc = async_data_read_start(exch, buf, count);
+        CHECK_RC();
+        
+        async_exchange_end(exch);
+        int retval;
+        async_wait_for(req, &retval);
+        CHECK_RETVAL();
+        
+        size_t nrecv = IPC_GET_ARG1(answer);
+        return nrecv;
+}
+
 /** NOT IMPLEMENTED
  * 
  * @param sockfd
@@ -303,7 +342,17 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
  * @return
  */
 int listen(int sockfd, int backlog) {
-	return 0;
+        async_exch_t *exch = async_exchange_begin(sess);
+
+        ipc_call_t answer;
+        // Send parameters that can be sent as sysarg_t (sockfd)
+        aid_t req = async_send_2(exch, SOCKET_LISTEN, sockfd, backlog, &answer);
+
+        async_exchange_end(exch);
+        int retval;
+        async_wait_for(req, &retval);
+
+        return retval;   
 }
 
 /** NOT IMPLEMENTED
@@ -335,23 +384,25 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
  */
 int connect(int sockfd, const struct sockaddr *addr,
     socklen_t addrlen) 
-{
+{   
         async_exch_t *exch = async_exchange_begin(sess);
-
+        
         ipc_call_t answer;
         // Send parameters that can be sent as sysarg_t (sockfd)
         aid_t req = async_send_1(exch, SOCKET_CONNECT, sockfd, &answer);
-
+        
         // Send socket address
         int rc = async_data_write_start(exch, addr, addrlen);
         CHECK_RC();
-
+        
         async_exchange_end(exch);
 
         int retval;
         async_wait_for(req, &retval);
-        CHECK_RETVAL();   
-
+        CHECK_RETVAL();
+        
+        printf("connect, retval: %d", retval);
+        
         return retval;
 }
 
@@ -364,7 +415,26 @@ int connect(int sockfd, const struct sockaddr *addr,
  */
 int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen) 
 {
-	return 0;
+        async_exch_t *exch = async_exchange_begin(sess);
+
+        ipc_call_t answer;
+        // Send parameters that can be sent as sysarg_t (sockfd)
+        aid_t req = async_send_2(exch, SOCKET_GETSOCKNAME, sockfd, *addrlen,
+                &answer);
+        
+        // Receive socket address
+        int rc = async_data_read_start(exch, addr, *addrlen);
+        CHECK_RC();
+        
+        async_exchange_end(exch);
+
+        int retval;
+        async_wait_for(req, &retval);
+        CHECK_RETVAL();
+        
+        *addrlen = IPC_GET_ARG1(answer);
+        
+        return retval;
 }
 
 /** NOT IMPLEMENTED.
@@ -376,7 +446,32 @@ int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
  */
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) 
 {
-	return 0;
+        async_exch_t *exch = async_exchange_begin(sess);
+
+        printf("socket: accept\n");
+        
+        ipc_call_t answer;
+        // Send parameters that can be sent as sysarg_t (sockfd)
+        aid_t req = async_send_2(exch, SOCKET_ACCEPT, sockfd, *addrlen,
+                &answer);
+        
+        printf("socket: accept - async sent\n");
+        
+        // Receive socket address
+        int rc = async_data_read_start(exch, addr, *addrlen);
+        CHECK_RC();
+        
+        async_exchange_end(exch);
+
+        int retval;
+        async_wait_for(req, &retval);
+        CHECK_RETVAL();
+        
+        int new_sockfd = IPC_GET_ARG1(answer);
+        *addrlen = IPC_GET_ARG2(answer);
+
+        
+        return new_sockfd;
 }
 
 /** Closes socket.
@@ -418,9 +513,60 @@ int sockfdisset(int sockfd)
         async_exchange_end(exch);
         int retval;
         async_wait_for(req, &retval);
-
-        return retval;   
+        CHECK_RETVAL();
+        
+        sysarg_t fdisset = IPC_GET_ARG1(answer);
+        
+        return fdisset;
 }
 
+
+int sockselect(int nfds, fd_set *readfds, fd_set *writefds,
+        fd_set *exceptfds, struct timeval *timeout)
+{
+        async_exch_t *exch = async_exchange_begin(sess);
+        
+        bool is_readfds = readfds != NULL;
+        //bool is_writefds =  writefds != NULL;
+        //bool is_exceptfds = exceptfds != NULL;
+        //bool is_timeout = timeout != NULL;
+        
+        ipc_call_t answer;
+        // Send parameters that can be sent as sysarg_t (sockfd)
+        aid_t req = async_send_2(exch, SOCKET_SELECT, nfds, is_readfds,
+                &answer);
+        
+        int rc;
+        if (is_readfds) {
+            rc = async_data_write_start(exch, readfds, sizeof(fd_set));
+            CHECK_RC();
+            rc = async_data_read_start(exch, readfds, sizeof(fd_set));
+            CHECK_RC();
+        }
+        /*
+        if (is_writefds) {        
+            rc = async_data_write_start(exch, writefds, sizeof(fd_set));
+            CHECK_RC();
+            rc = async_data_read_start(exch, writefds, sizeof(fd_set));
+            CHECK_RC();
+        }
+        if (is_exceptfds) {       
+            rc = async_data_write_start(exch, exceptfds, sizeof(fd_set));
+            CHECK_RC();
+            rc = async_data_read_start(exch, exceptfds, sizeof(fd_set));
+            CHECK_RC();
+        }
+        if (is_timeout) {        
+            rc = async_data_write_start(exch, timeout, sizeof(struct timeval));
+            CHECK_RC();
+        }
+         */
+        async_exchange_end(exch);
+        int retval;
+        async_wait_for(req, &retval);
+        CHECK_RETVAL();
+        
+        return EOK;
+}
 /** @}
  */

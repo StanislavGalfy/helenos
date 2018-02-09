@@ -5,6 +5,8 @@
 #include "posix/termios.h"
 #include "posix/sys/ioctl.h"
 
+#include "posix/stdio.h"
+
 char *dirname(char *path) {
     return NULL;
 }
@@ -35,8 +37,27 @@ struct group *getgrnam(const char *name) {
 	return NULL;
 }
 
+void _fd_clr(int fd, fd_set *fd_set) {
+        fd_set->fds_bits[fd] = false;
+}
+
+bool _fd_isset(int fd, fd_set *fd_set) {
+        return fd_set->fds_bits[fd];
+}
+
+void _fd_set(int fd, fd_set *fd_set) {
+        fd_set->fds_bits[fd] = true;
+}
+
+void _fd_zero(fd_set *fd_set) {
+        for (int i = 0; i < FD_SETSIZE; i++)
+                fd_set->fds_bits[i] = false;
+}
+
 int select(int nfds, fd_set *readfds, fd_set *writefds,
-        fd_set *exceptfds, struct timeval *timeout) {
+        fd_set *exceptfds, struct timeval *timeout) 
+{
+    sockselect(nfds, readfds, writefds, exceptfds, timeout);
     return nfds;
 }
 

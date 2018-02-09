@@ -226,7 +226,7 @@ static void tcp_ev_connected(tcp_cconn_t *cconn)
 	async_exch_t *exch;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_ev_connected()");
-
+        
 	exch = async_exchange_begin(cconn->client->sess);
 	aid_t req = async_send_1(exch, TCP_EV_CONNECTED, cconn->id, NULL);
 	async_exchange_end(exch);
@@ -278,10 +278,14 @@ static void tcp_ev_new_conn(tcp_clst_t *clst, tcp_cconn_t *cconn)
 	async_exch_t *exch;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_ev_new_conn()");
-
+        
 	exch = async_exchange_begin(clst->client->sess);
 	aid_t req = async_send_2(exch, TCP_EV_NEW_CONN, clst->id, cconn->id,
 	    NULL);
+        
+        async_data_write_start(exch, &cconn->conn->ident, sizeof(
+                inet_ep2_t));
+        
 	async_exchange_end(exch);
 
 	async_forget(req);
@@ -491,7 +495,7 @@ static int tcp_conn_destroy_impl(tcp_client_t *client, sysarg_t conn_id)
 		assert(rc == ENOENT);
 		return ENOENT;
 	}
-
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_destroy_impl <<<<<<<<<<<<<<<<<<<<<<<<<");
 	tcp_uc_close(cconn->conn);
 	tcp_uc_delete(cconn->conn);
 	tcp_cconn_destroy(cconn);
@@ -1144,7 +1148,7 @@ static void tcp_client_fini(tcp_client_t *client)
 	if (n != 0) {
 		log_msg(LOG_DEFAULT, LVL_WARN, "Client with %lu active "
 		    "connections closed session", n);
-
+                
 		while (!list_empty(&client->cconn)) {
 			cconn = list_get_instance(list_first(&client->cconn),
 			    tcp_cconn_t, lclient);

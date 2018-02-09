@@ -39,6 +39,8 @@
 #include <ipc/services.h>
 #include <ipc/tcp.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <io/log.h>
 
 static void tcp_cb_conn(ipc_callid_t, ipc_call_t *, void *);
 static int tcp_conn_fibril(void *);
@@ -161,11 +163,13 @@ void tcp_destroy(tcp_t *tcp)
  * @return EOK on success, ENOMEM if out of memory
  */
 static int tcp_conn_new(tcp_t *tcp, sysarg_t id, tcp_cb_t *cb, void *arg,
-    tcp_conn_t **rconn)
+    inet_ep2_t *ident, tcp_conn_t **rconn)
 {
 	tcp_conn_t *conn;
 
 	conn = calloc(1, sizeof(tcp_conn_t));
+        
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "TCP_CONN_NEW - Ptr: %p", conn);
 	if (conn == NULL)
 		return ENOMEM;
 
@@ -177,6 +181,7 @@ static int tcp_conn_new(tcp_t *tcp, sysarg_t id, tcp_cb_t *cb, void *arg,
 	conn->id = id;
 	conn->cb = cb;
 	conn->cb_arg = arg;
+        memcpy(&conn->ident, ident, sizeof(inet_ep2_t));
 
 	list_append(&conn->ltcp, &tcp->conn);
 	*rconn = conn;
@@ -233,7 +238,7 @@ int tcp_conn_create(tcp_t *tcp, inet_ep2_t *epp, tcp_cb_t *cb, void *arg,
 
 	conn_id = IPC_GET_ARG1(answer);
 
-	rc = tcp_conn_new(tcp, conn_id, cb, arg, rconn);
+	rc = tcp_conn_new(tcp, conn_id, cb, arg, epp, rconn);
 	if (rc != EOK)
 		return rc;
 
@@ -556,6 +561,9 @@ int tcp_conn_recv(tcp_conn_t *conn, void *buf, size_t bsize, size_t *nrecv)
 	async_exchange_end(exch);
 
 	if (rc != EOK) {
+                if (rc == EAGAIN) {
+			conn->data_avail = false;
+                }
 		async_forget(req);
 		fibril_mutex_unlock(&conn->lock);
 		return rc;
@@ -772,14 +780,37 @@ static void tcp_ev_new_conn(tcp_t *tcp, ipc_callid_t iid, ipc_call_t *icall)
 
 	lst_id = IPC_GET_ARG1(*icall);
 	conn_id = IPC_GET_ARG2(*icall);
-
+        
+        ipc_callid_t callid;
+        size_t len;
+        inet_ep2_t ident;
+        bool rv = async_data_write_receive(&callid, &len);
+        if (!rv) {
+                async_answer_0(callid, EREFUSED);
+                async_answer_0(iid, EREFUSED);
+                return;
+        }
+        
+        if (len != sizeof(inet_ep2_t)) {
+                async_answer_0(callid, EREFUSED);
+                async_answer_0(iid, EREFUSED);
+                return;           
+        }
+        
+        rc = async_data_write_finalize(callid, &ident, len);
+        if (rc != EOK) {
+                async_answer_0(callid, rc);
+                async_answer_0(iid, rc);
+                return;
+        }
+        
 	rc = tcp_listener_get(tcp, lst_id, &lst);
 	if (rc != EOK) {
 		async_answer_0(iid, ENOENT);
 		return;
 	}
 
-	rc = tcp_conn_new(tcp, conn_id, lst->cb, lst->cb_arg, &conn);
+	rc = tcp_conn_new(tcp, conn_id, lst->cb, lst->cb_arg, &ident, &conn);
 	if (rc != EOK) {
 		async_answer_0(iid, ENOMEM);
 		return;

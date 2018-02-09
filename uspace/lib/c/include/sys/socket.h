@@ -36,6 +36,8 @@
 #define LIBC_SOCKET_H_
 
 #include <types/socket/socket.h>
+#include <types/socket/select.h>
+#include <time.h>
 
 extern int bind(int, const struct sockaddr *, socklen_t);
 extern int socket(int, int, int);
@@ -44,12 +46,15 @@ extern ssize_t sendto(int, const void *, size_t, int, const struct sockaddr *,
         socklen_t);
 extern int connect(int, const struct sockaddr *, socklen_t);
 extern ssize_t sendmsg(int, const struct msghdr *, int);
+extern ssize_t sockwrite(int, const void *, size_t);
+extern ssize_t sockread(int, void *, size_t);
 extern int listen(int, int);
 extern int setsockopt(int, int, int, const void *, socklen_t);
 extern int getsockname(int, struct sockaddr *, socklen_t *);
 extern int accept(int, struct sockaddr *, socklen_t *);
 extern int sockclose(int);
 extern int sockfdisset(int);
+extern int sockselect(int, fd_set *, fd_set *, fd_set *, struct timeval *);
 
 #endif
 

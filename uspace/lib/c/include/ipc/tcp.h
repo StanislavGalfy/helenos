@@ -47,6 +47,7 @@ typedef enum {
 	TCP_CONN_SEND_FIN,
 	TCP_CONN_PUSH,
 	TCP_CONN_RESET,
+        TCP_CONN_GET_DATA_SIZE,
 	TCP_CONN_RECV,
 	TCP_CONN_RECV_WAIT
 } tcp_request_t;

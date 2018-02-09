@@ -54,6 +54,7 @@ typedef struct {
 	bool connected;
 	bool conn_failed;
 	bool conn_reset;
+        inet_ep2_t ident;
 } tcp_conn_t;
 
 /** TCP connection listener */

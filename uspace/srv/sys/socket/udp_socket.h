@@ -47,11 +47,14 @@ typedef struct {
     service_id_t iplink;
     /** UDP association socket uses to send and receive messages */
     udp_assoc_t *udp_assoc;
+    /** Queue of messages received by the socket */
+    list_t msg_queue; 
 } udp_socket_t;
 
 int udp_socket(int, int, int, int);
 int udp_socket_setsockopt(common_socket_t *, int, int, const void *, socklen_t);
 int udp_socket_bind(common_socket_t *, const struct sockaddr *, socklen_t);
+bool udp_socket_read_avail(common_socket_t *);
 int udp_socket_sendmsg(common_socket_t *, const struct msghdr *, int);
 int udp_socket_recvmsg(common_socket_t *, struct msghdr *, int, size_t *);
 int udp_socket_close(common_socket_t *);

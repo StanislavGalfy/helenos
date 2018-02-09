@@ -69,6 +69,11 @@ int unix_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
     return EOK;
 }
 
+int unix_socket_listen(common_socket_t *socket, int backlog) 
+{
+    return EOK;
+}
+
 /** Returns ECONNREFUSED for bird compatibility
  * 
  * @param socket
@@ -81,6 +86,11 @@ int unix_socket_connect(common_socket_t *socket, const struct sockaddr *addr,
 {
     return ECONNREFUSED;
 }  
+
+bool unix_socket_read_avail(common_socket_t *socket)
+{
+    return false;
+}
 
 /** Closes UNIX socket
  * 

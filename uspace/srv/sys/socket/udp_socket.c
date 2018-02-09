@@ -86,6 +86,7 @@ int udp_socket(int domain, int type, int protocol, int session_id)
         udp_socket_t *udp_socket = (udp_socket_t *) calloc(1, sizeof(udp_socket_t));
         common_socket_init(&udp_socket->socket, domain, type, protocol,
             session_id);
+        list_initialize(&udp_socket->msg_queue);
         return udp_socket->socket.id;
 }
 
@@ -209,6 +210,12 @@ int udp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
         return rc;
 }
 
+bool udp_socket_read_avail(common_socket_t *socket) 
+{
+        udp_socket_t *udp_socket = (udp_socket_t*)socket;
+        return !list_empty(&udp_socket->msg_queue);
+}
+
 /** Send message through UDP socket
  * 
  * @param socket - socket to send message through
@@ -261,14 +268,14 @@ int udp_socket_sendmsg(common_socket_t *socket, const struct msghdr *msg,
  */
 static void udp_socket_ev_recv(udp_assoc_t *assoc, udp_rmsg_t *rmsg) 
 {   
+        udp_socket_t *udp_socket = (udp_socket_t*)assoc->cb_arg;
+    
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " ");
-        log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_socket_ev_recv()");     
-        
-        common_socket_t *socket = (common_socket_t*)assoc->cb_arg;   
-        
-        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_socket_ev_recv()");      
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", 
+                udp_socket->socket.id);
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket link: %d", 
-                ((udp_socket_t*)socket)->iplink);
+                udp_socket->iplink);
 
         udp_msg_t* udp_msg = malloc(sizeof(udp_msg_t));
         if (udp_msg == NULL)
@@ -291,7 +298,7 @@ static void udp_socket_ev_recv(udp_assoc_t *assoc, udp_rmsg_t *rmsg)
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * message source port: %d",
             udp_msg->remote_ep.port);
         
-        list_append(&udp_msg->msg_queue_link, &socket->msg_queue); 
+        list_append(&udp_msg->msg_queue_link, &udp_socket->msg_queue); 
 }
 
 /** Receive UDP error callback.
@@ -329,12 +336,14 @@ int udp_socket_recvmsg(common_socket_t *socket, struct msghdr *msg,
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket link: %d", 
                 ((udp_socket_t*)socket)->iplink);
 
+        udp_socket_t *udp_socket = (udp_socket_t*)socket;
+        
         if (msg->msg_namelen < sizeof(struct sockaddr_in))
                 return EINVAL;   
         if (msg->msg_iovlen < 1)
                 return EINVAL;
 
-        udp_msg_t *udp_msg = (udp_msg_t*)list_first(&socket->msg_queue);
+        udp_msg_t *udp_msg = (udp_msg_t*)list_first(&udp_socket->msg_queue);
         if (udp_msg == NULL) {
                 log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * empty socket message"
                     " queue");
@@ -373,8 +382,9 @@ int udp_socket_close(common_socket_t* socket)
         list_remove(&udp_socket->socket.link);
         free_socket_id(udp_socket->socket.id);
 
-        while (!list_empty(&socket->msg_queue)) {
-                udp_msg_t *udp_msg =  (udp_msg_t*)list_first(&socket->msg_queue);
+        while (!list_empty(&udp_socket->msg_queue)) {
+                udp_msg_t *udp_msg =  (udp_msg_t*)list_first(
+                        &udp_socket->msg_queue);
                 list_remove(&udp_msg->msg_queue_link);
                 if (udp_msg->data != NULL)
                         free(udp_msg->data);

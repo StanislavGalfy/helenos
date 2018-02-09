@@ -41,24 +41,23 @@
 #define SELECT_POSIX_H_
 
 #include <libc/sys/socket.h>
+#include <libc/types/socket/select.h>
 
-typedef long int __fd_mask;
-typedef struct {
-    __fd_mask fds_bits[1024 / (8 * (int) sizeof (__fd_mask))];
-} fd_set;
+#define FD_CLR(fd, fd_set) _fd_clr(fd, fd_set) 
 
-#define FD_CLR(fd, fd_set)
+#define FD_ISSET(fd, fd_set) _fd_isset(fd, fd_set)
 
-/*
- * The only implemented macro here. Works only on sockets. Returns true if 
- * there are some data, that can be read from socket. Parameter fd_set is
- * omitted. This is not POSIX compliant behavior.
- */
-#define FD_ISSET(fd, fd_set) sockfdisset(fd)
+#define FD_SET(fd, fd_set) _fd_set(fd, fd_set)
 
-#define FD_SET(fd, fd_set)
+#define FD_ZERO(fd_set) _fd_zero(fd_set)
 
-#define FD_ZERO(fd_set)
+extern void _fd_clr(int fd, fd_set *fd_set);
+
+extern bool _fd_isset(int fd, fd_set *fd_set);
+
+extern void _fd_set(int fd, fd_set *fd_set);
+
+extern void _fd_zero(fd_set *fd_set);
 
 extern int select(int nfds, fd_set *readfds, fd_set *writefds,
         fd_set *exceptfds, struct timeval *timeout);
