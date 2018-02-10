@@ -43,17 +43,17 @@
 #include <str.h>
 #include <abi/log.h>
 
-extern int klog_write(log_level_t, const void *, size_t);
-extern int klog_read(void *, size_t, size_t *);
+extern errno_t klog_write(log_level_t, const void *, size_t);
+extern errno_t klog_read(void *, size_t, size_t *);
 
 #define KLOG_PRINTF(lvl, fmt, ...) ({ \
 	char *_s; \
-	int _c = asprintf(&_s, fmt, ##__VA_ARGS__); \
-	if (_c >= 0) { \
-		_c = klog_write((lvl), _s, str_size(_s)); \
+	errno_t _rc = ENOMEM; \
+	if (asprintf(&_s, fmt, ##__VA_ARGS__) >= 0) { \
+		_rc = klog_write((lvl), _s, str_size(_s)); \
 		free(_s); \
 	}; \
-	(_c >= 0); \
+	(_rc != EOK); \
 })
 
 #endif

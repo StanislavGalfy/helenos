@@ -69,7 +69,7 @@ static udp_assoc_cb_t udp_cassoc_cb = {
  *
  * @return EOK on success, ENOMEM if out of memory
  */
-static int udp_cassoc_queue_msg(udp_cassoc_t *cassoc, inet_ep2_t *epp,
+static errno_t udp_cassoc_queue_msg(udp_cassoc_t *cassoc, inet_ep2_t *epp,
     udp_msg_t *msg)
 {
 	udp_crcv_queue_entry_t *rqe;
@@ -122,7 +122,7 @@ static void udp_ev_data(udp_client_t *client)
  *
  * @return EOK on soccess, ENOMEM if out of memory
  */
-static int udp_cassoc_create(udp_client_t *client, udp_assoc_t *assoc,
+static errno_t udp_cassoc_create(udp_client_t *client, udp_assoc_t *assoc,
     udp_cassoc_t **rcassoc)
 {
 	udp_cassoc_t *cassoc;
@@ -167,7 +167,7 @@ static void udp_cassoc_destroy(udp_cassoc_t *cassoc)
  * @return EOK on success, ENOENT if no client association with the given ID
  *         is found.
  */
-static int udp_cassoc_get(udp_client_t *client, sysarg_t id,
+static errno_t udp_cassoc_get(udp_client_t *client, sysarg_t id,
     udp_cassoc_t **rcassoc)
 {
 	list_foreach (client->cassoc, lclient, udp_cassoc_t, cassoc) {
@@ -204,14 +204,14 @@ static void udp_cassoc_recv_msg(void *arg, inet_ep2_t *epp, udp_msg_t *msg)
  * @param epp       Endpoint pair
  * @param rassoc_id Place to store ID of new association
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-static int udp_assoc_create_impl(udp_client_t *client, inet_ep2_t *epp,
+static errno_t udp_assoc_create_impl(udp_client_t *client, inet_ep2_t *epp,
     sysarg_t *rassoc_id)
 {
 	udp_assoc_t *assoc;
 	udp_cassoc_t *cassoc;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_assoc_create_impl");
 
@@ -254,10 +254,10 @@ static int udp_assoc_create_impl(udp_client_t *client, inet_ep2_t *epp,
  * @param assoc_id Association ID
  * @return EOK on success, ENOENT if no such association is found
  */
-static int udp_assoc_destroy_impl(udp_client_t *client, sysarg_t assoc_id)
+static errno_t udp_assoc_destroy_impl(udp_client_t *client, sysarg_t assoc_id)
 {
 	udp_cassoc_t *cassoc;
-	int rc;
+	errno_t rc;
 
 	rc = udp_cassoc_get(client, assoc_id, &cassoc);
 	if (rc != EOK) {
@@ -280,10 +280,10 @@ static int udp_assoc_destroy_impl(udp_client_t *client, sysarg_t assoc_id)
  * @param assoc_id Association ID
  * @return EOK on success, ENOENT if no such association is found
  */
-static int udp_assoc_set_nolocal_impl(udp_client_t *client, sysarg_t assoc_id)
+static errno_t udp_assoc_set_nolocal_impl(udp_client_t *client, sysarg_t assoc_id)
 {
 	udp_cassoc_t *cassoc;
-	int rc;
+	errno_t rc;
 
 	rc = udp_cassoc_get(client, assoc_id, &cassoc);
 	if (rc != EOK) {
@@ -307,14 +307,14 @@ static int udp_assoc_set_nolocal_impl(udp_client_t *client, sysarg_t assoc_id)
  * @param data     Message data
  * @param size     Message size
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-static int udp_assoc_send_msg_impl(udp_client_t *client, sysarg_t assoc_id,
+static errno_t udp_assoc_send_msg_impl(udp_client_t *client, sysarg_t assoc_id,
     inet_addr_t * source, inet_ep_t *dest, void *data, size_t size)
 {
 	udp_msg_t msg;
 	udp_cassoc_t *cassoc;
-	int rc;
+	errno_t rc;
 
 	rc = udp_cassoc_get(client, assoc_id, &cassoc);
 	if (rc != EOK)
@@ -367,7 +367,7 @@ static void udp_assoc_create_srv(udp_client_t *client, ipc_callid_t iid,
 	size_t size;
 	inet_ep2_t epp;
 	sysarg_t assoc_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_assoc_create_srv()");
 
@@ -411,7 +411,7 @@ static void udp_assoc_destroy_srv(udp_client_t *client, ipc_callid_t iid,
     ipc_call_t *icall)
 {
 	sysarg_t assoc_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_assoc_destroy_srv()");
 
@@ -432,7 +432,7 @@ static void udp_assoc_set_nolocal_srv(udp_client_t *client, ipc_callid_t iid,
     ipc_call_t *icall)
 {
 	sysarg_t assoc_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_NOTE, "udp_assoc_set_nolocal_srv()");
 
@@ -458,7 +458,7 @@ static void udp_assoc_send_msg_srv(udp_client_t *client, ipc_callid_t iid,
 	inet_ep_t dest;
 	sysarg_t assoc_id;
 	void *data;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_assoc_send_msg_srv()");
 
@@ -576,7 +576,7 @@ static void udp_rmsg_info_srv(udp_client_t *client, ipc_callid_t iid,
 	size_t size;
 	udp_crcv_queue_entry_t *enext;
 	sysarg_t assoc_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_rmsg_info_srv()");
 	enext = udp_rmsg_get_next(client);
@@ -625,7 +625,7 @@ static void udp_rmsg_read_srv(udp_client_t *client, ipc_callid_t iid,
 	void *data;
 	size_t size;
 	size_t off;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_rmsg_read_srv()");
 	off = IPC_GET_ARG1(*icall);
@@ -774,11 +774,11 @@ static void udp_client_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
 
 /** Initialize UDP service.
  *
- * @return EOK on success or negative error code.
+ * @return EOK on success or an error code.
  */
-int udp_service_init(void)
+errno_t udp_service_init(void)
 {
-	int rc;
+	errno_t rc;
 	service_id_t sid;
 
 	async_set_fallback_port_handler(udp_client_conn, NULL);

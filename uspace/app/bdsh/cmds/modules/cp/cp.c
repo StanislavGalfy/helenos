@@ -79,9 +79,9 @@ static int copy_file(const char *src, const char *dest,
  */
 static dentry_type_t get_type(const char *path)
 {
-	struct stat s;
+	vfs_stat_t s;
 
-	int r = vfs_stat_path(path, &s);
+	errno_t r = vfs_stat_path(path, &s);
 
 	if (r != EOK)
 		return TYPE_NONE;
@@ -175,10 +175,10 @@ static bool get_user_decision(bool bdefault, const char *message, ...)
 	}
 }
 
-static int do_copy(const char *src, const char *dest,
+static errno_t do_copy(const char *src, const char *dest,
     size_t blen, int vb, int recursive, int force, int interactive)
 {
-	int rc = EOK;
+	errno_t rc = EOK;
 	char dest_path[PATH_MAX];
 	char src_path[PATH_MAX];
 	DIR *dir = NULL;
@@ -265,7 +265,9 @@ static int do_copy(const char *src, const char *dest,
 		}
 
 		/* call copy_file and exit */
-		rc = (copy_file(src, dest_path, blen, vb) < 0);
+		if (copy_file(src, dest_path, blen, vb) < 0) {
+			rc = EIO;
+		}
 
 	} else if (src_type == TYPE_DIR) {
 		/* e.g. cp -r /x/srcdir /y/destdir/ */
@@ -337,8 +339,8 @@ static int do_copy(const char *src, const char *dest,
 		 * destination directory.
 		 */
 		while ((dp = readdir(dir))) {
-			struct stat src_s;
-			struct stat dest_s;
+			vfs_stat_t src_s;
+			vfs_stat_t dest_s;
 
 			char src_dent[PATH_MAX];
 			char dest_dent[PATH_MAX];
@@ -385,11 +387,11 @@ static int copy_file(const char *src, const char *dest,
 {
 	int fd1, fd2;
 	size_t rbytes, wbytes;
-	int rc;
+	errno_t rc;
 	off64_t total;
 	char *buff = NULL;
 	aoff64_t posr = 0, posw = 0;
-	struct stat st;
+	vfs_stat_t st;
 
 	if (vb)
 		printf("Copying %s to %s\n", src, dest);
@@ -433,7 +435,7 @@ static int copy_file(const char *src, const char *dest,
 
 	if (rc != EOK) {
 		printf("\nError copying %s: %s\n", src, str_error(rc));
-		return rc;
+		return -1;
 	}
 
 out:
@@ -441,7 +443,11 @@ out:
 	vfs_put(fd2);
 	if (buff)
 		free(buff);
-	return rc;
+	if (rc != EOK) {
+		return -1;
+	} else {
+		return 0;
+	}
 }
 
 void help_cmd_cp(unsigned int level)
@@ -472,7 +478,7 @@ int cmd_cp(char **argv)
 	int buffer = 0, recursive = 0;
 	int force = 0, interactive = 0;
 	int c, opt_ind;
-	int64_t ret;
+	errno_t ret;
 
 	con = console_init(stdin, stdout);
 	argc = cli_count_args(argv);

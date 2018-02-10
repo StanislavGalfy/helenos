@@ -43,14 +43,14 @@
 #include <types/label.h>
 #include <vbd.h>
 
-static int vbd_get_ids_internal(vbd_t *, sysarg_t, sysarg_t, sysarg_t **,
+static errno_t vbd_get_ids_internal(vbd_t *, sysarg_t, sysarg_t, sysarg_t **,
     size_t *);
 
-int vbd_create(vbd_t **rvbd)
+errno_t vbd_create(vbd_t **rvbd)
 {
 	vbd_t *vbd;
 	service_id_t vbd_svcid;
-	int rc;
+	errno_t rc;
 
 	vbd = calloc(1, sizeof(vbd_t));
 	if (vbd == NULL) {
@@ -94,23 +94,23 @@ void vbd_destroy(vbd_t *vbd)
  * @param data Place to store pointer to array
  * @param count Place to store length of array (number of entries)
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int vbd_get_disks(vbd_t *vbd, service_id_t **data, size_t *count)
+errno_t vbd_get_disks(vbd_t *vbd, service_id_t **data, size_t *count)
 {
 	return vbd_get_ids_internal(vbd, VBD_GET_DISKS, 0, data, count);
 }
 
 /** Get disk information. */
-int vbd_disk_info(vbd_t *vbd, service_id_t sid, vbd_disk_info_t *vinfo)
+errno_t vbd_disk_info(vbd_t *vbd, service_id_t sid, vbd_disk_info_t *vinfo)
 {
 	async_exch_t *exch;
-	int retval;
+	errno_t retval;
 	ipc_call_t answer;
 
 	exch = async_exchange_begin(vbd->sess);
 	aid_t req = async_send_1(exch, VBD_DISK_INFO, sid, &answer);
-	int rc = async_data_read_start(exch, vinfo, sizeof(vbd_disk_info_t));
+	errno_t rc = async_data_read_start(exch, vinfo, sizeof(vbd_disk_info_t));
 	async_exchange_end(exch);
 
 	if (rc != EOK) {
@@ -125,10 +125,10 @@ int vbd_disk_info(vbd_t *vbd, service_id_t sid, vbd_disk_info_t *vinfo)
 	return EOK;
 }
 
-int vbd_label_create(vbd_t *vbd, service_id_t sid, label_type_t ltype)
+errno_t vbd_label_create(vbd_t *vbd, service_id_t sid, label_type_t ltype)
 {
 	async_exch_t *exch;
-	int retval;
+	errno_t retval;
 
 	exch = async_exchange_begin(vbd->sess);
 	retval = async_req_2_0(exch, VBD_LABEL_CREATE, sid, ltype);
@@ -140,10 +140,10 @@ int vbd_label_create(vbd_t *vbd, service_id_t sid, label_type_t ltype)
 	return EOK;
 }
 
-int vbd_label_delete(vbd_t *vbd, service_id_t sid)
+errno_t vbd_label_delete(vbd_t *vbd, service_id_t sid)
 {
 	async_exch_t *exch;
-	int retval;
+	errno_t retval;
 
 	exch = async_exchange_begin(vbd->sess);
 	retval = async_req_1_0(exch, VBD_LABEL_DELETE, sid);
@@ -164,16 +164,16 @@ int vbd_label_delete(vbd_t *vbd, service_id_t sid)
  * @param buf_size Buffer size
  * @param act_size Place to store actual size of complete data.
  *
- * @return EOK on success or negative error code.
+ * @return EOK on success or an error code.
  */
-static int vbd_get_ids_once(vbd_t *vbd, sysarg_t method, sysarg_t arg1,
+static errno_t vbd_get_ids_once(vbd_t *vbd, sysarg_t method, sysarg_t arg1,
     sysarg_t *id_buf, size_t buf_size, size_t *act_size)
 {
 	async_exch_t *exch = async_exchange_begin(vbd->sess);
 
 	ipc_call_t answer;
 	aid_t req = async_send_1(exch, method, arg1, &answer);
-	int rc = async_data_read_start(exch, id_buf, buf_size);
+	errno_t rc = async_data_read_start(exch, id_buf, buf_size);
 
 	async_exchange_end(exch);
 
@@ -182,7 +182,7 @@ static int vbd_get_ids_once(vbd_t *vbd, sysarg_t method, sysarg_t arg1,
 		return rc;
 	}
 
-	int retval;
+	errno_t retval;
 	async_wait_for(req, &retval);
 
 	if (retval != EOK) {
@@ -202,16 +202,16 @@ static int vbd_get_ids_once(vbd_t *vbd, sysarg_t method, sysarg_t arg1,
  * @param arg1   IPC argument 1
  * @param data   Place to store pointer to array of IDs
  * @param count  Place to store number of IDs
- * @return       EOK on success or negative error code
+ * @return       EOK on success or an error code
  */
-static int vbd_get_ids_internal(vbd_t *vbd, sysarg_t method, sysarg_t arg1,
+static errno_t vbd_get_ids_internal(vbd_t *vbd, sysarg_t method, sysarg_t arg1,
     sysarg_t **data, size_t *count)
 {
 	*data = NULL;
 	*count = 0;
 
 	size_t act_size = 0;
-	int rc = vbd_get_ids_once(vbd, method, arg1, NULL, 0, &act_size);
+	errno_t rc = vbd_get_ids_once(vbd, method, arg1, NULL, 0, &act_size);
 	if (rc != EOK)
 		return rc;
 
@@ -246,24 +246,24 @@ static int vbd_get_ids_internal(vbd_t *vbd, sysarg_t method, sysarg_t arg1,
  * @param data  Place to store pointer to array
  * @param count Place to store length of array (number of entries)
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int vbd_label_get_parts(vbd_t *vbd, service_id_t disk,
+errno_t vbd_label_get_parts(vbd_t *vbd, service_id_t disk,
     service_id_t **data, size_t *count)
 {
 	return vbd_get_ids_internal(vbd, VBD_LABEL_GET_PARTS, disk,
 	    data, count);
 }
 
-int vbd_part_get_info(vbd_t *vbd, vbd_part_id_t part, vbd_part_info_t *pinfo)
+errno_t vbd_part_get_info(vbd_t *vbd, vbd_part_id_t part, vbd_part_info_t *pinfo)
 {
 	async_exch_t *exch;
-	int retval;
+	errno_t retval;
 	ipc_call_t answer;
 
 	exch = async_exchange_begin(vbd->sess);
 	aid_t req = async_send_1(exch, VBD_PART_GET_INFO, part, &answer);
-	int rc = async_data_read_start(exch, pinfo, sizeof(vbd_part_info_t));
+	errno_t rc = async_data_read_start(exch, pinfo, sizeof(vbd_part_info_t));
 	async_exchange_end(exch);
 
 	if (rc != EOK) {
@@ -278,16 +278,16 @@ int vbd_part_get_info(vbd_t *vbd, vbd_part_id_t part, vbd_part_info_t *pinfo)
 	return EOK;
 }
 
-int vbd_part_create(vbd_t *vbd, service_id_t disk, vbd_part_spec_t *pspec,
+errno_t vbd_part_create(vbd_t *vbd, service_id_t disk, vbd_part_spec_t *pspec,
     vbd_part_id_t *rpart)
 {
 	async_exch_t *exch;
-	int retval;
+	errno_t retval;
 	ipc_call_t answer;
 
 	exch = async_exchange_begin(vbd->sess);
 	aid_t req = async_send_1(exch, VBD_PART_CREATE, disk, &answer);
-	int rc = async_data_write_start(exch, pspec, sizeof(vbd_part_spec_t));
+	errno_t rc = async_data_write_start(exch, pspec, sizeof(vbd_part_spec_t));
 	async_exchange_end(exch);
 
 	if (rc != EOK) {
@@ -304,10 +304,10 @@ int vbd_part_create(vbd_t *vbd, service_id_t disk, vbd_part_spec_t *pspec,
 
 }
 
-int vbd_part_delete(vbd_t *vbd, vbd_part_id_t part)
+errno_t vbd_part_delete(vbd_t *vbd, vbd_part_id_t part)
 {
 	async_exch_t *exch;
-	int retval;
+	errno_t retval;
 
 	exch = async_exchange_begin(vbd->sess);
 	retval = async_req_1_0(exch, VBD_PART_DELETE, part);
@@ -331,18 +331,18 @@ void vbd_pspec_init(vbd_part_spec_t *pspec)
  * @param pcnt  Partition content
  * @param ptype Place to store suggested partition type
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int vbd_suggest_ptype(vbd_t *vbd, service_id_t disk, label_pcnt_t pcnt,
+errno_t vbd_suggest_ptype(vbd_t *vbd, service_id_t disk, label_pcnt_t pcnt,
     label_ptype_t *ptype)
 {
 	async_exch_t *exch;
-	int retval;
+	errno_t retval;
 	ipc_call_t answer;
 
 	exch = async_exchange_begin(vbd->sess);
 	aid_t req = async_send_2(exch, VBD_SUGGEST_PTYPE, disk, pcnt, &answer);
-	int rc = async_data_read_start(exch, ptype, sizeof(label_ptype_t));
+	errno_t rc = async_data_read_start(exch, ptype, sizeof(label_ptype_t));
 	async_exchange_end(exch);
 
 	if (rc != EOK) {

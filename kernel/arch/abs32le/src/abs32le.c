@@ -37,7 +37,7 @@
 #include <arch/interrupt.h>
 #include <arch/asm.h>
 
-#include <func.h>
+#include <halt.h>
 #include <config.h>
 #include <console/console.h>
 #include <errno.h>
@@ -104,7 +104,7 @@ void istate_decode(istate_t *istate)
 
 int context_save_arch(context_t *ctx)
 {
-	return 1;
+	return EOK;
 }
 
 void context_restore_arch(context_t *ctx)
@@ -124,12 +124,12 @@ void fpu_context_restore(fpu_context_t *ctx)
 {
 }
 
-int memcpy_from_uspace(void *dst, const void *uspace_src, size_t size)
+errno_t memcpy_from_uspace(void *dst, const void *uspace_src, size_t size)
 {
 	return EOK;
 }
 
-int memcpy_to_uspace(void *uspace_dst, const void *src, size_t size)
+errno_t memcpy_to_uspace(void *uspace_dst, const void *src, size_t size)
 {
 	return EOK;
 }

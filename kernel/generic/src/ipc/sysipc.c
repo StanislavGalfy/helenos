@@ -154,12 +154,12 @@ static inline bool answer_need_old(call_t *call)
  * @param answer  Call structure with the answer.
  * @param olddata Saved data of the request.
  *
- * @return Return EOK on success or a negative error code.
+ * @return Return EOK on success or an error code.
  *
  */
-int answer_preprocess(call_t *answer, ipc_data_t *olddata)
+errno_t answer_preprocess(call_t *answer, ipc_data_t *olddata)
 {
-	int rc = EOK;
+	errno_t rc = EOK;
 
 	spinlock_lock(&answer->forget_lock);
 	if (answer->forget) {
@@ -193,7 +193,7 @@ int answer_preprocess(call_t *answer, ipc_data_t *olddata)
 	}
 	spinlock_unlock(&answer->forget_lock);
 
-	if ((int) IPC_GET_RETVAL(answer->data) == EHANGUP) {
+	if ((errno_t) IPC_GET_RETVAL(answer->data) == EHANGUP) {
 		phone_t *phone = answer->caller_phone;
 		mutex_lock(&phone->lock);
 		if (phone->state == IPC_PHONE_CONNECTED) {
@@ -221,7 +221,7 @@ int answer_preprocess(call_t *answer, ipc_data_t *olddata)
  * @return Return 0 on success, ELIMIT or EPERM on error.
  *
  */
-static int request_preprocess(call_t *call, phone_t *phone)
+static errno_t request_preprocess(call_t *call, phone_t *phone)
 {
 	call->request_method = IPC_GET_IMETHOD(call->data);
 	return SYSIPC_OP(request_preprocess, call, phone);
@@ -238,7 +238,7 @@ static int request_preprocess(call_t *call, phone_t *phone)
  */
 static void process_answer(call_t *call)
 {
-	if (((int) IPC_GET_RETVAL(call->data) == EHANGUP) &&
+	if (((errno_t) IPC_GET_RETVAL(call->data) == EHANGUP) &&
 	    (call->flags & IPC_CALL_FORWARDED))
 		IPC_SET_RETVAL(call->data, EFORWARD);
 	
@@ -270,7 +270,7 @@ static int process_request(answerbox_t *box, call_t *call)
  * @return ENOENT if there is no such phone handle.
  *
  */
-int ipc_req_internal(cap_handle_t handle, ipc_data_t *data, sysarg_t priv)
+errno_t ipc_req_internal(cap_handle_t handle, ipc_data_t *data, sysarg_t priv)
 {
 	kobject_t *kobj = kobject_get(TASK, handle, KOBJECT_TYPE_PHONE);
 	if (!kobj->phone)
@@ -280,7 +280,7 @@ int ipc_req_internal(cap_handle_t handle, ipc_data_t *data, sysarg_t priv)
 	call->priv = priv;
 	memcpy(call->data.args, data->args, sizeof(data->args));
 	
-	int rc = request_preprocess(call, kobj->phone);
+	errno_t rc = request_preprocess(call, kobj->phone);
 	if (!rc) {
 #ifdef CONFIG_UDEBUG
 		udebug_stoppable_begin();
@@ -358,10 +358,10 @@ static int check_call_limit(phone_t *phone)
  * @param label    User-defined label.
  *
  * @return EOK on success.
- * @return Negative error code on error.
+ * @return An error code on error.
  *
  */
-sysarg_t sys_ipc_call_async_fast(sysarg_t handle, sysarg_t imethod,
+sys_errno_t sys_ipc_call_async_fast(sysarg_t handle, sysarg_t imethod,
     sysarg_t arg1, sysarg_t arg2, sysarg_t arg3, sysarg_t label)
 {
 	kobject_t *kobj = kobject_get(TASK, handle, KOBJECT_TYPE_PHONE);
@@ -388,7 +388,7 @@ sysarg_t sys_ipc_call_async_fast(sysarg_t handle, sysarg_t imethod,
 	/* Set the user-defined label */
 	call->data.label = label;
 	
-	int res = request_preprocess(call, kobj->phone);
+	errno_t res = request_preprocess(call, kobj->phone);
 	
 	if (!res)
 		ipc_call(kobj->phone, call);
@@ -408,7 +408,7 @@ sysarg_t sys_ipc_call_async_fast(sysarg_t handle, sysarg_t imethod,
  * @return See sys_ipc_call_async_fast().
  *
  */
-sysarg_t sys_ipc_call_async_slow(sysarg_t handle, ipc_data_t *data,
+sys_errno_t sys_ipc_call_async_slow(sysarg_t handle, ipc_data_t *data,
     sysarg_t label)
 {
 	kobject_t *kobj = kobject_get(TASK, handle, KOBJECT_TYPE_PHONE);
@@ -421,18 +421,18 @@ sysarg_t sys_ipc_call_async_slow(sysarg_t handle, ipc_data_t *data,
 	}
 
 	call_t *call = ipc_call_alloc(0);
-	int rc = copy_from_uspace(&call->data.args, &data->args,
+	errno_t rc = copy_from_uspace(&call->data.args, &data->args,
 	    sizeof(call->data.args));
-	if (rc != 0) {
+	if (rc != EOK) {
 		kobject_put(call->kobject);
 		kobject_put(kobj);
-		return (sysarg_t) rc;
+		return (sys_errno_t) rc;
 	}
 
 	/* Set the user-defined label */
 	call->data.label = label;
 	
-	int res = request_preprocess(call, kobj->phone);
+	errno_t res = request_preprocess(call, kobj->phone);
 	
 	if (!res)
 		ipc_call(kobj->phone, call);
@@ -465,7 +465,7 @@ sysarg_t sys_ipc_call_async_slow(sysarg_t handle, ipc_data_t *data,
  * Warning: Make sure that ARG5 is not rewritten for certain system IPC
  *
  */
-static sysarg_t sys_ipc_forward_common(sysarg_t chandle, sysarg_t phandle,
+static sys_errno_t sys_ipc_forward_common(sysarg_t chandle, sysarg_t phandle,
     sysarg_t imethod, sysarg_t arg1, sysarg_t arg2, sysarg_t arg3,
     sysarg_t arg4, sysarg_t arg5, unsigned int mode, bool slow)
 {
@@ -481,7 +481,7 @@ static sysarg_t sys_ipc_forward_common(sysarg_t chandle, sysarg_t phandle,
 		old = call->data;
 	
 	bool after_forward = false;
-	int rc;
+	errno_t rc;
 
 	kobject_t *pkobj = kobject_get(TASK, phandle, KOBJECT_TYPE_PHONE);
 	if (!pkobj) {
@@ -576,7 +576,7 @@ error:
  * @return 0 on succes, otherwise an error code.
  *
  */
-sysarg_t sys_ipc_forward_fast(sysarg_t chandle, sysarg_t phandle,
+sys_errno_t sys_ipc_forward_fast(sysarg_t chandle, sysarg_t phandle,
     sysarg_t imethod, sysarg_t arg1, sysarg_t arg2, unsigned int mode)
 {
 	return sys_ipc_forward_common(chandle, phandle, imethod, arg1, arg2, 0,
@@ -600,14 +600,14 @@ sysarg_t sys_ipc_forward_fast(sysarg_t chandle, sysarg_t phandle,
  * @return 0 on succes, otherwise an error code.
  *
  */
-sysarg_t sys_ipc_forward_slow(sysarg_t chandle, sysarg_t phandle,
+sys_errno_t sys_ipc_forward_slow(sysarg_t chandle, sysarg_t phandle,
     ipc_data_t *data, unsigned int mode)
 {
 	ipc_data_t newdata;
-	int rc = copy_from_uspace(&newdata.args, &data->args,
+	errno_t rc = copy_from_uspace(&newdata.args, &data->args,
 	    sizeof(newdata.args));
-	if (rc != 0)
-		return (sysarg_t) rc;
+	if (rc != EOK)
+		return (sys_errno_t) rc;
 	
 	return sys_ipc_forward_common(chandle, phandle,
 	    IPC_GET_IMETHOD(newdata), IPC_GET_ARG1(newdata),
@@ -630,7 +630,7 @@ sysarg_t sys_ipc_forward_slow(sysarg_t chandle, sysarg_t phandle,
  * @return 0 on success, otherwise an error code.
  *
  */
-sysarg_t sys_ipc_answer_fast(sysarg_t chandle, sysarg_t retval, sysarg_t arg1,
+sys_errno_t sys_ipc_answer_fast(sysarg_t chandle, sysarg_t retval, sysarg_t arg1,
     sysarg_t arg2, sysarg_t arg3, sysarg_t arg4)
 {
 	kobject_t *kobj = cap_unpublish(TASK, chandle, KOBJECT_TYPE_CALL);
@@ -659,7 +659,7 @@ sysarg_t sys_ipc_answer_fast(sysarg_t chandle, sysarg_t retval, sysarg_t arg1,
 	 * the limits of the fast version.
 	 */
 	IPC_SET_ARG5(call->data, 0);
-	int rc = answer_preprocess(call, saved ? &saved_data : NULL);
+	errno_t rc = answer_preprocess(call, saved ? &saved_data : NULL);
 	
 	ipc_answer(&TASK->answerbox, call);
 
@@ -677,7 +677,7 @@ sysarg_t sys_ipc_answer_fast(sysarg_t chandle, sysarg_t retval, sysarg_t arg1,
  * @return 0 on success, otherwise an error code.
  *
  */
-sysarg_t sys_ipc_answer_slow(sysarg_t chandle, ipc_data_t *data)
+sys_errno_t sys_ipc_answer_slow(sysarg_t chandle, ipc_data_t *data)
 {
 	kobject_t *kobj = cap_unpublish(TASK, chandle, KOBJECT_TYPE_CALL);
 	if (!kobj)
@@ -694,9 +694,9 @@ sysarg_t sys_ipc_answer_slow(sysarg_t chandle, ipc_data_t *data)
 	} else
 		saved = false;
 	
-	int rc = copy_from_uspace(&call->data.args, &data->args, 
+	errno_t rc = copy_from_uspace(&call->data.args, &data->args, 
 	    sizeof(call->data.args));
-	if (rc != 0) {
+	if (rc != EOK) {
 		/*
 		 * Republish the capability so that the call does not get lost.
 		 */
@@ -721,13 +721,13 @@ sysarg_t sys_ipc_answer_slow(sysarg_t chandle, ipc_data_t *data)
  * @return 0 on success or an error code.
  *
  */
-sysarg_t sys_ipc_hangup(sysarg_t handle)
+sys_errno_t sys_ipc_hangup(sysarg_t handle)
 {
 	kobject_t *kobj = kobject_get(TASK, handle, KOBJECT_TYPE_PHONE);
 	if (!kobj)
 		return ENOENT;
 	
-	int rc = ipc_phone_hangup(kobj->phone);
+	errno_t rc = ipc_phone_hangup(kobj->phone);
 	kobject_put(kobj);
 	return rc;
 }
@@ -739,9 +739,9 @@ sysarg_t sys_ipc_hangup(sysarg_t handle)
  * @param flags    Select mode of sleep operation. See waitq_sleep_timeout()
  *                 for explanation.
  *
- * @return Negative error code on error.
+ * @return An error code on error.
  */
-sysarg_t sys_ipc_wait_for_call(ipc_data_t *calldata, uint32_t usec,
+sys_errno_t sys_ipc_wait_for_call(ipc_data_t *calldata, uint32_t usec,
     unsigned int flags)
 {
 	call_t *call;
@@ -760,17 +760,17 @@ restart:
 #endif
 
 	if (!call) {
-		ipc_data_t data = {0};
+		ipc_data_t data = {};
 		data.cap_handle = CAP_NIL;
 		STRUCT_TO_USPACE(calldata, &data);
 		return EOK;
 	}
 	
+	call->data.flags = call->flags;
 	if (call->flags & IPC_CALL_NOTIF) {
 		/* Set in_phone_hash to the interrupt counter */
 		call->data.phone = (void *) call->priv;
 		
-		call->data.flags = IPC_CALL_NOTIF;
 		call->data.cap_handle = CAP_NIL;
 
 		STRUCT_TO_USPACE(calldata, &call->data);
@@ -787,7 +787,6 @@ restart:
 			goto restart;
 		}
 
-		call->data.flags = IPC_CALL_ANSWERED;
 		call->data.cap_handle = CAP_NIL;
 		
 		STRUCT_TO_USPACE(calldata, &call->data);
@@ -800,7 +799,7 @@ restart:
 		goto restart;
 	
 	cap_handle_t handle;
-	int rc = cap_alloc(TASK, &handle);
+	errno_t rc = cap_alloc(TASK, &handle);
 	if (rc != EOK) {
 		goto error;
 	}
@@ -825,7 +824,8 @@ error:
 
 	/*
 	 * The callee will not receive this call and no one else has a chance to
-	 * answer it. Reply with the EPARTY error code.
+	 * answer it. Set the IPC_CALL_AUTO_REPLY flag and return the EPARTY
+	 * error code.
 	 */
 	ipc_data_t saved_data;
 	bool saved;
@@ -838,6 +838,7 @@ error:
 
 	IPC_SET_RETVAL(call->data, EPARTY);
 	(void) answer_preprocess(call, saved ? &saved_data : NULL);
+	call->flags |= IPC_CALL_AUTO_REPLY;
 	ipc_answer(&TASK->answerbox, call);
 
 	return rc;
@@ -846,7 +847,7 @@ error:
 /** Interrupt one thread from sys_ipc_wait_for_call().
  *
  */
-sysarg_t sys_ipc_poke(void)
+sys_errno_t sys_ipc_poke(void)
 {
 	waitq_unsleep(&TASK->answerbox.wq);
 	return EOK;
@@ -864,7 +865,7 @@ sysarg_t sys_ipc_poke(void)
  * @return Error code returned by ipc_irq_subscribe().
  *
  */
-sysarg_t sys_ipc_irq_subscribe(inr_t inr, sysarg_t imethod, irq_code_t *ucode,
+sys_errno_t sys_ipc_irq_subscribe(inr_t inr, sysarg_t imethod, irq_code_t *ucode,
 	cap_handle_t *uspace_handle)
 {
 	if (!(perm_get(TASK) & PERM_IRQ_REG))
@@ -881,7 +882,7 @@ sysarg_t sys_ipc_irq_subscribe(inr_t inr, sysarg_t imethod, irq_code_t *ucode,
  * @return Zero on success or EPERM on error.
  *
  */
-sysarg_t sys_ipc_irq_unsubscribe(sysarg_t cap)
+sys_errno_t sys_ipc_irq_unsubscribe(sysarg_t cap)
 {
 	if (!(perm_get(TASK) & PERM_IRQ_REG))
 		return EPERM;
@@ -896,13 +897,13 @@ sysarg_t sys_ipc_irq_unsubscribe(sysarg_t cap)
  * @return Error code.
  *
  */
-sysarg_t sys_ipc_connect_kbox(task_id_t *uspace_taskid, cap_handle_t *uspace_phone)
+sys_errno_t sys_ipc_connect_kbox(task_id_t *uspace_taskid, cap_handle_t *uspace_phone)
 {
 #ifdef CONFIG_UDEBUG
 	task_id_t taskid;
 	cap_handle_t phone;
 	
-	int rc = copy_from_uspace(&taskid, uspace_taskid, sizeof(task_id_t));
+	errno_t rc = copy_from_uspace(&taskid, uspace_taskid, sizeof(task_id_t));
 	if (rc == EOK) {
 		rc = ipc_connect_kbox((task_id_t) taskid, &phone);
 	}
@@ -915,9 +916,9 @@ sysarg_t sys_ipc_connect_kbox(task_id_t *uspace_taskid, cap_handle_t *uspace_pho
 		}
 	}
 	
-	return (sysarg_t) rc;
+	return (sys_errno_t) rc;
 #else
-	return (sysarg_t) ENOTSUP;
+	return (sys_errno_t) ENOTSUP;
 #endif
 }
 

@@ -51,13 +51,15 @@ typedef struct {
     list_t msg_queue; 
 } udp_socket_t;
 
-int udp_socket(int, int, int, int);
-int udp_socket_setsockopt(common_socket_t *, int, int, const void *, socklen_t);
-int udp_socket_bind(common_socket_t *, const struct sockaddr *, socklen_t);
-bool udp_socket_read_avail(common_socket_t *);
-int udp_socket_sendmsg(common_socket_t *, const struct msghdr *, int);
-int udp_socket_recvmsg(common_socket_t *, struct msghdr *, int, size_t *);
-int udp_socket_close(common_socket_t *);
+errno_t udp_socket(int, int, int, int, int *);
+errno_t udp_socket_setsockopt(common_socket_t *, int, int, const void *,
+    socklen_t);
+errno_t udp_socket_bind(common_socket_t *, const struct sockaddr *, socklen_t);
+errno_t udp_socket_read_avail(common_socket_t *, bool *);
+errno_t udp_socket_sendmsg(common_socket_t *, const struct msghdr *, int,
+    size_t *);
+errno_t udp_socket_recvmsg(common_socket_t *, struct msghdr *, int, size_t *);
+errno_t udp_socket_close(common_socket_t *);
 
 #endif
 

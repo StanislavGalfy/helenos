@@ -51,13 +51,13 @@
 #include "inetcfg.h"
 #include "sroute.h"
 
-static int inetcfg_addr_create_static(char *name, inet_naddr_t *naddr,
+static errno_t inetcfg_addr_create_static(char *name, inet_naddr_t *naddr,
     sysarg_t link_id, sysarg_t *addr_id)
 {
 	inet_link_t *ilink;
 	inet_addrobj_t *addr;
 	inet_addr_t iaddr;
-	int rc;
+	errno_t rc;
 
 	ilink = inet_link_get_by_id(link_id);
 	if (ilink == NULL) {
@@ -94,7 +94,7 @@ static int inetcfg_addr_create_static(char *name, inet_naddr_t *naddr,
 	return EOK;
 }
 
-static int inetcfg_addr_delete(sysarg_t addr_id)
+static errno_t inetcfg_addr_delete(sysarg_t addr_id)
 {
 	inet_addrobj_t *addr;
 
@@ -108,9 +108,9 @@ static int inetcfg_addr_delete(sysarg_t addr_id)
 	return EOK;
 }
 
-static int inetcfg_addr_get(sysarg_t addr_id, inet_addr_info_t *ainfo,
-    inet_addr_status_t inet_addr_status) {
-    
+static errno_t inetcfg_addr_get(sysarg_t addr_id, inet_addr_info_t *ainfo,
+    inet_addr_status_t inet_addr_status) 
+{
 	inet_addrobj_t *addr;
 
 	addr = inet_addrobj_get_by_id(addr_id, inet_addr_status);
@@ -124,7 +124,7 @@ static int inetcfg_addr_get(sysarg_t addr_id, inet_addr_info_t *ainfo,
 	return EOK;
 }
 
-static int inetcfg_addr_get_id(char *name, sysarg_t link_id, sysarg_t *addr_id)
+static errno_t inetcfg_addr_get_id(char *name, sysarg_t link_id, sysarg_t *addr_id)
 {
 	inet_link_t *ilink;
 	inet_addrobj_t *addr;
@@ -145,29 +145,29 @@ static int inetcfg_addr_get_id(char *name, sysarg_t link_id, sysarg_t *addr_id)
 	return EOK;
 }
 
-static int inetcfg_get_addr_list(sysarg_t **addrs, size_t *count, 
+static errno_t inetcfg_get_addr_list(sysarg_t **addrs, size_t *count, 
     inet_addr_status_t inet_addr_status)
 {
 	return inet_addrobj_get_id_list(addrs, count, inet_addr_status);
 }
 
-static int inetcfg_get_link_list(sysarg_t **addrs, size_t *count)
+static errno_t inetcfg_get_link_list(sysarg_t **addrs, size_t *count)
 {
 	return inet_link_get_id_list(addrs, count);
 }
 
-static int inetcfg_get_sroute_list(sysarg_t **sroutes, size_t *count,
+static errno_t inetcfg_get_sroute_list(sysarg_t **sroutes, size_t *count,
     inet_sroute_status_t inet_sroute_status)
 {
 	return inet_sroute_get_id_list(sroutes, count, inet_sroute_status);
 }
 
-static int inetcfg_link_add(sysarg_t link_id)
+static errno_t inetcfg_link_add(sysarg_t link_id)
 {
 	return inet_link_open(link_id);
 }
 
-static int inetcfg_link_get(sysarg_t link_id, inet_link_info_t *linfo)
+static errno_t inetcfg_link_get(sysarg_t link_id, inet_link_info_t *linfo)
 {
 	inet_link_t *ilink;
 
@@ -188,12 +188,12 @@ static int inetcfg_link_get(sysarg_t link_id, inet_link_info_t *linfo)
 	return EOK;
 }
 
-static int inetcfg_link_remove(sysarg_t link_id)
+static errno_t inetcfg_link_remove(sysarg_t link_id)
 {
 	return ENOTSUP;
 }
 
-static int inetcfg_sroute_create(char *name, inet_naddr_t *dest,
+static errno_t inetcfg_sroute_create(char *name, inet_naddr_t *dest,
     inet_addr_t *router, unsigned char rtm_protocol, sysarg_t *sroute_id)
 {
 	inet_sroute_t *sroute;
@@ -214,7 +214,7 @@ static int inetcfg_sroute_create(char *name, inet_naddr_t *dest,
 	return EOK;
 }
 
-static int inetcfg_sroute_delete(sysarg_t sroute_id)
+static errno_t inetcfg_sroute_delete(sysarg_t sroute_id)
 {
 	inet_sroute_t *sroute;
 
@@ -228,7 +228,7 @@ static int inetcfg_sroute_delete(sysarg_t sroute_id)
 	return EOK;
 }
 
-static int inetcfg_sroute_get(sysarg_t sroute_id, inet_sroute_info_t *srinfo, 
+static errno_t inetcfg_sroute_get(sysarg_t sroute_id, inet_sroute_info_t *srinfo, 
     inet_sroute_status_t inet_sroute_status)
 {
 	inet_sroute_t *sroute;
@@ -245,7 +245,7 @@ static int inetcfg_sroute_get(sysarg_t sroute_id, inet_sroute_info_t *srinfo,
 	return EOK;
 }
 
-static int inetcfg_sroute_get_id(char *name, sysarg_t *sroute_id)
+static errno_t inetcfg_sroute_get_id(char *name, sysarg_t *sroute_id)
 {
 	inet_sroute_t *sroute;
 
@@ -281,7 +281,7 @@ static void inetcfg_addr_create_static_srv(ipc_callid_t iid,
 	}
 	
 	inet_naddr_t naddr;
-	int rc = async_data_write_finalize(callid, &naddr, size);
+	errno_t rc = async_data_write_finalize(callid, &naddr, size);
 	if (rc != EOK) {
 		async_answer_0(callid, rc);
 		async_answer_0(iid, rc);
@@ -305,7 +305,7 @@ static void inetcfg_addr_create_static_srv(ipc_callid_t iid,
 static void inetcfg_addr_delete_srv(ipc_callid_t callid, ipc_call_t *call)
 {
 	sysarg_t addr_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_addr_delete_srv()");
 
@@ -328,7 +328,7 @@ static void inetcfg_addr_get_srv(ipc_callid_t iid, ipc_call_t *icall)
 	ainfo.ilink = 0;
 	ainfo.name = NULL;
 	
-	int rc = inetcfg_addr_get(addr_id, &ainfo, inet_addr_status);
+	errno_t rc = inetcfg_addr_get(addr_id, &ainfo, inet_addr_status);
 	if (rc != EOK) {
 		async_answer_0(iid, rc);
 		return;
@@ -379,7 +379,7 @@ static void inetcfg_addr_get_id_srv(ipc_callid_t callid, ipc_call_t *call)
 	char *name;
 	sysarg_t link_id;
 	sysarg_t addr_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_addr_get_id_srv()");
 
@@ -406,7 +406,7 @@ static void inetcfg_get_addr_list_srv(ipc_callid_t callid, ipc_call_t *call)
 	size_t act_size;
 	size_t size;
 	sysarg_t *id_buf;
-	int rc;
+	errno_t rc;
 
         sysarg_t inet_addr_status = IPC_GET_ARG1(*call);
         
@@ -428,7 +428,7 @@ static void inetcfg_get_addr_list_srv(ipc_callid_t callid, ipc_call_t *call)
 	act_size = count * sizeof(sysarg_t);
 	size = min(act_size, max_size);
 
-	int retval = async_data_read_finalize(rcallid, id_buf, size);
+	errno_t retval = async_data_read_finalize(rcallid, id_buf, size);
 	free(id_buf);
 
 	async_answer_1(callid, retval, act_size);
@@ -442,7 +442,7 @@ static void inetcfg_get_link_list_srv(ipc_callid_t callid, ipc_call_t *call)
 	size_t act_size;
 	size_t size;
 	sysarg_t *id_buf;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_get_addr_list_srv()");
 
@@ -462,7 +462,7 @@ static void inetcfg_get_link_list_srv(ipc_callid_t callid, ipc_call_t *call)
 	act_size = count * sizeof(sysarg_t);
 	size = min(act_size, max_size);
 
-	int retval = async_data_read_finalize(rcallid, id_buf, size);
+	errno_t retval = async_data_read_finalize(rcallid, id_buf, size);
 	free(id_buf);
 
 	async_answer_1(callid, retval, act_size);
@@ -476,7 +476,7 @@ static void inetcfg_get_sroute_list_srv(ipc_callid_t callid, ipc_call_t *call)
 	size_t act_size;
 	size_t size;
 	sysarg_t *id_buf;
-	int rc;
+	errno_t rc;
 
         sysarg_t inet_sroute_status = IPC_GET_ARG1(*call);
         
@@ -498,7 +498,7 @@ static void inetcfg_get_sroute_list_srv(ipc_callid_t callid, ipc_call_t *call)
 	act_size = count * sizeof(sysarg_t);
 	size = min(act_size, max_size);
 
-	int retval = async_data_read_finalize(rcallid, id_buf, size);
+	errno_t retval = async_data_read_finalize(rcallid, id_buf, size);
 	free(id_buf);
 
 	async_answer_1(callid, retval, act_size);
@@ -507,7 +507,7 @@ static void inetcfg_get_sroute_list_srv(ipc_callid_t callid, ipc_call_t *call)
 static void inetcfg_link_add_srv(ipc_callid_t callid, ipc_call_t *call)
 {
 	sysarg_t link_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_link_add_srv()");
 
@@ -526,7 +526,7 @@ static void inetcfg_link_get_srv(ipc_callid_t callid, ipc_call_t *call)
 
 	sysarg_t link_id;
 	inet_link_info_t linfo;
-	int rc;
+	errno_t rc;
 
 	link_id = IPC_GET_ARG1(*call);
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_link_get_srv()");
@@ -553,7 +553,7 @@ static void inetcfg_link_get_srv(ipc_callid_t callid, ipc_call_t *call)
 		return;
 	}
 
-	int retval = async_data_read_finalize(name_callid, linfo.name,
+	errno_t retval = async_data_read_finalize(name_callid, linfo.name,
 	    min(name_max_size, str_size(linfo.name)));
 	if (retval != EOK) {
 		free(linfo.name);
@@ -573,7 +573,7 @@ static void inetcfg_link_get_srv(ipc_callid_t callid, ipc_call_t *call)
 static void inetcfg_link_remove_srv(ipc_callid_t callid, ipc_call_t *call)
 {
 	sysarg_t link_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_link_remove_srv()");
 
@@ -605,7 +605,7 @@ static void inetcfg_sroute_create_srv(ipc_callid_t iid,
 	}
 	
 	inet_naddr_t dest;
-	int rc = async_data_write_finalize(callid, &dest, size);
+	errno_t rc = async_data_write_finalize(callid, &dest, size);
 	if (rc != EOK) {
 		async_answer_0(callid, rc);
 		async_answer_0(iid, rc);
@@ -649,7 +649,7 @@ static void inetcfg_sroute_create_srv(ipc_callid_t iid,
 static void inetcfg_sroute_delete_srv(ipc_callid_t callid, ipc_call_t *call)
 {
 	sysarg_t sroute_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_sroute_delete_srv()");
 
@@ -672,7 +672,7 @@ static void inetcfg_sroute_get_srv(ipc_callid_t iid, ipc_call_t *icall)
 	inet_addr_any(&srinfo.router);
 	srinfo.name = NULL;
 	
-	int rc = inetcfg_sroute_get(sroute_id, &srinfo, inet_sroute_status);
+	errno_t rc = inetcfg_sroute_get(sroute_id, &srinfo, inet_sroute_status);
 	if (rc != EOK) {
 		async_answer_0(iid, rc);
 		return;
@@ -736,7 +736,7 @@ static void inetcfg_sroute_get_id_srv(ipc_callid_t callid, ipc_call_t *call)
 {
 	char *name;
 	sysarg_t sroute_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_sroute_get_id_srv()");
 

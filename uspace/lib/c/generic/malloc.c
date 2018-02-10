@@ -195,22 +195,7 @@ static heap_block_head_t *next_fit = NULL;
 /** Futex for thread-safe heap manipulation */
 static futex_t malloc_futex = FUTEX_INITIALIZER;
 
-#ifndef NDEBUG
-
-#define malloc_assert(expr) \
-	do { \
-		if (!(expr)) {\
-			heap_unlock(); \
-			assert_abort(#expr, __FILE__, __LINE__); \
-		} \
-	} while (0)
-
-#else /* NDEBUG */
-
-#define malloc_assert(expr)
-
-#endif /* NDEBUG */
-
+#define malloc_assert(expr) safe_assert(expr)
 
 #ifdef FUTEX_UPGRADABLE
 /** True if the heap may be accessed from multiple threads. */
@@ -410,7 +395,7 @@ static bool area_grow(heap_area_t *area, size_t size)
 		return false;
 	
 	/* Resize the address space area */
-	int ret = as_area_resize(area->start, asize, 0);
+	errno_t ret = as_area_resize(area->start, asize, 0);
 	if (ret != EOK)
 		return false;
 	
@@ -503,7 +488,7 @@ static void heap_shrink(heap_area_t *area)
 			void *end = (void *) ((uintptr_t) area->start + asize);
 			
 			/* Resize the address space area */
-			int ret = as_area_resize(area->start, asize, 0);
+			errno_t ret = as_area_resize(area->start, asize, 0);
 			if (ret != EOK)
 				abort();
 			
@@ -888,8 +873,13 @@ void *memalign(const size_t align, const size_t size)
  * @return Reallocated memory or NULL.
  *
  */
-void *realloc(const void *addr, const size_t size)
+void *realloc(void * const addr, const size_t size)
 {
+	if (size == 0) {
+		free(addr);
+		return NULL;
+	}
+
 	if (addr == NULL)
 		return malloc(size);
 	
@@ -997,7 +987,7 @@ void *realloc(const void *addr, const size_t size)
  * @param addr The address of the block.
  *
  */
-void free(const void *addr)
+void free(void * const addr)
 {
 	if (addr == NULL)
 		return;

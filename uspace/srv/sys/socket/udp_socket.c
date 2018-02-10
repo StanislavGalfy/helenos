@@ -46,6 +46,7 @@
 #include <inet/inetcfg.h>
 #include <loc.h>
 #include <nic_iface.h>
+#include <mem.h>
 
 #include "udp_socket.h"
 #include "tools.h"
@@ -81,13 +82,14 @@ static udp_cb_t udp_socket_cb = {
  * @param session_id - session id
  * @return socket file descriptor
  */
-int udp_socket(int domain, int type, int protocol, int session_id)
+errno_t udp_socket(int domain, int type, int protocol, int session_id, int *fd)
 {
         udp_socket_t *udp_socket = (udp_socket_t *) calloc(1, sizeof(udp_socket_t));
         common_socket_init(&udp_socket->socket, domain, type, protocol,
             session_id);
         list_initialize(&udp_socket->msg_queue);
-        return udp_socket->socket.id;
+        *fd = udp_socket->socket.id;
+        return EOK;
 }
 
 /** Sets option for UDP socket.
@@ -99,7 +101,7 @@ int udp_socket(int domain, int type, int protocol, int session_id)
  * @param optlen - option value length 
  * @return EOK on success, error code on failure
  */
-int udp_socket_setsockopt(common_socket_t *socket, int level, int optname,
+errno_t udp_socket_setsockopt(common_socket_t *socket, int level, int optname,
     const void *optval, socklen_t optlen) 
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - udp_socket_setsockopt()");
@@ -184,7 +186,7 @@ int udp_socket_setsockopt(common_socket_t *socket, int level, int optname,
  * @param addrlen - address length
  * @return - EOK on success, error code on failure
  */
-int udp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
+errno_t udp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
     socklen_t addrlen) 
 {    
         if (addrlen < sizeof(struct sockaddr_in))
@@ -210,10 +212,11 @@ int udp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
         return rc;
 }
 
-bool udp_socket_read_avail(common_socket_t *socket) 
+errno_t udp_socket_read_avail(common_socket_t *socket, bool *read_avail) 
 {
         udp_socket_t *udp_socket = (udp_socket_t*)socket;
-        return !list_empty(&udp_socket->msg_queue);
+        *read_avail = !list_empty(&udp_socket->msg_queue);
+        return EOK;
 }
 
 /** Send message through UDP socket
@@ -223,8 +226,8 @@ bool udp_socket_read_avail(common_socket_t *socket)
  * @param flags - UNUSED
  * @return - EOK on success, error code on failure
  */
-int udp_socket_sendmsg(common_socket_t *socket, const struct msghdr *msg,
-    int flags) 
+errno_t udp_socket_sendmsg(common_socket_t *socket, const struct msghdr *msg,
+    int flags, size_t *nsent) 
 {
         if (msg->msg_namelen < sizeof(struct sockaddr_in))
                 return EINVAL;
@@ -252,13 +255,12 @@ int udp_socket_sendmsg(common_socket_t *socket, const struct msghdr *msg,
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * dest port: %d", ep.port);
 
         void *data = msg->msg_iov[0].iov_base;
-        size_t bytes = msg->msg_iov[0].iov_len;
+        *nsent = msg->msg_iov[0].iov_len;
 
         inet_addr_t local;
         get_link_addr(udp_socket->iplink, &local);
-        udp_assoc_send_msg(udp_socket->udp_assoc, &local, &ep, data, bytes);
-
-        return bytes;
+        return udp_assoc_send_msg(udp_socket->udp_assoc, &local, &ep, data,
+            *nsent);
 }
 
 /** Receive UDP message callback.
@@ -328,7 +330,7 @@ static void udp_socket_ev_link_state(udp_assoc_t *assoc,
  * @param rsize - number of received bytes
  * @return - EOK on success, error code on failure
  */
-int udp_socket_recvmsg(common_socket_t *socket, struct msghdr *msg,
+errno_t udp_socket_recvmsg(common_socket_t *socket, struct msghdr *msg,
     int flags, size_t *rsize) 
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - udp_socket_recvmsg()");
@@ -373,7 +375,7 @@ int udp_socket_recvmsg(common_socket_t *socket, struct msghdr *msg,
  * @param socket - socket to close
  * @return - EOK on success, error code on failure
  */
-int udp_socket_close(common_socket_t* socket) 
+errno_t udp_socket_close(common_socket_t* socket) 
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - udp_socket_close()");
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);

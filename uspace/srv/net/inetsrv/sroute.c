@@ -216,7 +216,7 @@ inet_sroute_t *inet_sroute_get_by_id(sysarg_t id,
 }
 
 /** Get IDs of all static routes. */
-int inet_sroute_get_id_list(sysarg_t **rid_list, size_t *rcount,
+errno_t inet_sroute_get_id_list(sysarg_t **rid_list, size_t *rcount,
     inet_sroute_status_t inet_sroute_status)
 {
 	sysarg_t *id_list;

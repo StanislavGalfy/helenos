@@ -446,3 +446,4 @@ common.h.new
 nbproject/
 uspace/dist/*
 uspace/srv/sys/socket/socket
+tools/sycek/

@@ -39,7 +39,7 @@
 #include <arch/asm.h>
 #include <arch/drivers/ucb.h>
 
-#include <func.h>
+#include <halt.h>
 #include <config.h>
 #include <errno.h>
 #include <context.h>
@@ -142,12 +142,12 @@ void fpu_context_restore(fpu_context_t *ctx)
 {
 }
 
-int memcpy_from_uspace(void *dst, const void *uspace_src, size_t size)
+errno_t memcpy_from_uspace(void *dst, const void *uspace_src, size_t size)
 {
 	return EOK;
 }
 
-int memcpy_to_uspace(void *uspace_dst, const void *src, size_t size)
+errno_t memcpy_to_uspace(void *uspace_dst, const void *src, size_t size)
 {
 	return EOK;
 }

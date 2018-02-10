@@ -39,8 +39,9 @@
 #include <dirent.h>
 #include <errno.h>
 #include <assert.h>
+#include <str.h>
 
-static void process_mp(const char *path, struct stat *stat, list_t *mtab_list)
+static void process_mp(const char *path, vfs_stat_t *stat, list_t *mtab_list)
 {
 	mtab_ent_t *ent;
 
@@ -52,7 +53,7 @@ static void process_mp(const char *path, struct stat *stat, list_t *mtab_list)
 	str_cpy(ent->mp, sizeof(ent->mp), path);
 	ent->service_id = stat->service_id;
 
-	struct statfs stfs;
+	vfs_statfs_t stfs;
 	if (vfs_statfs_path(path, &stfs) == EOK)
 		str_cpy(ent->fs_name, sizeof(ent->fs_name), stfs.fs_name);
 	else
@@ -61,7 +62,7 @@ static void process_mp(const char *path, struct stat *stat, list_t *mtab_list)
 	list_append(&ent->link, mtab_list);
 }
 
-static int vfs_get_mtab_visit(const char *path, list_t *mtab_list,
+static errno_t vfs_get_mtab_visit(const char *path, list_t *mtab_list,
     fs_handle_t fs_handle, service_id_t service_id)
 {
 	DIR *dir;
@@ -73,8 +74,8 @@ static int vfs_get_mtab_visit(const char *path, list_t *mtab_list,
 
 	while ((dirent = readdir(dir)) != NULL) {
 		char *child;
-		struct stat st;
-		int rc;
+		vfs_stat_t st;
+		errno_t rc;
 		int ret;
 
 		ret = asprintf(&child, "%s/%s", path, dirent->d_name);
@@ -94,7 +95,7 @@ static int vfs_get_mtab_visit(const char *path, list_t *mtab_list,
 		child = pa;
 
 		rc = vfs_stat_path(child, &st);
-		if (rc != 0) {
+		if (rc != EOK) {
 			free(child);
 			closedir(dir);
 			return rc;
@@ -119,12 +120,12 @@ static int vfs_get_mtab_visit(const char *path, list_t *mtab_list,
 	return EOK;
 }
 
-int vfs_get_mtab_list(list_t *mtab_list)
+errno_t vfs_get_mtab_list(list_t *mtab_list)
 {
-	struct stat st;
+	vfs_stat_t st;
 
-	int rc = vfs_stat_path("/", &st);
-	if (rc != 0)
+	errno_t rc = vfs_stat_path("/", &st);
+	if (rc != EOK)
 		return rc;
 
 	process_mp("/", &st, mtab_list);

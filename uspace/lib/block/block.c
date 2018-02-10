@@ -87,8 +87,8 @@ typedef struct {
 	cache_t *cache;
 } devcon_t;
 
-static int read_blocks(devcon_t *, aoff64_t, size_t, void *, size_t);
-static int write_blocks(devcon_t *, aoff64_t, size_t, void *, size_t);
+static errno_t read_blocks(devcon_t *, aoff64_t, size_t, void *, size_t);
+static errno_t write_blocks(devcon_t *, aoff64_t, size_t, void *, size_t);
 static aoff64_t ba_ltop(devcon_t *, aoff64_t);
 
 static devcon_t *devcon_search(service_id_t service_id)
@@ -106,7 +106,7 @@ static devcon_t *devcon_search(service_id_t service_id)
 	return NULL;
 }
 
-static int devcon_add(service_id_t service_id, async_sess_t *sess,
+static errno_t devcon_add(service_id_t service_id, async_sess_t *sess,
     size_t bsize, aoff64_t dev_size, bd_t *bd)
 {
 	devcon_t *devcon;
@@ -145,7 +145,7 @@ static void devcon_remove(devcon_t *devcon)
 	fibril_mutex_unlock(&dcl_lock);
 }
 
-int block_init(service_id_t service_id, size_t comm_size)
+errno_t block_init(service_id_t service_id, size_t comm_size)
 {
 	bd_t *bd;
 
@@ -155,7 +155,7 @@ int block_init(service_id_t service_id, size_t comm_size)
 		return ENOENT;
 	}
 	
-	int rc = bd_open(sess, &bd);
+	errno_t rc = bd_open(sess, &bd);
 	if (rc != EOK) {
 		async_hangup(sess);
 		return rc;
@@ -208,10 +208,10 @@ void block_fini(service_id_t service_id)
 	free(devcon);
 }
 
-int block_bb_read(service_id_t service_id, aoff64_t ba)
+errno_t block_bb_read(service_id_t service_id, aoff64_t ba)
 {
 	void *bb_buf;
-	int rc;
+	errno_t rc;
 
 	devcon_t *devcon = devcon_search(service_id);
 	if (!devcon)
@@ -269,7 +269,7 @@ static hash_table_ops_t cache_ops = {
 	.remove_callback = NULL
 };
 
-int block_cache_init(service_id_t service_id, size_t size, unsigned blocks,
+errno_t block_cache_init(service_id_t service_id, size_t size, unsigned blocks,
     enum cache_mode mode)
 {
 	devcon_t *devcon = devcon_search(service_id);
@@ -306,11 +306,11 @@ int block_cache_init(service_id_t service_id, size_t size, unsigned blocks,
 	return EOK;
 }
 
-int block_cache_fini(service_id_t service_id)
+errno_t block_cache_fini(service_id_t service_id)
 {
 	devcon_t *devcon = devcon_search(service_id);
 	cache_t *cache;
-	int rc;
+	errno_t rc;
 
 	if (!devcon)
 		return ENOENT;
@@ -380,16 +380,16 @@ static void block_initialize(block_t *b)
  * 				will not read the contents of the block from the
  *				device.
  *
- * @return			EOK on success or a negative error code.
+ * @return			EOK on success or an error code.
  */
-int block_get(block_t **block, service_id_t service_id, aoff64_t ba, int flags)
+errno_t block_get(block_t **block, service_id_t service_id, aoff64_t ba, int flags)
 {
 	devcon_t *devcon;
 	cache_t *cache;
 	block_t *b;
 	link_t *link;
 	aoff64_t p_ba;
-	int rc;
+	errno_t rc;
 	
 	devcon = devcon_search(service_id);
 
@@ -577,15 +577,15 @@ out:
  *
  * @param block		Block of which a reference is to be released.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-int block_put(block_t *block)
+errno_t block_put(block_t *block)
 {
 	devcon_t *devcon = devcon_search(block->service_id);
 	cache_t *cache;
 	unsigned blocks_cached;
 	enum cache_mode mode;
-	int rc = EOK;
+	errno_t rc = EOK;
 
 	assert(devcon);
 	assert(devcon->cache);
@@ -698,9 +698,9 @@ retry:
  * @param size		Size of the destination buffer.
  * @param block_size	Block size to be used for the transfer.
  *
- * @return		EOK on success or a negative return code on failure.
+ * @return		EOK on success or an error code on failure.
  */
-int block_seqread(service_id_t service_id, void *buf, size_t *bufpos,
+errno_t block_seqread(service_id_t service_id, void *buf, size_t *bufpos,
     size_t *buflen, aoff64_t *pos, void *dst, size_t size)
 {
 	size_t offset = 0;
@@ -734,7 +734,7 @@ int block_seqread(service_id_t service_id, void *buf, size_t *bufpos,
 		
 		if (*bufpos == *buflen) {
 			/* Refill the communication buffer with a new block. */
-			int rc;
+			errno_t rc;
 
 			rc = read_blocks(devcon, *pos / block_size, 1, buf,
 			    devcon->pblock_size);
@@ -757,9 +757,9 @@ int block_seqread(service_id_t service_id, void *buf, size_t *bufpos,
  * @param cnt		Number of blocks.
  * @param src		Buffer for storing the data.
  *
- * @return		EOK on success or negative error code on failure.
+ * @return		EOK on success or an error code on failure.
  */
-int block_read_direct(service_id_t service_id, aoff64_t ba, size_t cnt, void *buf)
+errno_t block_read_direct(service_id_t service_id, aoff64_t ba, size_t cnt, void *buf)
 {
 	devcon_t *devcon;
 
@@ -776,9 +776,9 @@ int block_read_direct(service_id_t service_id, aoff64_t ba, size_t cnt, void *bu
  * @param cnt		Number of blocks.
  * @param src		The data to be written.
  *
- * @return		EOK on success or negative error code on failure.
+ * @return		EOK on success or an error code on failure.
  */
-int block_write_direct(service_id_t service_id, aoff64_t ba, size_t cnt,
+errno_t block_write_direct(service_id_t service_id, aoff64_t ba, size_t cnt,
     const void *data)
 {
 	devcon_t *devcon;
@@ -795,9 +795,9 @@ int block_write_direct(service_id_t service_id, aoff64_t ba, size_t cnt,
  * @param ba		Address of first block (physical).
  * @param cnt		Number of blocks.
  *
- * @return		EOK on success or negative error code on failure.
+ * @return		EOK on success or an error code on failure.
  */
-int block_sync_cache(service_id_t service_id, aoff64_t ba, size_t cnt)
+errno_t block_sync_cache(service_id_t service_id, aoff64_t ba, size_t cnt)
 {
 	devcon_t *devcon;
 
@@ -812,9 +812,9 @@ int block_sync_cache(service_id_t service_id, aoff64_t ba, size_t cnt)
  * @param service_id	Service ID of the block device.
  * @param bsize		Output block size.
  *
- * @return		EOK on success or negative error code on failure.
+ * @return		EOK on success or an error code on failure.
  */
-int block_get_bsize(service_id_t service_id, size_t *bsize)
+errno_t block_get_bsize(service_id_t service_id, size_t *bsize)
 {
 	devcon_t *devcon;
 
@@ -829,9 +829,9 @@ int block_get_bsize(service_id_t service_id, size_t *bsize)
  * @param service_id	Service ID of the block device.
  * @param nblocks	Output number of blocks.
  *
- * @return		EOK on success or negative error code on failure.
+ * @return		EOK on success or an error code on failure.
  */
-int block_get_nblocks(service_id_t service_id, aoff64_t *nblocks)
+errno_t block_get_nblocks(service_id_t service_id, aoff64_t *nblocks)
 {
 	devcon_t *devcon = devcon_search(service_id);
 	assert(devcon);
@@ -846,12 +846,12 @@ int block_get_nblocks(service_id_t service_id, aoff64_t *nblocks)
  * @param bytes			Number of bytes to read
  * @param data			Buffer that receives the data
  * 
- * @return		EOK on success or negative error code on failure.
+ * @return		EOK on success or an error code on failure.
  */
-int block_read_bytes_direct(service_id_t service_id, aoff64_t abs_offset,
+errno_t block_read_bytes_direct(service_id_t service_id, aoff64_t abs_offset,
     size_t bytes, void *data)
 {
-	int rc;
+	errno_t rc;
 	size_t phys_block_size;
 	size_t buf_size;
 	void *buffer;
@@ -897,10 +897,10 @@ int block_read_bytes_direct(service_id_t service_id, aoff64_t abs_offset,
  * @param session    Starting session.
  *
  * @return Allocated TOC structure.
- * @return EOK on success or negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int block_read_toc(service_id_t service_id, uint8_t session, void *buf,
+errno_t block_read_toc(service_id_t service_id, uint8_t session, void *buf,
     size_t bufsize)
 {
 	devcon_t *devcon = devcon_search(service_id);
@@ -916,14 +916,14 @@ int block_read_toc(service_id_t service_id, uint8_t session, void *buf,
  * @param cnt		Number of blocks.
  * @param src		Buffer for storing the data.
  *
- * @return		EOK on success or negative error code on failure.
+ * @return		EOK on success or an error code on failure.
  */
-static int read_blocks(devcon_t *devcon, aoff64_t ba, size_t cnt, void *buf,
+static errno_t read_blocks(devcon_t *devcon, aoff64_t ba, size_t cnt, void *buf,
     size_t size)
 {
 	assert(devcon);
 	
-	int rc = bd_read_blocks(devcon->bd, ba, cnt, buf, size);
+	errno_t rc = bd_read_blocks(devcon->bd, ba, cnt, buf, size);
 	if (rc != EOK) {
 		printf("Error %s reading %zu blocks starting at block %" PRIuOFF64
 		    " from device handle %" PRIun "\n", str_error_name(rc), cnt, ba,
@@ -943,14 +943,14 @@ static int read_blocks(devcon_t *devcon, aoff64_t ba, size_t cnt, void *buf,
  * @param cnt		Number of blocks.
  * @param src		Buffer containing the data to write.
  *
- * @return		EOK on success or negative error code on failure.
+ * @return		EOK on success or an error code on failure.
  */
-static int write_blocks(devcon_t *devcon, aoff64_t ba, size_t cnt, void *data,
+static errno_t write_blocks(devcon_t *devcon, aoff64_t ba, size_t cnt, void *data,
     size_t size)
 {
 	assert(devcon);
 	
-	int rc = bd_write_blocks(devcon->bd, ba, cnt, data, size);
+	errno_t rc = bd_write_blocks(devcon->bd, ba, cnt, data, size);
 	if (rc != EOK) {
 		printf("Error %s writing %zu blocks starting at block %" PRIuOFF64
 		    " to device handle %" PRIun "\n", str_error_name(rc), cnt, ba, devcon->service_id);

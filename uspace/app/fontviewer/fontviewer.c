@@ -62,7 +62,7 @@ uint16_t points = 16;
 bool show_metrics = true;
 char *font_path = NULL;
 
-static int draw(void);
+static errno_t draw(void);
 
 static void on_keyboard_event(widget_t *widget, void *data)
 {
@@ -95,7 +95,7 @@ static void on_keyboard_event(widget_t *widget, void *data)
 			show_metrics = !show_metrics;
 	}
 	
-	int rc = draw();
+	errno_t rc = draw();
 	if (rc != EOK) {
 		printf("Failed drawing: %s.\n", str_error(rc));
 		exit(1);
@@ -103,7 +103,7 @@ static void on_keyboard_event(widget_t *widget, void *data)
 	update_canvas(canvas, surface);
 }
 
-static int create_font(font_t **font, uint16_t points)
+static errno_t create_font(font_t **font, uint16_t points)
 {
 	if (font_path == NULL) {
 		return embedded_font_create(font, points);
@@ -138,7 +138,7 @@ static void horizontal_line(drawctx_t *drawctx, surface_coord_t y,
 }
 
 static int text(drawctx_t *, font_t *, source_t *, surface_coord_t x,
-    surface_coord_t , const char *, ...) PRINTF_ATTRIBUTE(6, 7);
+    surface_coord_t , const char *, ...) _HELENOS_PRINTF_ATTRIBUTE(6, 7);
 static int text(drawctx_t *drawctx, font_t *font, source_t *source,
     surface_coord_t x, surface_coord_t y, const char *fmt, ...)
 {
@@ -148,20 +148,19 @@ static int text(drawctx_t *drawctx, font_t *font, source_t *source,
 	int ret = vasprintf(&str, fmt, args);
 	va_end(args);
 	
-	if (ret <= 0)
-		return ret;
-	
-	drawctx_set_source(drawctx, source);
-	drawctx_set_font(drawctx, font);
-	drawctx_print(drawctx, str, x, y);
-	
-	free(str);
+	if (ret >= 0) {
+		drawctx_set_source(drawctx, source);
+		drawctx_set_font(drawctx, font);
+		drawctx_print(drawctx, str, x, y);
+
+		free(str);
+	}
 	
 	return ret;
 }
 
 
-static int draw(void)
+static errno_t draw(void)
 {
 	source_t background = rgb(255, 255, 255);
 	source_t foreground = rgb(0, 0, 0);
@@ -174,7 +173,7 @@ static int draw(void)
 	source_t leading_fg = rgb(0, 170, 212);
 	
 	font_t *font;
-	int rc = create_font(&font, points);
+	errno_t rc = create_font(&font, points);
 	if (rc != EOK) {
 		printf("Failed creating font\n");
 		return rc;
@@ -274,7 +273,7 @@ int main(int argc, char *argv[])
 	width = WINDOW_WIDTH;
 	height = WINDOW_HEIGHT;
 	
-	int rc = draw();
+	errno_t rc = draw();
 	if (rc != EOK) {
 		printf("Failed drawing: %s.\n", str_error(rc));
 		return 2;

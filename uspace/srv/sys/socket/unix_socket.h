@@ -44,12 +44,12 @@ typedef struct {
     common_socket_t socket;
 } unix_socket_t;
 
-int unix_socket(int, int, int, int);
-int unix_socket_bind(common_socket_t *, const struct sockaddr *, socklen_t);
-int unix_socket_listen(common_socket_t *, int);
-int unix_socket_connect(common_socket_t *, const struct sockaddr *, socklen_t);
-bool unix_socket_read_avail(common_socket_t *);
-int unix_socket_close(common_socket_t *);
+errno_t unix_socket(int, int, int, int, int *);
+errno_t unix_socket_bind(common_socket_t *, const struct sockaddr *, socklen_t);
+errno_t unix_socket_listen(common_socket_t *, int);
+errno_t unix_socket_connect(common_socket_t *, const struct sockaddr *, socklen_t);
+errno_t unix_socket_read_avail(common_socket_t *, bool *);
+errno_t unix_socket_close(common_socket_t *);
 
 #endif
 

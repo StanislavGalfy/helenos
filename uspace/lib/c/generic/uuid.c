@@ -42,19 +42,19 @@
 /** Generate UUID.
  *
  * @param uuid Place to store generated UUID
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int uuid_generate(uuid_t *uuid)
+errno_t uuid_generate(uuid_t *uuid)
 {
 	int i;
 	struct timeval tv;
 
 	/* XXX This is a rather poor way of generating random numbers */
 	gettimeofday(&tv, NULL);
-	srandom(tv.tv_sec ^ tv.tv_usec);
+	srand(tv.tv_sec ^ tv.tv_usec);
 
 	for (i = 0; i < uuid_bytes; i++)
-		uuid->b[i] = random();
+		uuid->b[i] = rand();
 
 	/* Version 4 UUID from random or pseudo-random numbers */
 	uuid->b[8] = (uuid->b[8] & ~0xc0) | 0x40;
@@ -99,11 +99,11 @@ void uuid_decode(uint8_t *buf, uuid_t *uuid)
  * @param uuid   Place to store UUID
  * @param endptr Place to store pointer to end of UUID or @c NULL
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int uuid_parse(const char *str, uuid_t *uuid, const char **endptr)
+errno_t uuid_parse(const char *str, uuid_t *uuid, const char **endptr)
 {
-	int rc;
+	errno_t rc;
 	const char *eptr;
 	uint32_t time_low;
 	uint16_t time_mid;
@@ -166,7 +166,7 @@ int uuid_parse(const char *str, uuid_t *uuid, const char **endptr)
  *
  * @return EOK on success, ENOMEM if out of memory
  */
-int uuid_format(uuid_t *uuid, char **rstr)
+errno_t uuid_format(uuid_t *uuid, char **rstr)
 {
 	return ENOTSUP;
 }

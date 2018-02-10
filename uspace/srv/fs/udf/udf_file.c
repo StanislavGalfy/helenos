@@ -53,14 +53,14 @@
  *                 According to ECMA 167 4/14.8.8
  * @param pos      Position with which we read
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-static int udf_read_extended_allocator(udf_node_t *node, uint16_t icb_flag,
+static errno_t udf_read_extended_allocator(udf_node_t *node, uint16_t icb_flag,
     uint32_t pos)
 {
 	block_t *block = NULL;
-	int rc = block_get(&block, node->instance->service_id, pos,
+	errno_t rc = block_get(&block, node->instance->service_id, pos,
 	    BLOCK_FLAGS_NONE);
 	if (rc != EOK)
 		return rc;
@@ -89,10 +89,10 @@ static int udf_read_extended_allocator(udf_node_t *node, uint16_t icb_flag,
  * @param start_alloc Offset of the allocator
  * @param len         Length of sequence
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int udf_read_allocation_sequence(udf_node_t *node, uint8_t *af,
+errno_t udf_read_allocation_sequence(udf_node_t *node, uint8_t *af,
     uint16_t icb_flag, uint32_t start_alloc, uint32_t len)
 {
 	node->alloc_size = 0;
@@ -230,15 +230,15 @@ int udf_read_allocation_sequence(udf_node_t *node, uint8_t *af,
  *
  * @param node    UDF node
  *
- * @return    EOK on success or a negative error code.
+ * @return    EOK on success or an error code.
  */
-int udf_read_icb(udf_node_t *node)
+errno_t udf_read_icb(udf_node_t *node)
 {
 	while (true) {
 		fs_index_t pos = node->index;
 		
 		block_t *block = NULL;
-		int rc = block_get(&block, node->instance->service_id, pos,
+		errno_t rc = block_get(&block, node->instance->service_id, pos,
 		    BLOCK_FLAGS_NONE);
 		if (rc != EOK)
 			return rc;
@@ -299,10 +299,10 @@ int udf_read_icb(udf_node_t *node)
  *
  * @param node UDF node
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int udf_node_get_core(udf_node_t *node)
+errno_t udf_node_get_core(udf_node_t *node)
 {
 	node->link_cnt = 1;
 	return udf_read_icb(node);
@@ -314,10 +314,10 @@ int udf_node_get_core(udf_node_t *node)
  * @param node UDF node
  * @param pos  Number of FID which we need to find
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-static int udf_get_fid_in_data(udf_file_identifier_descriptor_t **fid,
+static errno_t udf_get_fid_in_data(udf_file_identifier_descriptor_t **fid,
     udf_node_t *node, aoff64_t pos)
 {
 	size_t fid_sum = 0;
@@ -365,10 +365,10 @@ static int udf_get_fid_in_data(udf_file_identifier_descriptor_t **fid,
  * @param node  UDF node
  * @param pos   Number of FID which we need to find
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int udf_get_fid(udf_file_identifier_descriptor_t **fid, block_t **block,
+errno_t udf_get_fid(udf_file_identifier_descriptor_t **fid, block_t **block,
     udf_node_t *node, aoff64_t pos)
 {
 	if (node->data == NULL)
@@ -384,10 +384,10 @@ int udf_get_fid(udf_file_identifier_descriptor_t **fid, block_t **block,
  * @param node  UDF node
  * @param pos   Number of FID which we need to find
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int udf_get_fid_in_allocator(udf_file_identifier_descriptor_t **fid,
+errno_t udf_get_fid_in_allocator(udf_file_identifier_descriptor_t **fid,
     block_t **block, udf_node_t *node, aoff64_t pos)
 {
 	void *buf = malloc(node->instance->sector_size);
@@ -401,7 +401,7 @@ int udf_get_fid_in_allocator(udf_file_identifier_descriptor_t **fid,
 	while (j < node->alloc_size) {
 		size_t i = 0;
 		while (i * node->instance->sector_size < node->allocators[j].length) {
-			int rc = block_get(block, node->instance->service_id,
+			errno_t rc = block_get(block, node->instance->service_id,
 			    node->allocators[j].position + i, BLOCK_FLAGS_NONE);
 			if (rc != EOK) {
 				// FIXME: Memory leak
@@ -465,10 +465,10 @@ int udf_get_fid_in_allocator(udf_file_identifier_descriptor_t **fid,
  * @param buf   Part of FID from last sector (current allocator or previous)
  * @param len   Length of buf
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int udf_get_fid_in_sector(udf_file_identifier_descriptor_t **fid,
+errno_t udf_get_fid_in_sector(udf_file_identifier_descriptor_t **fid,
     block_t **block, udf_node_t *node, aoff64_t pos, size_t *n, void **buf,
     size_t *len)
 {
@@ -572,10 +572,10 @@ int udf_get_fid_in_sector(udf_file_identifier_descriptor_t **fid,
  * @param pos      Position in file since we have to read.
  * @param len      Length of data for reading
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int udf_read_file(size_t *read_len, ipc_callid_t callid, udf_node_t *node,
+errno_t udf_read_file(size_t *read_len, ipc_callid_t callid, udf_node_t *node,
     aoff64_t pos, size_t len)
 {
 	size_t i = 0;
@@ -593,7 +593,7 @@ int udf_read_file(size_t *read_len, ipc_callid_t callid, udf_node_t *node,
 	size_t sector_num = pos / node->instance->sector_size;
 	
 	block_t *block = NULL;
-	int rc = block_get(&block, node->instance->service_id,
+	errno_t rc = block_get(&block, node->instance->service_id,
 	    node->allocators[i].position + (sector_num - sector_cnt),
 	    BLOCK_FLAGS_NONE);
 	if (rc != EOK) {

@@ -42,6 +42,7 @@
 #include <types/socket/in.h>
 #include <inet/inetcfg.h>
 #include <loc.h>
+#include <mem.h>
 
 #include "tcp_socket.h"
 #include "tools.h"
@@ -64,7 +65,7 @@ static tcp_cb_t conn_cb = {
  * @param session_id - session id
  * @return socket file descriptor
  */
-int tcp_socket(int domain, int type, int protocol, int session_id)
+errno_t tcp_socket(int domain, int type, int protocol, int session_id, int *fd)
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "    - Creating TCP socket");
     
@@ -74,7 +75,8 @@ int tcp_socket(int domain, int type, int protocol, int session_id)
             session_id);
         inet_ep_init(&tcp_socket->ep);
         list_initialize(&tcp_socket->tcp_conn_queue);
-        return tcp_socket->socket.id;
+        *fd = tcp_socket->socket.id;
+        return EOK;
 }
 
 /** Binds TCP socket to given address.
@@ -84,12 +86,9 @@ int tcp_socket(int domain, int type, int protocol, int session_id)
  * @param addrlen - address length
  * @return - EOK on success, error code on failure
  */
-int tcp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
+errno_t tcp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
     socklen_t addrlen) 
 {    
-        if (addrlen < sizeof(struct sockaddr_in))
-                return EINVAL;
-
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - Binding TCP socket");
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * address: %d", 
@@ -97,10 +96,14 @@ int tcp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * port: %d", 
             ((struct sockaddr_in*)addr)->sin_port);
 
+        if (addrlen < sizeof(struct sockaddr_in))
+                return EINVAL;
+        
         tcp_socket_t* tcp_socket = (tcp_socket_t*)socket;
 
         tcp_socket->ep.addr.version = ip_v4;
-        tcp_socket->ep.addr.addr = ntohl(((struct sockaddr_in*)addr)->sin_addr.s_addr);
+        tcp_socket->ep.addr.addr = 
+            ntohl(((struct sockaddr_in*)addr)->sin_addr.s_addr);
         tcp_socket->ep.port = ntohs(((struct sockaddr_in*)addr)->sin_port);
 
         return EOK;
@@ -108,8 +111,16 @@ int tcp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
 
 static void tcp_socket_new_conn(tcp_listener_t *lst, tcp_conn_t *conn)
 {
-        
-        log_msg(LOG_DEFAULT, LVL_DEBUG, "TCP socket - new connection");       
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, " ");
+        log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_socket_new_conn()");        
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection remote addr: %d",
+            conn->ident.remote.addr.addr);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection remote port: %d",
+            conn->ident.remote.port);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection local addr: %d",
+            conn->ident.local.addr.addr);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection local port: %d",
+            conn->ident.local.port);      
         
         fibril_mutex_lock(&socket_lock);
         
@@ -130,48 +141,48 @@ static void tcp_socket_new_conn(tcp_listener_t *lst, tcp_conn_t *conn)
 int tcp_socket_listen(common_socket_t *socket, int backlog) 
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - tcp_socket_listen()");
-    
-        int rc;
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * socket id: %d", socket->id);
                 
         tcp_socket_t *tcp_socket = (tcp_socket_t*)socket;
 
         tcp_socket->is_listener = true;
         tcp_listener_t *lst;
-        rc = tcp_listener_create(socket_tcp, &tcp_socket->ep,
-                &listen_cb, socket, &conn_cb, NULL, &lst);
+        int rc = tcp_listener_create(socket_tcp, &tcp_socket->ep,
+            &listen_cb, socket, &conn_cb, NULL, &lst);
         
         return rc;
         
 }
 
-int tcp_socket_connect(common_socket_t *socket, const struct sockaddr *addr,
+errno_t tcp_socket_connect(common_socket_t *socket, const struct sockaddr *addr,
         socklen_t addrlen) 
 {
-        log_msg(LOG_DEFAULT, LVL_DEBUG2, "connect, fd: %d <<<<<<", socket->id);
+        //log_msg(LOG_DEFAULT, LVL_DEBUG2, "connect, fd: %d <<<<<<", socket->id);
     
-        if (addrlen < sizeof(struct sockaddr_in))
-                return EINVAL;
+        //if (addrlen < sizeof(struct sockaddr_in))
+        //        return EINVAL;
         
         tcp_socket_t *tcp_socket = (tcp_socket_t*)socket;
         if (tcp_socket->tcp_sock_conn != NULL)
                 return EISCONN;
         
-        tcp_socket_t *tcp_socket = (tcp_socket_t*)socket;
+        /*inet_ep2_t epp;
+        memcpy(&epp.local, &tcp_socket->ep, sizeof(inet_ep_t));
+        epp.remote.addr.addr = htonl(((struct sockaddr_in*)addr)->sin_addr.s_addr);
+        epp.remote.port = htons(((struct sockaddr_in*)addr)->sin_port);
         
-        inet_ep2_t epp;
-        memcpy(&epp.local, tcp_socket->ep, sizeof(inet_ep_t));
-        epp.remote.addr = htonl(((sockaddr_in*)addr)->sin_addr.s_addr;
-        epp.remote.addr = htonl(((sockaddr_in*)addr)->sin_port;
-        
-        tcp_conn_create(socket_tcp, &epp, NULL, NULL, tcp_socket->tcp_sock_conn->tcp_conn);
-    
+        tcp_conn_create(socket_tcp, &epp, NULL, NULL,
+                &tcp_socket->tcp_sock_conn->tcp_conn);
+        */
         return ECONNREFUSED;
 }
 
-int tcp_socket_accept(common_socket_t *socket, int *fd,
-        const struct sockaddr *addr, socklen_t *addrlen)
+errno_t tcp_socket_accept(common_socket_t *socket, const struct sockaddr *addr,
+        socklen_t *addrlen, int *fd)
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - tcp_socket_accept()");
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * listener socket id: %d",
+            socket->id);
     
         if (*addrlen < sizeof(struct sockaddr_in)) {
                 return EINVAL;   
@@ -180,26 +191,27 @@ int tcp_socket_accept(common_socket_t *socket, int *fd,
         tcp_socket_t *tcp_listener_socket = (tcp_socket_t*)socket;
                 
         if (list_empty(&tcp_listener_socket->tcp_conn_queue)) {
+                log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * empty connection queue");
                 return EWOULDBLOCK;
         }
             
         tcp_socket_t *tcp_socket = (tcp_socket_t *) calloc(1,
-                sizeof(tcp_socket_t));
+            sizeof(tcp_socket_t));
         if (tcp_socket == NULL) {
                 return ENOMEM;
         }
         
         common_socket_init(&tcp_socket->socket, 
-                tcp_listener_socket->socket.domain, 
-                tcp_listener_socket->socket.type,
-                tcp_listener_socket->socket.protocol,
-                tcp_listener_socket->socket.session_id);
+            tcp_listener_socket->socket.domain, 
+            tcp_listener_socket->socket.type,
+            tcp_listener_socket->socket.protocol,
+            tcp_listener_socket->socket.session_id);
         
         tcp_socket->is_listener = false;
         memcpy (&tcp_socket->ep, &tcp_listener_socket->ep, sizeof(inet_ep_t));
         
         tcp_sock_conn_t *tcp_sock_conn = (tcp_sock_conn_t *)list_first(
-                &tcp_listener_socket->tcp_conn_queue);
+            &tcp_listener_socket->tcp_conn_queue);
         
         tcp_socket->tcp_sock_conn = tcp_sock_conn;
         list_remove(&tcp_sock_conn->conn_queue_link);
@@ -208,22 +220,27 @@ int tcp_socket_accept(common_socket_t *socket, int *fd,
         
         struct sockaddr_in *sa = (struct sockaddr_in*)addr;
         sa->sin_addr.s_addr = htonl(
-                tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.addr.addr);
+            tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.addr.addr);
         sa->sin_port = htons(
-                tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.port);
+            tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.port);
         sa->sin_family = AF_INET;
         
         *addrlen = sizeof(struct sockaddr_in);
         
-        log_msg(LOG_DEFAULT, LVL_DEBUG2, "Accepted, fd: %d", *fd);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * new socket id: %d", *fd);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection remote addr: %d",
+            tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.addr.addr);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection remote port: %d",
+            tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.port);  
         
         return EOK;
 }
 
-int tcp_socket_getsockname(common_socket_t * socket, 
+errno_t tcp_socket_getsockname(common_socket_t * socket, 
         const struct sockaddr *addr, socklen_t *addrlen)
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - tcp_socket_getsockname()");
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * socket id: %d", socket->id);
     
         if (*addrlen < sizeof(struct sockaddr_in)) {
                 return EINVAL;   
@@ -232,35 +249,45 @@ int tcp_socket_getsockname(common_socket_t * socket,
         tcp_socket_t *tcp_socket = (tcp_socket_t*)socket;
         struct sockaddr_in *sa = (struct sockaddr_in*)addr;
         sa->sin_addr.s_addr = htonl(
-                tcp_socket->tcp_sock_conn->tcp_conn->ident.local.addr.addr);
+            tcp_socket->tcp_sock_conn->tcp_conn->ident.local.addr.addr);
         sa->sin_port = htons(
-                tcp_socket->tcp_sock_conn->tcp_conn->ident.local.port);
+            tcp_socket->tcp_sock_conn->tcp_conn->ident.local.port);
         sa->sin_family = AF_INET;
         
         *addrlen = sizeof(struct sockaddr_in);
         
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection local addr: %d",
+            tcp_socket->tcp_sock_conn->tcp_conn->ident.local.addr.addr);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection local port: %d",
+            tcp_socket->tcp_sock_conn->tcp_conn->ident.local.port);   
+        
         return EOK;
 }
 
-bool tcp_socket_read_avail(common_socket_t *socket) 
+errno_t tcp_socket_read_avail(common_socket_t *socket, bool *read_avail) 
 {    
         tcp_socket_t* tcp_socket = (tcp_socket_t*)socket;
         if (tcp_socket->is_listener) {
-                return !list_empty(&tcp_socket->tcp_conn_queue);
+                *read_avail = !list_empty(&tcp_socket->tcp_conn_queue);
+                return EOK;
         } else {
                 if (tcp_socket->tcp_sock_conn == NULL || 
                     tcp_socket->tcp_sock_conn->tcp_conn == NULL) {
-                        return false;
+                        *read_avail = false;
+                        return EOK;
                 }
-                return tcp_socket->tcp_sock_conn->tcp_conn->data_avail;
+                *read_avail = tcp_socket->tcp_sock_conn->tcp_conn->data_avail;
+                return EOK; 
         }
 }
 
 
-int tcp_socket_write(common_socket_t *socket, void *buf, size_t count,
+errno_t tcp_socket_write(common_socket_t *socket, void *buf, size_t count,
         size_t *nsent) 
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - tcp_socket_write()");
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * socket id: %d", socket->id);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * data count to send: %d", count);
     
         tcp_socket_t* tcp_socket = (tcp_socket_t*)socket;
         
@@ -274,11 +301,17 @@ int tcp_socket_read(common_socket_t *socket, void *buf, size_t count,
         size_t *nrecv) 
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - tcp_socket_read()");
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * socket id: %d", socket->id);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * data count to receive: %d",
+            count);
     
         tcp_socket_t* tcp_socket = (tcp_socket_t*)socket;
         
         int rc = tcp_conn_recv(tcp_socket->tcp_sock_conn->tcp_conn, buf, count,
-                nrecv);
+            nrecv);
+              
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * data count actually received: %d",
+            *nrecv);
         
         return rc;
 }

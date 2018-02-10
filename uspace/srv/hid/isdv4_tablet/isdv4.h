@@ -73,11 +73,18 @@ typedef struct {
 } isdv4_state_t;
 
 typedef enum {
-	UNKNOWN, PRESS, RELEASE, PROXIMITY_IN, PROXIMITY_OUT, MOVE
+	UNKNOWN,
+	PRESS,
+	RELEASE,
+	PROXIMITY_IN,
+	PROXIMITY_OUT,
+	MOVE
 } isdv4_event_type_t;
 
 typedef enum {
-	STYLUS_TIP, STYLUS_ERASER, TOUCH
+	STYLUS_TIP,
+	STYLUS_ERASER,
+	TOUCH
 } isdv4_source_type_t;
 
 struct isdv4_event {
@@ -89,9 +96,9 @@ struct isdv4_event {
 	unsigned int button;
 };
 
-extern int isdv4_init(isdv4_state_t *, async_sess_t *, isdv4_event_fn);
-extern int isdv4_init_tablet(isdv4_state_t *);
-extern int isdv4_read_events(isdv4_state_t *state);
+extern errno_t isdv4_init(isdv4_state_t *, async_sess_t *, isdv4_event_fn);
+extern errno_t isdv4_init_tablet(isdv4_state_t *);
+extern errno_t isdv4_read_events(isdv4_state_t *state);
 extern void isdv4_fini(isdv4_state_t *);
 
 #endif

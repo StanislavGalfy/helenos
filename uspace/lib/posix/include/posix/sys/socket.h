@@ -37,22 +37,18 @@
 
 #include "libc/types/socket/socket.h"
 
-#ifndef __POSIX_DEF__
-#define __POSIX_DEF__(x) x
-#endif
-
-extern int __POSIX_DEF__(bind)(int, const struct sockaddr *, socklen_t);
-extern int __POSIX_DEF__(socket)(int, int, int);
-extern ssize_t __POSIX_DEF__(recvmsg)(int, struct msghdr *, int);
-extern ssize_t __POSIX_DEF__(sendto)(int, const void *, size_t, int,
+extern int bind(int, const struct sockaddr *, socklen_t);
+extern int socket(int, int, int);
+extern ssize_t recvmsg(int, struct msghdr *, int);
+extern ssize_t sendto(int, const void *, size_t, int,
         const struct sockaddr *, socklen_t);
-extern int __POSIX_DEF__(connect)(int, const struct sockaddr *, socklen_t);
-extern ssize_t __POSIX_DEF__(sendmsg)(int, const struct msghdr *, int);
-extern int __POSIX_DEF__(listen)(int, int);
-extern int __POSIX_DEF__(setsockopt)(int, int, int, const void *, socklen_t);
-extern int __POSIX_DEF__(getsockname)(int, struct sockaddr *, socklen_t *);
-extern int __POSIX_DEF__(accept)(int, struct sockaddr *, socklen_t *);
-extern int __POSIX_DEF__(sockclose)(int);
+extern int connect(int, const struct sockaddr *, socklen_t);
+extern ssize_t sendmsg(int, const struct msghdr *, int);
+extern int listen(int, int);
+extern int setsockopt(int, int, int, const void *, socklen_t);
+extern int getsockname(int, struct sockaddr *, socklen_t *);
+extern int accept(int, struct sockaddr *, socklen_t *);
+extern int sockclose(int);
 
 #endif
 

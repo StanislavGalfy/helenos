@@ -50,14 +50,16 @@ typedef struct {
     list_t msg_queue; 
 } raw_socket_t;
 
-int raw_socket (int, int, int, int);
-int raw_socket_setsockopt(common_socket_t *, int, int, const void *, socklen_t);
-int raw_socket_fdisset(common_socket_t *, sysarg_t *);
-bool raw_socket_read_avail(common_socket_t *);
-int raw_socket_sendmsg(common_socket_t *, const struct msghdr *, int);
-int raw_socket_inet_ev_recv(inet_dgram_t*);
-int raw_socket_recvmsg(common_socket_t *, struct msghdr *, int, size_t *);
-int raw_socket_close(common_socket_t *); 
+errno_t raw_socket (int, int, int, int, int *);
+errno_t raw_socket_setsockopt(common_socket_t *, int, int, const void *,
+    socklen_t);
+errno_t raw_socket_fdisset(common_socket_t *, sysarg_t *);
+errno_t raw_socket_read_avail(common_socket_t *, bool *);
+errno_t raw_socket_sendmsg(common_socket_t *, const struct msghdr *, int,
+    size_t *);
+errno_t raw_socket_inet_ev_recv(inet_dgram_t*);
+errno_t raw_socket_recvmsg(common_socket_t *, struct msghdr *, int, size_t *);
+errno_t raw_socket_close(common_socket_t *); 
 
 #endif
 

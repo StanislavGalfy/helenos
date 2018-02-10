@@ -48,6 +48,7 @@
 #include <errno.h>
 #include <inet/inetcfg.h>
 #include <nic_iface.h>
+#include <mem.h>
 
 #include "raw_socket.h"
 #include "common_socket.h"
@@ -73,7 +74,7 @@ typedef struct {
  * @param session_id - session id
  * @return - created socket id
  */
-int raw_socket (int domain, int type, int protocol, int session_id)
+errno_t raw_socket (int domain, int type, int protocol, int session_id, int *fd)
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "    - Creating raw socket");
     
@@ -82,7 +83,8 @@ int raw_socket (int domain, int type, int protocol, int session_id)
         common_socket_init(&raw_socket->socket, AF_INET, SOCK_RAW, protocol,
                 session_id);
         list_initialize(&raw_socket->msg_queue);
-        return raw_socket->socket.id;
+        *fd = raw_socket->socket.id;
+        return EOK;
 }
 
 /** Sets option for raw socket.
@@ -94,7 +96,7 @@ int raw_socket (int domain, int type, int protocol, int session_id)
  * @param optlen - option value length 
  * @return EOK on success, error code on failure
  */
-int raw_socket_setsockopt(common_socket_t *socket, int level, int optname,
+errno_t raw_socket_setsockopt(common_socket_t *socket, int level, int optname,
     const void *optval, socklen_t optlen) 
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - raw_socket_setsockopt()");
@@ -170,19 +172,12 @@ int raw_socket_setsockopt(common_socket_t *socket, int level, int optname,
         return retval;
 }
 
-int raw_socket_fdisset(common_socket_t *socket, sysarg_t *fdisset) 
+errno_t raw_socket_read_avail(common_socket_t *socket, bool *read_avail) 
 {
         raw_socket_t *raw_socket = (raw_socket_t*)socket;
-        *fdisset = !list_empty(&raw_socket->msg_queue);
+        *read_avail = !list_empty(&raw_socket->msg_queue);
         return EOK;
 }
-
-bool raw_socket_read_avail(common_socket_t *socket) 
-{
-        raw_socket_t *raw_socket = (raw_socket_t*)socket;
-        return !list_empty(&raw_socket->msg_queue);
-}
-
 
 /** Sends message through raw socket
  * 
@@ -191,8 +186,8 @@ bool raw_socket_read_avail(common_socket_t *socket)
  * @param flags - UNUSED
  * @return - EOK on success, error code on failure
  */
-int raw_socket_sendmsg(common_socket_t *socket,
-    const struct msghdr *msg, int flags) 
+errno_t raw_socket_sendmsg(common_socket_t *socket, const struct msghdr *msg,
+        int flags, size_t *nsent) 
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - raw_socket_sendmsg()");
         
@@ -227,6 +222,7 @@ int raw_socket_sendmsg(common_socket_t *socket,
                 return rc;    
         dgram.src = src;
     
+        *nsent = dgram.size;
         return inet_send(&dgram, INET_TTL_MAX, 0);
 }
 
@@ -293,7 +289,7 @@ int raw_socket_inet_ev_recv(inet_dgram_t *dgram)
  * @param rsize - pointer, where will be stored number of received bytes
  * @return - EOK on success, error code on failure
  */
-int raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
+errno_t raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
     int flags, size_t *rsize) 
 {
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - raw_socket_recvmsg()");
@@ -368,7 +364,7 @@ int raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
  * @param socket - the socket to close
  * @return - EOK
  */
-int raw_socket_close(common_socket_t* socket) 
+errno_t raw_socket_close(common_socket_t* socket) 
 {   
         log_msg(LOG_DEFAULT, LVL_DEBUG2, " - raw_socket_close()");
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);

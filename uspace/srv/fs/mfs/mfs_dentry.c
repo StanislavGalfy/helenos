@@ -30,6 +30,7 @@
  * @{
  */
 
+#include <str.h>
 #include "mfs.h"
 
 /**Read a directory entry from disk.
@@ -39,9 +40,9 @@
  *			the dentry info will be stored.
  * @param index		index of the dentry in the list.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-int
+errno_t
 mfs_read_dentry(struct mfs_node *mnode,
     struct mfs_dentry_info *d_info, unsigned index)
 {
@@ -51,7 +52,7 @@ mfs_read_dentry(struct mfs_node *mnode,
 	uint32_t block;
 	block_t *b;
 
-	int r = mfs_read_map(&block, mnode, index * sbi->dirsize);
+	errno_t r = mfs_read_map(&block, mnode, index * sbi->dirsize);
 	if (r != EOK)
 		goto out_err;
 
@@ -102,9 +103,9 @@ out_err:
  *
  * @param d_info The directory entry to write to disk.
  *
- * @return	 EOK on success or a negative error code.
+ * @return	 EOK on success or an error code.
  */
-int
+errno_t
 mfs_write_dentry(struct mfs_dentry_info *d_info)
 {
 	struct mfs_node *mnode = d_info->node;
@@ -113,7 +114,7 @@ mfs_write_dentry(struct mfs_dentry_info *d_info)
 	const unsigned dirs_per_block = sbi->block_size / sbi->dirsize;
 	block_t *b;
 	uint32_t block;
-	int r;
+	errno_t r;
 
 	r = mfs_read_map(&block, mnode, d_off_bytes);
 	if (r != EOK)
@@ -153,14 +154,14 @@ out:
  * @param mnode		Pointer to the directory node.
  * @param d_name	Name of the directory entry to delete.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-int
+errno_t
 mfs_remove_dentry(struct mfs_node *mnode, const char *d_name)
 {
 	struct mfs_sb_info *sbi = mnode->instance->sbi;
 	struct mfs_dentry_info d_info;
-	int r;
+	errno_t r;
 
 	const size_t name_len = str_size(d_name);
 
@@ -194,13 +195,13 @@ mfs_remove_dentry(struct mfs_node *mnode, const char *d_name)
  * @param d_name	Name of the new directory entry.
  * @param d_inum	index of the inode that will be pointed by the new dentry.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-int
+errno_t
 mfs_insert_dentry(struct mfs_node *mnode, const char *d_name,
     fs_index_t d_inum)
 {
-	int r;
+	errno_t r;
 	struct mfs_sb_info *sbi = mnode->instance->sbi;
 	struct mfs_dentry_info d_info;
 	bool empty_dentry_found = false;

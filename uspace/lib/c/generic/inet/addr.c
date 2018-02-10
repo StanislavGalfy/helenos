@@ -42,6 +42,7 @@
 #include <malloc.h>
 #include <bitops.h>
 #include <inttypes.h>
+#include <str.h>
 
 #define INET_PREFIXSTRSIZE  5
 
@@ -320,7 +321,8 @@ int inet_naddrs_compare (const inet_naddr_t *naddr_a, const inet_naddr_t *naddr_
 	}
 }
 
-static int inet_addr_parse_v4(const char *str, inet_addr_t *raddr,
+
+static errno_t inet_addr_parse_v4(const char *str, inet_addr_t *raddr,
     int *prefix, char **endptr)
 {
 	uint32_t a = 0;
@@ -329,7 +331,7 @@ static int inet_addr_parse_v4(const char *str, inet_addr_t *raddr,
 	size_t i = 0;
 
 	while (i < 4) {
-		int rc = str_uint8_t(cur, (const char **)&cur, 10, false, &b);
+		errno_t rc = str_uint8_t(cur, (const char **)&cur, 10, false, &b);
 		if (rc != EOK)
 			return rc;
 
@@ -369,7 +371,7 @@ static int inet_addr_parse_v4(const char *str, inet_addr_t *raddr,
 	return EOK;
 }
 
-static int inet_addr_parse_v6(const char *str, inet_addr_t *raddr, int *prefix,
+static errno_t inet_addr_parse_v6(const char *str, inet_addr_t *raddr, int *prefix,
     char **endptr)
 {
 	uint8_t data[16];
@@ -392,7 +394,7 @@ static int inet_addr_parse_v6(const char *str, inet_addr_t *raddr, int *prefix,
 	while (i < 16) {
 		uint16_t bioctet;
 		const char *gend;
-		int rc = str_uint16_t(cur, &gend, 16, false, &bioctet);
+		errno_t rc = str_uint16_t(cur, &gend, 16, false, &bioctet);
 		if (rc != EOK)
 			break;
 
@@ -476,9 +478,9 @@ static int inet_addr_parse_v6(const char *str, inet_addr_t *raddr, int *prefix,
  * @return EOK on success, EINVAL if input is not in valid format.
  *
  */
-int inet_addr_parse(const char *text, inet_addr_t *addr, char **endptr)
+errno_t inet_addr_parse(const char *text, inet_addr_t *addr, char **endptr)
 {
-	int rc;
+	errno_t rc;
 
 	rc = inet_addr_parse_v4(text, addr, NULL, endptr);
 	if (rc == EOK)
@@ -503,9 +505,9 @@ int inet_addr_parse(const char *text, inet_addr_t *addr, char **endptr)
  * @return EOK on success, EINVAL if input is not in valid format.
  *
  */
-int inet_naddr_parse(const char *text, inet_naddr_t *naddr, char **endptr)
+errno_t inet_naddr_parse(const char *text, inet_naddr_t *naddr, char **endptr)
 {
-	int rc;
+	errno_t rc;
 	inet_addr_t addr;
 	int prefix;
 
@@ -524,7 +526,7 @@ int inet_naddr_parse(const char *text, inet_naddr_t *naddr, char **endptr)
 	return EINVAL;
 }
 
-static int inet_addr_format_v4(addr32_t addr, char **bufp)
+static errno_t inet_addr_format_v4(addr32_t addr, char **bufp)
 {
 	int rc;
 
@@ -536,7 +538,7 @@ static int inet_addr_format_v4(addr32_t addr, char **bufp)
 	return EOK;
 }
 
-static int inet_addr_format_v6(const addr128_t addr, char **bufp)
+static errno_t inet_addr_format_v6(const addr128_t addr, char **bufp)
 {
 	*bufp = (char *) malloc(INET6_ADDRSTRLEN);
 	if (*bufp == NULL)
@@ -611,9 +613,9 @@ static int inet_addr_format_v6(const addr128_t addr, char **bufp)
  * @return ENOTSUP on unsupported address family.
  *
  */
-int inet_addr_format(const inet_addr_t *addr, char **bufp)
+errno_t inet_addr_format(const inet_addr_t *addr, char **bufp)
 {
-	int rc;
+	errno_t rc;
 	int ret;
 
 	rc = ENOTSUP;
@@ -646,9 +648,9 @@ int inet_addr_format(const inet_addr_t *addr, char **bufp)
  * @return ENOTSUP on unsupported address family.
  *
  */
-int inet_naddr_format(const inet_naddr_t *naddr, char **bufp)
+errno_t inet_naddr_format(const inet_naddr_t *naddr, char **bufp)
 {
-	int rc;
+	errno_t rc;
 	int ret;
 	char *astr;
 

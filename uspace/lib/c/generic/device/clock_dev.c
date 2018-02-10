@@ -43,13 +43,13 @@
  * @param sess     Session of the device
  * @param t        The current time that will be read from the device
  *
- * @return         EOK on success or a negative error code
+ * @return         EOK on success or an error code
  */
-int
+errno_t
 clock_dev_time_get(async_sess_t *sess, struct tm *t)
 {
 	aid_t req;
-	int ret;
+	errno_t ret;
 
 	async_exch_t *exch = async_exchange_begin(sess);
 
@@ -59,14 +59,14 @@ clock_dev_time_get(async_sess_t *sess, struct tm *t)
 
 	async_exchange_end(exch);
 
-	int rc;
+	errno_t rc;
 	if (ret != EOK) {
 		async_forget(req);
 		return ret;
 	}
 
 	async_wait_for(req, &rc);
-	return (int)rc;
+	return (errno_t)rc;
 }
 
 /** Set the current time
@@ -74,13 +74,13 @@ clock_dev_time_get(async_sess_t *sess, struct tm *t)
  * @param sess   Session of the device
  * @param t      The current time that will be written to the device
  *
- * @return       EOK on success or a negative error code
+ * @return       EOK on success or an error code
  */
-int
+errno_t
 clock_dev_time_set(async_sess_t *sess, struct tm *t)
 {
 	aid_t req;
-	int ret;
+	errno_t ret;
 
 	async_exch_t *exch = async_exchange_begin(sess);
 
@@ -90,14 +90,14 @@ clock_dev_time_set(async_sess_t *sess, struct tm *t)
 
 	async_exchange_end(exch);
 
-	int rc;
+	errno_t rc;
 	if (ret != EOK) {
 		async_forget(req);
 		return ret;
 	}
 
 	async_wait_for(req, &rc);
-	return (int)rc;
+	return (errno_t)rc;
 }
 
 /** @}

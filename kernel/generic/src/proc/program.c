@@ -65,10 +65,10 @@ void *program_loader = NULL;
  * @param name       Name to set for the program's task.
  * @param prg        Buffer for storing program information.
  *
- * @return EOK on success or negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int program_create(as_t *as, uintptr_t entry_addr, char *name, program_t *prg)
+errno_t program_create(as_t *as, uintptr_t entry_addr, char *name, program_t *prg)
 {
 	prg->loader_status = EE_OK;
 	prg->task = task_create(as, name);
@@ -133,10 +133,10 @@ int program_create(as_t *as, uintptr_t entry_addr, char *name, program_t *prg)
  *                        prg->task will be set to NULL and EOK
  *                        will be returned.
  *
- * @return EOK on success or negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int program_create_from_image(void *image_addr, char *name, program_t *prg)
+errno_t program_create_from_image(void *image_addr, char *name, program_t *prg)
 {
 	as_t *as = as_create(0);
 	if (!as)
@@ -170,10 +170,10 @@ int program_create_from_image(void *image_addr, char *name, program_t *prg)
  * @param prg  Buffer for storing program info.
  * @param name Name to set for the program's task.
  *
- * @return EOK on success or negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int program_create_loader(program_t *prg, char *name)
+errno_t program_create_loader(program_t *prg, char *name)
 {
 	as_t *as = as_create(0);
 	if (!as)
@@ -224,23 +224,23 @@ void program_ready(program_t *prg)
  * @return EOK on success or an error code from @ref errno.h.
  *
  */
-sysarg_t sys_program_spawn_loader(char *uspace_name, size_t name_len)
+sys_errno_t sys_program_spawn_loader(char *uspace_name, size_t name_len)
 {
 	/* Cap length of name and copy it from userspace. */
 	if (name_len > TASK_NAME_BUFLEN - 1)
 		name_len = TASK_NAME_BUFLEN - 1;
 	
 	char namebuf[TASK_NAME_BUFLEN];
-	int rc = copy_from_uspace(namebuf, uspace_name, name_len);
-	if (rc != 0)
-		return (sysarg_t) rc;
+	errno_t rc = copy_from_uspace(namebuf, uspace_name, name_len);
+	if (rc != EOK)
+		return (sys_errno_t) rc;
 	
 	namebuf[name_len] = 0;
 	
 	/* Spawn the new task. */
 	program_t prg;
 	rc = program_create_loader(&prg, namebuf);
-	if (rc != 0)
+	if (rc != EOK)
 		return rc;
 	
 	// FIXME: control the permissions 

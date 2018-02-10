@@ -112,16 +112,16 @@ extern uint32_t ext4_superblock_get_features_read_only(ext4_superblock_t *);
 extern void ext4_superblock_set_features_read_only(ext4_superblock_t *,
     uint32_t);
 
-extern const uint8_t * ext4_superblock_get_uuid(ext4_superblock_t *);
+extern const uint8_t *ext4_superblock_get_uuid(ext4_superblock_t *);
 extern void ext4_superblock_set_uuid(ext4_superblock_t *, const uint8_t *);
-extern const char * ext4_superblock_get_volume_name(ext4_superblock_t *);
+extern const char *ext4_superblock_get_volume_name(ext4_superblock_t *);
 extern void ext4_superblock_set_volume_name(ext4_superblock_t *, const char *);
-extern const char * ext4_superblock_get_last_mounted(ext4_superblock_t *);
+extern const char *ext4_superblock_get_last_mounted(ext4_superblock_t *);
 extern void ext4_superblock_set_last_mounted(ext4_superblock_t *, const char *);
 
 extern uint32_t ext4_superblock_get_last_orphan(ext4_superblock_t *);
 extern void ext4_superblock_set_last_orphan(ext4_superblock_t *, uint32_t);
-extern const uint32_t * ext4_superblock_get_hash_seed(ext4_superblock_t *);
+extern const uint32_t *ext4_superblock_get_hash_seed(ext4_superblock_t *);
 extern void ext4_superblock_set_hash_seed(ext4_superblock_t *,
     const uint32_t *);
 extern uint8_t ext4_superblock_get_default_hash_version(ext4_superblock_t *);
@@ -151,10 +151,10 @@ extern bool ext4_superblock_has_feature_incompatible(ext4_superblock_t *,
     uint32_t);
 extern bool ext4_superblock_has_feature_read_only(ext4_superblock_t *,
     uint32_t);
-extern int ext4_superblock_read_direct(service_id_t, ext4_superblock_t **);
-extern int ext4_superblock_write_direct(service_id_t, ext4_superblock_t *);
+extern errno_t ext4_superblock_read_direct(service_id_t, ext4_superblock_t **);
+extern errno_t ext4_superblock_write_direct(service_id_t, ext4_superblock_t *);
 extern void ext4_superblock_release(ext4_superblock_t *);
-extern int ext4_superblock_check_sanity(ext4_superblock_t *);
+extern errno_t ext4_superblock_check_sanity(ext4_superblock_t *);
 
 extern uint32_t ext4_superblock_get_block_group_count(ext4_superblock_t *);
 extern uint32_t ext4_superblock_get_blocks_in_group(ext4_superblock_t *,

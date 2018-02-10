@@ -68,25 +68,25 @@ task_id_t task_get_id(void)
  * @param name The new name, typically the command used to execute the
  *             program.
  *
- * @return Zero on success or negative error code.
+ * @return Zero on success or an error code.
  */
-int task_set_name(const char *name)
+errno_t task_set_name(const char *name)
 {
 	assert(name);
 	
-	return (int) __SYSCALL2(SYS_TASK_SET_NAME, (sysarg_t) name, str_size(name));
+	return (errno_t) __SYSCALL2(SYS_TASK_SET_NAME, (sysarg_t) name, str_size(name));
 }
 
 /** Kill a task.
  *
  * @param task_id ID of task to kill.
  *
- * @return Zero on success or negative error code.
+ * @return Zero on success or an error code.
  */
 
-int task_kill(task_id_t task_id)
+errno_t task_kill(task_id_t task_id)
 {
-	return (int) __SYSCALL1(SYS_TASK_KILL, (sysarg_t) &task_id);
+	return (errno_t) __SYSCALL1(SYS_TASK_KILL, (sysarg_t) &task_id);
 }
 
 /** Create a new task by running an executable from the filesystem.
@@ -100,10 +100,10 @@ int task_kill(task_id_t task_id)
  * @param path Pathname of the binary to execute.
  * @param argv Command-line arguments.
  *
- * @return Zero on success or negative error code.
+ * @return Zero on success or an error code.
  *
  */
-int task_spawnv(task_id_t *id, task_wait_t *wait, const char *path,
+errno_t task_spawnv(task_id_t *id, task_wait_t *wait, const char *path,
     const char *const args[])
 {
 	/* Send default files */
@@ -142,10 +142,10 @@ int task_spawnv(task_id_t *id, task_wait_t *wait, const char *path,
  * @param std_out File to use as stdout.
  * @param std_err File to use as stderr.
  *
- * @return Zero on success or negative error code.
+ * @return Zero on success or an error code.
  *
  */
-int task_spawnvf(task_id_t *id, task_wait_t *wait, const char *path,
+errno_t task_spawnvf(task_id_t *id, task_wait_t *wait, const char *path,
     const char *const args[], int fd_stdin, int fd_stdout, int fd_stderr)
 {
 	/* Connect to a program loader. */
@@ -157,7 +157,7 @@ int task_spawnvf(task_id_t *id, task_wait_t *wait, const char *path,
 	
 	/* Get task ID. */
 	task_id_t task_id;
-	int rc = loader_get_task_id(ldr, &task_id);
+	errno_t rc = loader_get_task_id(ldr, &task_id);
 	if (rc != EOK)
 		goto error;
 	
@@ -248,10 +248,10 @@ error:
  * @param cnt  Number of arguments.
  * @param ap   Command-line arguments.
  *
- * @return Zero on success or negative error code.
+ * @return Zero on success or an error code.
  *
  */
-int task_spawn(task_id_t *task_id, task_wait_t *wait, const char *path,
+errno_t task_spawn(task_id_t *task_id, task_wait_t *wait, const char *path,
     int cnt, va_list ap)
 {
 	/* Allocate argument list. */
@@ -268,7 +268,7 @@ int task_spawn(task_id_t *task_id, task_wait_t *wait, const char *path,
 	} while (arg != NULL);
 	
 	/* Spawn task. */
-	int rc = task_spawnv(task_id, wait, path, arglist);
+	errno_t rc = task_spawnv(task_id, wait, path, arglist);
 	
 	/* Free argument list. */
 	free(arglist);
@@ -286,10 +286,10 @@ int task_spawn(task_id_t *task_id, task_wait_t *wait, const char *path,
  * @param path Pathname of the binary to execute.
  * @param ...  Command-line arguments.
  *
- * @return Zero on success or negative error code.
+ * @return Zero on success or an error code.
  *
  */
-int task_spawnl(task_id_t *task_id, task_wait_t *wait, const char *path, ...)
+errno_t task_spawnl(task_id_t *task_id, task_wait_t *wait, const char *path, ...)
 {
 	/* Count the number of arguments. */
 	
@@ -305,7 +305,7 @@ int task_spawnl(task_id_t *task_id, task_wait_t *wait, const char *path, ...)
 	va_end(ap);
 	
 	va_start(ap, path);
-	int rc = task_spawn(task_id, wait, path, cnt, ap);
+	errno_t rc = task_spawn(task_id, wait, path, cnt, ap);
 	va_end(ap);
 	
 	return rc;
@@ -322,7 +322,7 @@ int task_spawnl(task_id_t *task_id, task_wait_t *wait, const char *path, ...)
  *
  * @return EOK on success, else error code.
  */
-int task_setup_wait(task_id_t id, task_wait_t *wait)
+errno_t task_setup_wait(task_id_t id, task_wait_t *wait)
 {
 	async_sess_t *sess_ns = ns_session_get();
 	if (sess_ns == NULL)
@@ -363,12 +363,12 @@ void task_cancel_wait(task_wait_t *wait) {
  * 
  * @return EOK on success, else error code.
  */
-int task_wait(task_wait_t *wait, task_exit_t *texit, int *retval)
+errno_t task_wait(task_wait_t *wait, task_exit_t *texit, int *retval)
 {
 	assert(texit);
 	assert(retval);
 
-	int rc;
+	errno_t rc;
 	async_wait_for(wait->aid, &rc);
 
 	if (rc == EOK) {
@@ -393,24 +393,24 @@ int task_wait(task_wait_t *wait, task_exit_t *texit, int *retval)
  * 
  * @return EOK on success, else error code.
  */
-int task_wait_task_id(task_id_t id, task_exit_t *texit, int *retval)
+errno_t task_wait_task_id(task_id_t id, task_exit_t *texit, int *retval)
 {
 	task_wait_t wait;
-	int rc = task_setup_wait(id, &wait);
+	errno_t rc = task_setup_wait(id, &wait);
 	if (rc != EOK)
 		return rc;
 	
 	return task_wait(&wait, texit, retval);
 }
 
-int task_retval(int val)
+errno_t task_retval(int val)
 {
 	async_sess_t *sess_ns = ns_session_get();
 	if (sess_ns == NULL)
 		return EIO;
 
 	async_exch_t *exch = async_exchange_begin(sess_ns);
-	int rc = (int) async_req_1_0(exch, NS_RETVAL, val);
+	errno_t rc = (errno_t) async_req_1_0(exch, NS_RETVAL, val);
 	async_exchange_end(exch);
 	
 	return rc;

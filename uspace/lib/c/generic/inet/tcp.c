@@ -41,9 +41,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <io/log.h>
+#include <mem.h>
 
 static void tcp_cb_conn(ipc_callid_t, ipc_call_t *, void *);
-static int tcp_conn_fibril(void *);
+static errno_t tcp_conn_fibril(void *);
 
 /** Incoming TCP connection info
  *
@@ -60,16 +61,16 @@ typedef struct {
 /** Create callback connection from TCP service.
  *
  * @param tcp TCP service
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-static int tcp_callback_create(tcp_t *tcp)
+static errno_t tcp_callback_create(tcp_t *tcp)
 {
 	async_exch_t *exch = async_exchange_begin(tcp->sess);
 
 	aid_t req = async_send_0(exch, TCP_CALLBACK_CREATE, NULL);
 	
 	port_id_t port;
-	int rc = async_create_callback_port(exch, INTERFACE_TCP_CB, 0, 0,
+	errno_t rc = async_create_callback_port(exch, INTERFACE_TCP_CB, 0, 0,
 	    tcp_cb_conn, tcp, &port);
 	
 	async_exchange_end(exch);
@@ -77,7 +78,7 @@ static int tcp_callback_create(tcp_t *tcp)
 	if (rc != EOK)
 		return rc;
 
-	int retval;
+	errno_t retval;
 	async_wait_for(req, &retval);
 
 	return retval;
@@ -89,11 +90,11 @@ static int tcp_callback_create(tcp_t *tcp)
  * @return EOK on success, ENOMEM if out of memory, EIO if service
  *         cannot be contacted
  */
-int tcp_create(tcp_t **rtcp)
+errno_t tcp_create(tcp_t **rtcp)
 {
 	tcp_t *tcp;
 	service_id_t tcp_svcid;
-	int rc;
+	errno_t rc;
 
 	tcp = calloc(1, sizeof(tcp_t));
 	if (tcp == NULL) {
@@ -162,7 +163,7 @@ void tcp_destroy(tcp_t *tcp)
  *
  * @return EOK on success, ENOMEM if out of memory
  */
-static int tcp_conn_new(tcp_t *tcp, sysarg_t id, tcp_cb_t *cb, void *arg,
+static errno_t tcp_conn_new(tcp_t *tcp, sysarg_t id, tcp_cb_t *cb, void *arg,
     inet_ep2_t *ident, tcp_conn_t **rconn)
 {
 	tcp_conn_t *conn;
@@ -209,9 +210,9 @@ static int tcp_conn_new(tcp_t *tcp, sysarg_t id, tcp_cb_t *cb, void *arg,
  * @param arg   Argument to callbacks
  * @param rconn Place to store pointer to new connection
  *
- * @return EOK on success or negative error code.
+ * @return EOK on success or an error code.
  */
-int tcp_conn_create(tcp_t *tcp, inet_ep2_t *epp, tcp_cb_t *cb, void *arg,
+errno_t tcp_conn_create(tcp_t *tcp, inet_ep2_t *epp, tcp_cb_t *cb, void *arg,
     tcp_conn_t **rconn)
 {
 	async_exch_t *exch;
@@ -220,12 +221,12 @@ int tcp_conn_create(tcp_t *tcp, inet_ep2_t *epp, tcp_cb_t *cb, void *arg,
 
 	exch = async_exchange_begin(tcp->sess);
 	aid_t req = async_send_0(exch, TCP_CONN_CREATE, &answer);
-	int rc = async_data_write_start(exch, (void *)epp,
+	errno_t rc = async_data_write_start(exch, (void *)epp,
 	    sizeof(inet_ep2_t));
 	async_exchange_end(exch);
 
 	if (rc != EOK) {
-		int rc_orig;
+		errno_t rc_orig;
 		async_wait_for(req, &rc_orig);
 		if (rc_orig != EOK)
 			rc = rc_orig;
@@ -244,7 +245,7 @@ int tcp_conn_create(tcp_t *tcp, inet_ep2_t *epp, tcp_cb_t *cb, void *arg,
 
 	return EOK;
 error:
-	return (int) rc;
+	return (errno_t) rc;
 }
 
 /** Destroy TCP connection.
@@ -264,7 +265,7 @@ void tcp_conn_destroy(tcp_conn_t *conn)
 	list_remove(&conn->ltcp);
 
 	exch = async_exchange_begin(conn->tcp->sess);
-	int rc = async_req_1_0(exch, TCP_CONN_DESTROY, conn->id);
+	errno_t rc = async_req_1_0(exch, TCP_CONN_DESTROY, conn->id);
 	async_exchange_end(exch);
 
 	free(conn);
@@ -279,7 +280,7 @@ void tcp_conn_destroy(tcp_conn_t *conn)
  *
  * @return EOK on success, EINVAL if no connection with the given ID exists
  */
-static int tcp_conn_get(tcp_t *tcp, sysarg_t id, tcp_conn_t **rconn)
+static errno_t tcp_conn_get(tcp_t *tcp, sysarg_t id, tcp_conn_t **rconn)
 {
 	list_foreach(tcp->conn, ltcp, tcp_conn_t, conn) {
 		if (conn->id == id) {
@@ -320,9 +321,9 @@ void *tcp_conn_userptr(tcp_conn_t *conn)
  * @param arg  Connection argument for every new connection
  * @param rlst Place to store pointer to new listener
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int tcp_listener_create(tcp_t *tcp, inet_ep_t *ep, tcp_listen_cb_t *lcb,
+errno_t tcp_listener_create(tcp_t *tcp, inet_ep_t *ep, tcp_listen_cb_t *lcb,
     void *larg, tcp_cb_t *cb, void *arg, tcp_listener_t **rlst)
 {
 	async_exch_t *exch;
@@ -335,12 +336,12 @@ int tcp_listener_create(tcp_t *tcp, inet_ep_t *ep, tcp_listen_cb_t *lcb,
 
 	exch = async_exchange_begin(tcp->sess);
 	aid_t req = async_send_0(exch, TCP_LISTENER_CREATE, &answer);
-	int rc = async_data_write_start(exch, (void *)ep,
+	errno_t rc = async_data_write_start(exch, (void *)ep,
 	    sizeof(inet_ep_t));
 	async_exchange_end(exch);
 
 	if (rc != EOK) {
-		int rc_orig;
+		errno_t rc_orig;
 		async_wait_for(req, &rc_orig);
 		if (rc_orig != EOK)
 			rc = rc_orig;
@@ -364,7 +365,7 @@ int tcp_listener_create(tcp_t *tcp, inet_ep_t *ep, tcp_listen_cb_t *lcb,
 	return EOK;
 error:
 	free(lst);
-	return (int) rc;
+	return (errno_t) rc;
 }
 
 /** Destroy TCP connection listener.
@@ -381,7 +382,7 @@ void tcp_listener_destroy(tcp_listener_t *lst)
 	list_remove(&lst->ltcp);
 
 	exch = async_exchange_begin(lst->tcp->sess);
-	int rc = async_req_1_0(exch, TCP_LISTENER_DESTROY, lst->id);
+	errno_t rc = async_req_1_0(exch, TCP_LISTENER_DESTROY, lst->id);
 	async_exchange_end(exch);
 
 	free(lst);
@@ -396,7 +397,7 @@ void tcp_listener_destroy(tcp_listener_t *lst)
  *
  * @return EOK on success, EINVAL if no listener with the given ID is found
  */
-static int tcp_listener_get(tcp_t *tcp, sysarg_t id, tcp_listener_t **rlst)
+static errno_t tcp_listener_get(tcp_t *tcp, sysarg_t id, tcp_listener_t **rlst)
 {
 	list_foreach(tcp->listener, ltcp, tcp_listener_t, lst) {
 		if (lst->id == id) {
@@ -428,7 +429,7 @@ void *tcp_listener_userptr(tcp_listener_t *lst)
  * @param conn Connection
  * @return EOK if connection is established, EIO otherwise
  */
-int tcp_conn_wait_connected(tcp_conn_t *conn)
+errno_t tcp_conn_wait_connected(tcp_conn_t *conn)
 {
 	fibril_mutex_lock(&conn->lock);
 	while (!conn->connected && !conn->conn_failed && !conn->conn_reset)
@@ -450,12 +451,12 @@ int tcp_conn_wait_connected(tcp_conn_t *conn)
  * @param data  Data
  * @param bytes Data size in bytes
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int tcp_conn_send(tcp_conn_t *conn, const void *data, size_t bytes)
+errno_t tcp_conn_send(tcp_conn_t *conn, const void *data, size_t bytes)
 {
 	async_exch_t *exch;
-	int rc;
+	errno_t rc;
 
 	exch = async_exchange_begin(conn->tcp->sess);
 	aid_t req = async_send_1(exch, TCP_CONN_SEND, conn->id, NULL);
@@ -482,14 +483,14 @@ int tcp_conn_send(tcp_conn_t *conn, const void *data, size_t bytes)
  * Send FIN, indicating no more data will be send over the connection.
  *
  * @param conn Connection
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int tcp_conn_send_fin(tcp_conn_t *conn)
+errno_t tcp_conn_send_fin(tcp_conn_t *conn)
 {
 	async_exch_t *exch;
 
 	exch = async_exchange_begin(conn->tcp->sess);
-	int rc = async_req_1_0(exch, TCP_CONN_SEND_FIN, conn->id);
+	errno_t rc = async_req_1_0(exch, TCP_CONN_SEND_FIN, conn->id);
 	async_exchange_end(exch);
 
 	return rc;
@@ -498,14 +499,14 @@ int tcp_conn_send_fin(tcp_conn_t *conn)
 /** Push connection.
  *
  * @param conn Connection
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int tcp_conn_push(tcp_conn_t *conn)
+errno_t tcp_conn_push(tcp_conn_t *conn)
 {
 	async_exch_t *exch;
 
 	exch = async_exchange_begin(conn->tcp->sess);
-	int rc = async_req_1_0(exch, TCP_CONN_PUSH, conn->id);
+	errno_t rc = async_req_1_0(exch, TCP_CONN_PUSH, conn->id);
 	async_exchange_end(exch);
 
 	return rc;
@@ -514,14 +515,14 @@ int tcp_conn_push(tcp_conn_t *conn)
 /** Reset connection.
  *
  * @param conn Connection
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int tcp_conn_reset(tcp_conn_t *conn)
+errno_t tcp_conn_reset(tcp_conn_t *conn)
 {
 	async_exch_t *exch;
 
 	exch = async_exchange_begin(conn->tcp->sess);
-	int rc = async_req_1_0(exch, TCP_CONN_RESET, conn->id);
+	errno_t rc = async_req_1_0(exch, TCP_CONN_RESET, conn->id);
 	async_exchange_end(exch);
 
 	return rc;
@@ -542,9 +543,9 @@ int tcp_conn_reset(tcp_conn_t *conn)
  * @param nrecv Place to store actual number of received bytes
  *
  * @return EOK on success, EAGAIN if no received data is pending, or other
- *         negative error code in case of other error
+ *         error code in case of other error
  */
-int tcp_conn_recv(tcp_conn_t *conn, void *buf, size_t bsize, size_t *nrecv)
+errno_t tcp_conn_recv(tcp_conn_t *conn, void *buf, size_t bsize, size_t *nrecv)
 {
 	async_exch_t *exch;
 	ipc_call_t answer;
@@ -557,7 +558,7 @@ int tcp_conn_recv(tcp_conn_t *conn, void *buf, size_t bsize, size_t *nrecv)
 
 	exch = async_exchange_begin(conn->tcp->sess);
 	aid_t req = async_send_1(exch, TCP_CONN_RECV, conn->id, &answer);
-	int rc = async_data_read_start(exch, buf, bsize);
+	errno_t rc = async_data_read_start(exch, buf, bsize);
 	async_exchange_end(exch);
 
 	if (rc != EOK) {
@@ -569,7 +570,7 @@ int tcp_conn_recv(tcp_conn_t *conn, void *buf, size_t bsize, size_t *nrecv)
 		return rc;
 	}
 
-	int retval;
+	errno_t retval;
 	async_wait_for(req, &retval);
 	if (retval != EOK) {
 		fibril_mutex_unlock(&conn->lock);
@@ -593,9 +594,9 @@ int tcp_conn_recv(tcp_conn_t *conn, void *buf, size_t bsize, size_t *nrecv)
  * @param bsize Buffer size
  * @param nrecv Place to store actual number of received bytes
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-int tcp_conn_recv_wait(tcp_conn_t *conn, void *buf, size_t bsize,
+errno_t tcp_conn_recv_wait(tcp_conn_t *conn, void *buf, size_t bsize,
     size_t *nrecv)
 {
 	async_exch_t *exch;
@@ -609,7 +610,7 @@ again:
 
 	exch = async_exchange_begin(conn->tcp->sess);
 	aid_t req = async_send_1(exch, TCP_CONN_RECV_WAIT, conn->id, &answer);
-	int rc = async_data_read_start(exch, buf, bsize);
+	errno_t rc = async_data_read_start(exch, buf, bsize);
 	async_exchange_end(exch);
 
 	if (rc != EOK) {
@@ -623,7 +624,7 @@ again:
 		return rc;
 	}
 
-	int retval;
+	errno_t retval;
 	async_wait_for(req, &retval);
 	if (retval != EOK) {
 		if (rc == EAGAIN) {
@@ -648,7 +649,7 @@ static void tcp_ev_connected(tcp_t *tcp, ipc_callid_t iid, ipc_call_t *icall)
 {
 	tcp_conn_t *conn;
 	sysarg_t conn_id;
-	int rc;
+	errno_t rc;
 
 	conn_id = IPC_GET_ARG1(*icall);
 
@@ -676,7 +677,7 @@ static void tcp_ev_conn_failed(tcp_t *tcp, ipc_callid_t iid, ipc_call_t *icall)
 {
 	tcp_conn_t *conn;
 	sysarg_t conn_id;
-	int rc;
+	errno_t rc;
 
 	conn_id = IPC_GET_ARG1(*icall);
 
@@ -704,7 +705,7 @@ static void tcp_ev_conn_reset(tcp_t *tcp, ipc_callid_t iid, ipc_call_t *icall)
 {
 	tcp_conn_t *conn;
 	sysarg_t conn_id;
-	int rc;
+	errno_t rc;
 
 	conn_id = IPC_GET_ARG1(*icall);
 
@@ -732,7 +733,7 @@ static void tcp_ev_data(tcp_t *tcp, ipc_callid_t iid, ipc_call_t *icall)
 {
 	tcp_conn_t *conn;
 	sysarg_t conn_id;
-	int rc;
+	errno_t rc;
 
 	conn_id = IPC_GET_ARG1(*icall);
 
@@ -776,7 +777,7 @@ static void tcp_ev_new_conn(tcp_t *tcp, ipc_callid_t iid, ipc_call_t *icall)
 	sysarg_t conn_id;
 	fid_t fid;
 	tcp_in_conn_t *cinfo;
-	int rc;
+	errno_t rc;
 
 	lst_id = IPC_GET_ARG1(*icall);
 	conn_id = IPC_GET_ARG2(*icall);
@@ -893,7 +894,7 @@ out:
  *
  * @param arg Argument, incoming connection information (@c tcp_in_conn_t)
  */
-static int tcp_conn_fibril(void *arg)
+static errno_t tcp_conn_fibril(void *arg)
 {
 	tcp_in_conn_t *cinfo = (tcp_in_conn_t *)arg;
 

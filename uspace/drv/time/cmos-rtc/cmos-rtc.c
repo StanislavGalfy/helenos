@@ -79,25 +79,25 @@ typedef struct rtc {
 
 static rtc_t *dev_rtc(ddf_dev_t *dev);
 static rtc_t *fun_rtc(ddf_fun_t *fun);
-static int
+static errno_t
 rtc_battery_status_get(ddf_fun_t *fun, battery_status_t *status);
-static int  rtc_time_get(ddf_fun_t *fun, struct tm *t);
-static int  rtc_time_set(ddf_fun_t *fun, struct tm *t);
-static int  rtc_dev_add(ddf_dev_t *dev);
-static int  rtc_dev_initialize(rtc_t *rtc);
+static errno_t  rtc_time_get(ddf_fun_t *fun, struct tm *t);
+static errno_t  rtc_time_set(ddf_fun_t *fun, struct tm *t);
+static errno_t  rtc_dev_add(ddf_dev_t *dev);
+static errno_t  rtc_dev_initialize(rtc_t *rtc);
 static bool rtc_pio_enable(rtc_t *rtc);
 static void rtc_dev_cleanup(rtc_t *rtc);
-static int  rtc_open(ddf_fun_t *fun);
+static errno_t  rtc_open(ddf_fun_t *fun);
 static void rtc_close(ddf_fun_t *fun);
 static bool rtc_update_in_progress(rtc_t *rtc);
 static int  rtc_register_read(rtc_t *rtc, int reg);
 static unsigned bcd2bin(unsigned bcd);
 static unsigned bin2bcd(unsigned binary);
-static int rtc_dev_remove(ddf_dev_t *dev);
+static errno_t rtc_dev_remove(ddf_dev_t *dev);
 static void rtc_register_write(rtc_t *rtc, int reg, int data);
 static bool is_battery_ok(rtc_t *rtc);
-static int  rtc_fun_online(ddf_fun_t *fun);
-static int  rtc_fun_offline(ddf_fun_t *fun);
+static errno_t  rtc_fun_online(ddf_fun_t *fun);
+static errno_t  rtc_fun_offline(ddf_fun_t *fun);
 
 static ddf_dev_ops_t rtc_dev_ops;
 
@@ -189,12 +189,12 @@ rtc_pio_enable(rtc_t *rtc)
  *
  * @param rtc  Pointer to the RTC device
  *
- * @return  EOK on success or a negative error code
+ * @return  EOK on success or an error code
  */ 
-static int
+static errno_t
 rtc_dev_initialize(rtc_t *rtc)
 {
-	int rc;
+	errno_t rc;
 	size_t i;
 	hw_resource_t *res;
 	bool ioport = false;
@@ -313,9 +313,9 @@ rtc_update_in_progress(rtc_t *rtc)
  * @param fun  The RTC function
  * @param t    Pointer to the time variable
  *
- * @return  EOK on success or a negative error code
+ * @return  EOK on success or an error code
  */
-static int
+static errno_t
 rtc_time_get(ddf_fun_t *fun, struct tm *t)
 {
 	bool bcd_mode;
@@ -411,7 +411,7 @@ rtc_time_get(ddf_fun_t *fun, struct tm *t)
 
 	/* Try to normalize the content of the tm structure */
 	time_t r = mktime(t);
-	int result;
+	errno_t result;
 
 	if (r < 0)
 		result = EINVAL;
@@ -435,9 +435,9 @@ rtc_time_get(ddf_fun_t *fun, struct tm *t)
  * @param fun  The RTC function
  * @param t    The time value to set
  *
- * @return  EOK or a negative error code
+ * @return  EOK or an error code
  */
-static int
+static errno_t
 rtc_time_set(ddf_fun_t *fun, struct tm *t)
 {
 	bool bcd_mode;
@@ -543,9 +543,9 @@ rtc_time_set(ddf_fun_t *fun, struct tm *t)
  * @param fun    The RTC function
  * @param status The status of the battery
  *
- * @return       EOK on success or a negative error code
+ * @return       EOK on success or an error code
  */
-static int
+static errno_t
 rtc_battery_status_get(ddf_fun_t *fun, battery_status_t *status)
 {
 	rtc_t *rtc = fun_rtc(fun);
@@ -576,14 +576,14 @@ is_battery_ok(rtc_t *rtc)
  *
  * @param dev  The RTC device
  *
- * @return  EOK on success or a negative error code
+ * @return  EOK on success or an error code
  */
-static int
+static errno_t
 rtc_dev_add(ddf_dev_t *dev)
 {
 	rtc_t *rtc;
 	ddf_fun_t *fun = NULL;
-	int rc;
+	errno_t rc;
 	bool need_cleanup = false;
 
 	ddf_msg(LVL_DEBUG, "rtc_dev_add %s (handle = %d)",
@@ -642,13 +642,13 @@ error:
  *
  * @param dev   The RTC device
  *
- * @return      EOK on success or a negative error code
+ * @return      EOK on success or an error code
  */
-static int
+static errno_t
 rtc_dev_remove(ddf_dev_t *dev)
 {
 	rtc_t *rtc = dev_rtc(dev);
-	int rc;
+	errno_t rc;
 
 	fibril_mutex_lock(&rtc->mutex);
 	if (rtc->clients_connected > 0) {
@@ -681,12 +681,12 @@ rtc_dev_remove(ddf_dev_t *dev)
  *
  * @param fun   The function node
  *
- * @return  EOK on success or a negative error code
+ * @return  EOK on success or an error code
  */
-static int
+static errno_t
 rtc_open(ddf_fun_t *fun)
 {
-	int rc;
+	errno_t rc;
 	rtc_t *rtc = fun_rtc(fun);
 
 	fibril_mutex_lock(&rtc->mutex);
@@ -743,10 +743,10 @@ bin2bcd(unsigned binary)
 	return ((binary / 10) << 4) + (binary % 10);
 }
 
-static int
+static errno_t
 rtc_fun_online(ddf_fun_t *fun)
 {
-	int rc;
+	errno_t rc;
 
 	ddf_msg(LVL_DEBUG, "rtc_fun_online()");
 
@@ -757,7 +757,7 @@ rtc_fun_online(ddf_fun_t *fun)
 	return rc;
 }
 
-static int
+static errno_t
 rtc_fun_offline(ddf_fun_t *fun)
 {
 	ddf_msg(LVL_DEBUG, "rtc_fun_offline()");

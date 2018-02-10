@@ -296,7 +296,7 @@ FILE *fopen(const char *path, const char *fmode)
 	if (create)
 		flags |= WALK_MAY_CREATE;
 	int file;
-	int rc = vfs_lookup(path, flags, &file);
+	errno_t rc = vfs_lookup(path, flags, &file);
 	if (rc != EOK) {
 		errno = rc;
 		free(stream);
@@ -363,7 +363,7 @@ FILE *fdopen(int fd, const char *mode)
 
 static int _fclose_nofree(FILE *stream)
 {
-	int rc = 0;
+	errno_t rc = 0;
 	
 	fflush(stream);
 	
@@ -432,7 +432,7 @@ FILE *freopen(const char *path, const char *mode, FILE *stream)
  */
 static size_t _fread(void *buf, size_t size, size_t nmemb, FILE *stream)
 {
-	int rc;
+	errno_t rc;
 	size_t nread;
 
 	if (size == 0 || nmemb == 0)
@@ -461,7 +461,7 @@ static size_t _fread(void *buf, size_t size, size_t nmemb, FILE *stream)
  */
 static size_t _fwrite(const void *buf, size_t size, size_t nmemb, FILE *stream)
 {
-	int rc;
+	errno_t rc;
 	size_t nwritten;
 
 	if (size == 0 || nmemb == 0)
@@ -494,7 +494,7 @@ static size_t _fwrite(const void *buf, size_t size, size_t nmemb, FILE *stream)
  */
 static void _ffillbuf(FILE *stream)
 {
-	int rc;
+	errno_t rc;
 	size_t nread;
 
 	stream->buf_head = stream->buf_tail = stream->buf;
@@ -798,9 +798,9 @@ int ungetc(int c, FILE *stream)
 	return (uint8_t)c;
 }
 
-int fseek(FILE *stream, long offset, int whence)
+int fseek64(FILE *stream, off64_t offset, int whence)
 {
-	int rc;
+	errno_t rc;
 
 	if (stream->error)
 		return -1;
@@ -813,7 +813,7 @@ int fseek(FILE *stream, long offset, int whence)
 
 	stream->ungetc_chars = 0;
 
-	struct stat st;
+	vfs_stat_t st;
 	switch (whence) {
 	case SEEK_SET:
 		stream->pos = offset;
@@ -836,12 +836,8 @@ int fseek(FILE *stream, long offset, int whence)
 	return 0;
 }
 
-long ftell(FILE *stream)
+off64_t ftell64(FILE *stream)
 {
-	/* The native position is too large for the C99-ish interface. */
-	if (stream->pos - stream->ungetc_chars > LONG_MAX)
-		return EOF;
-
 	if (stream->error)
 		return EOF;
 	
@@ -852,6 +848,22 @@ long ftell(FILE *stream)
 	}
 
 	return stream->pos - stream->ungetc_chars;
+}
+
+int fseek(FILE *stream, long offset, int whence)
+{
+	return fseek64(stream, offset, whence);
+}
+
+long ftell(FILE *stream)
+{
+	off64_t off = ftell64(stream);
+
+	/* The native position is too large for the C99-ish interface. */
+	if (off > LONG_MAX)
+		return EOF;
+
+	return off;
 }
 
 void rewind(FILE *stream)
@@ -876,7 +888,7 @@ int fflush(FILE *stream)
 	}
 	
 	if ((stream->fd >= 0) && (stream->need_sync)) {
-		int rc;
+		errno_t rc;
 
 		/**
 		 * Better than syncing always, but probably still not the
@@ -933,7 +945,7 @@ async_sess_t *vfs_fsession(FILE *stream, iface_t iface)
 	return NULL;
 }
 
-int vfs_fhandle(FILE *stream, int *handle)
+errno_t vfs_fhandle(FILE *stream, int *handle)
 {
 	if (stream->fd >= 0) {
 		*handle = stream->fd;

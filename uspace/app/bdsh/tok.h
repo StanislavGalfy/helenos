@@ -41,7 +41,7 @@ typedef struct {
 	size_t char_start;
 	size_t byte_length;
 	size_t char_length;
- 	token_type_t type;
+	token_type_t type;
 } token_t;
 
 typedef struct {
@@ -62,8 +62,8 @@ typedef struct {
 	size_t outtok_size;
 } tokenizer_t;
 
-extern int tok_init(tokenizer_t *, char *, token_t *, size_t);
+extern errno_t tok_init(tokenizer_t *, char *, token_t *, size_t);
 extern void tok_fini(tokenizer_t *);
-extern int tok_tokenize(tokenizer_t *, size_t *);
+extern errno_t tok_tokenize(tokenizer_t *, size_t *);
 
 #endif

@@ -54,7 +54,7 @@
 
 /** Macro to handle return value from service acquired by async_wait_for */
 #define CHECK_RETVAL() \
-        if ((int)retval < 0) { \
+        if ((int)retval != EOK) { \
                 errno = retval; \
                 return SOCK_ERR; \
         }
@@ -125,7 +125,8 @@ int socket(int domain, int type, int protocol)
         async_wait_for(req, &retval);
         CHECK_RETVAL();
 
-        return retval;
+        int fd = IPC_GET_ARG1(answer);
+        return fd;
 }
 
 /** Sets option on socket.
@@ -203,7 +204,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
  * @param sockfd - sockets file descriptor
  * @param msg - pointer to message that will be sent
  * @param flags - flags to further configure sending - currently not unsupported
- * @return - numbet of sent bytes on success, SOCK_ERR on failure
+ * @return - number of sent bytes on success, SOCK_ERR on failure
  */
 ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)
 {  
@@ -236,7 +237,8 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)
         async_wait_for(req, &retval);
         CHECK_RETVAL();
 
-        return retval;
+        ssize_t nsent = IPC_GET_ARG1(answer);
+        return nsent;
 }
 
 /** Receives message from a socket.
@@ -293,8 +295,8 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
         async_wait_for(req, &retval);
         CHECK_RETVAL();
 
-        size_t rsize = IPC_GET_ARG1(answer);
-        return rsize;
+        ssize_t nrecv = IPC_GET_ARG1(answer);
+        return nrecv;
 }
 
 ssize_t sockwrite(int sockfd, const void *buf, size_t count) 
@@ -312,7 +314,7 @@ ssize_t sockwrite(int sockfd, const void *buf, size_t count)
         async_wait_for(req, &retval);
         CHECK_RETVAL();
 
-        size_t nsent = IPC_GET_ARG1(answer);
+        ssize_t nsent = IPC_GET_ARG1(answer);
         return nsent;
 }
 
@@ -331,7 +333,7 @@ ssize_t sockread(int sockfd, void *buf, size_t count)
         async_wait_for(req, &retval);
         CHECK_RETVAL();
         
-        size_t nrecv = IPC_GET_ARG1(answer);
+        ssize_t nrecv = IPC_GET_ARG1(answer);
         return nrecv;
 }
 
@@ -351,7 +353,8 @@ int listen(int sockfd, int backlog) {
         async_exchange_end(exch);
         int retval;
         async_wait_for(req, &retval);
-
+        CHECK_RETVAL();
+        
         return retval;   
 }
 
@@ -401,8 +404,6 @@ int connect(int sockfd, const struct sockaddr *addr,
         async_wait_for(req, &retval);
         CHECK_RETVAL();
         
-        printf("connect, retval: %d", retval);
-        
         return retval;
 }
 
@@ -447,15 +448,11 @@ int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) 
 {
         async_exch_t *exch = async_exchange_begin(sess);
-
-        printf("socket: accept\n");
         
         ipc_call_t answer;
         // Send parameters that can be sent as sysarg_t (sockfd)
         aid_t req = async_send_2(exch, SOCKET_ACCEPT, sockfd, *addrlen,
                 &answer);
-        
-        printf("socket: accept - async sent\n");
         
         // Receive socket address
         int rc = async_data_read_start(exch, addr, *addrlen);
@@ -469,7 +466,6 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
         
         int new_sockfd = IPC_GET_ARG1(answer);
         *addrlen = IPC_GET_ARG2(answer);
-
         
         return new_sockfd;
 }
@@ -493,33 +489,10 @@ int sockclose(int sockfd)
         async_exchange_end(exch);
         int retval;
         async_wait_for(req, &retval);
+        CHECK_RETVAL();
 
         return retval;   
 }
-
-/** Checks, if data can be received on socket
- * 
- * @param sockfd - socket file descriptor
- * @return 1 if there are data to recevie, 0 otherwise
- */
-int sockfdisset(int sockfd) 
-{    
-        async_exch_t *exch = async_exchange_begin(sess);
-
-        ipc_call_t answer;
-        // Send parameters that can be sent as sysarg_t (sockfd)
-        aid_t req = async_send_1(exch, SOCKET_FDISSET, sockfd, &answer);
-
-        async_exchange_end(exch);
-        int retval;
-        async_wait_for(req, &retval);
-        CHECK_RETVAL();
-        
-        sysarg_t fdisset = IPC_GET_ARG1(answer);
-        
-        return fdisset;
-}
-
 
 int sockselect(int nfds, fd_set *readfds, fd_set *writefds,
         fd_set *exceptfds, struct timeval *timeout)
@@ -566,7 +539,7 @@ int sockselect(int nfds, fd_set *readfds, fd_set *writefds,
         async_wait_for(req, &retval);
         CHECK_RETVAL();
         
-        return EOK;
+        return retval;
 }
 /** @}
  */

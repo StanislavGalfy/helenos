@@ -49,11 +49,13 @@
  * @param session_id - session ID
  * @return - socket ID
  */
-int unix_socket(int domain, int type, int protocol, int session_id) {
-    unix_socket_t *unix_socket = (unix_socket_t *) calloc(1, sizeof(unix_socket_t));
-    common_socket_init(&unix_socket->socket, domain, type, protocol,
-            session_id);
-    return unix_socket->socket.id;    
+errno_t unix_socket(int domain, int type, int protocol, int session_id, int *fd) 
+{
+        unix_socket_t *unix_socket = (unix_socket_t *) calloc(1, sizeof(unix_socket_t));
+        common_socket_init(&unix_socket->socket, domain, type, protocol,
+                session_id);
+        *fd = unix_socket->socket.id;
+        return EOK;
 }
 
 /** Returns EOK for bird compatibility
@@ -63,15 +65,15 @@ int unix_socket(int domain, int type, int protocol, int session_id) {
  * @param addrlen
  * @return 
  */
-int unix_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
-        socklen_t addrlen) 
+errno_t unix_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
+    socklen_t addrlen) 
 {
-    return EOK;
+        return EOK;
 }
 
-int unix_socket_listen(common_socket_t *socket, int backlog) 
+errno_t unix_socket_listen(common_socket_t *socket, int backlog) 
 {
-    return EOK;
+        return EOK;
 }
 
 /** Returns ECONNREFUSED for bird compatibility
@@ -81,15 +83,16 @@ int unix_socket_listen(common_socket_t *socket, int backlog)
  * @param addrlen
  * @return 
  */
-int unix_socket_connect(common_socket_t *socket, const struct sockaddr *addr,
-        socklen_t addrlen) 
+errno_t unix_socket_connect(common_socket_t *socket, const struct sockaddr *addr,
+    socklen_t addrlen) 
 {
-    return ECONNREFUSED;
+        return ECONNREFUSED;
 }  
 
-bool unix_socket_read_avail(common_socket_t *socket)
+errno_t unix_socket_read_avail(common_socket_t *socket, bool *read_avail)
 {
-    return false;
+        *read_avail = false;
+        return EOK;
 }
 
 /** Closes UNIX socket
@@ -97,7 +100,7 @@ bool unix_socket_read_avail(common_socket_t *socket)
  * @param socket - socket to close
  * @return EOK
  */
-int unix_socket_close(common_socket_t *socket) {
+errno_t unix_socket_close(common_socket_t *socket) {
     unix_socket_t *unix_socket = (unix_socket_t*)socket;
     free(unix_socket);
     return EOK;    

@@ -80,7 +80,7 @@ void tcp_ncsim_bounce_seg(inet_ep2_t *epp, tcp_segment_t *seg)
 	tcp_rqueue_insert_seg(&rident, seg);
 	return;
 
-	if (0 /*random() % 4 == 3*/) {
+	if (0 /*rand() % 4 == 3*/) {
 		/* Drop segment */
 		log_msg(LOG_DEFAULT, LVL_ERROR, "NCSim dropping segment");
 		tcp_segment_delete(seg);
@@ -93,7 +93,7 @@ void tcp_ncsim_bounce_seg(inet_ep2_t *epp, tcp_segment_t *seg)
 		return;
 	}
 
-	sqe->delay = random() % (1000 * 1000);
+	sqe->delay = rand() % (1000 * 1000);
 	sqe->epp = *epp;
 	sqe->seg = seg;
 
@@ -122,12 +122,12 @@ void tcp_ncsim_bounce_seg(inet_ep2_t *epp, tcp_segment_t *seg)
 }
 
 /** Network condition simulator handler fibril. */
-static int tcp_ncsim_fibril(void *arg)
+static errno_t tcp_ncsim_fibril(void *arg)
 {
 	link_t *link;
 	tcp_squeue_entry_t *sqe;
 	inet_ep2_t rident;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_ncsim_fibril()");
 

@@ -35,22 +35,12 @@
 #ifndef LIBC_ERRNO_H_
 #define LIBC_ERRNO_H_
 
-typedef int errno_t;
-
+#include <_bits/errno.h>
 #include <abi/errno.h>
 
 #define errno  (*(__errno()))
 
 extern errno_t *__errno(void) __attribute__((const));
-
-#define EPROTONOSUPPORT (-93)
-#define ESOCKTNOSUPPORT (-94)
-#define EOPNOTSUPP      (-95)
-#define EALREADYBOUND   (-96)
-#define EWOULDBLOCK     (-97)
-#define ECONNREFUSED    (-11010)
-#define EISCONN         (-11020)
-#define ENOPROTOOPT     (-99)
 
 #endif
 

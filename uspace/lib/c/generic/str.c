@@ -195,7 +195,7 @@ wchar_t str_decode_reverse(const char *str, size_t *offset, size_t size)
  *         was not enough space in the output buffer or EINVAL if the character
  *         code was invalid.
  */
-int chr_encode(const wchar_t ch, char *str, size_t *offset, size_t size)
+errno_t chr_encode(const wchar_t ch, char *str, size_t *offset, size_t size)
 {
 	if (*offset >= size)
 		return EOVERFLOW;
@@ -838,14 +838,14 @@ void str_append(char *dest, size_t size, const char *src)
  *			destination buffer, EIO if the text contains
  *			non-ASCII bytes.
  */
-int spascii_to_str(char *dest, size_t size, const uint8_t *src, size_t n)
+errno_t spascii_to_str(char *dest, size_t size, const uint8_t *src, size_t n)
 {
 	size_t sidx;
 	size_t didx;
 	size_t dlast;
 	uint8_t byte;
-	int rc;
-	int result;
+	errno_t rc;
+	errno_t result;
 
 	/* There must be space for a null terminator in the buffer. */
 	assert(size > 0);
@@ -917,13 +917,13 @@ void wstr_to_str(char *dest, size_t size, const wchar_t *src)
  * @param size	Size of the destination buffer.
  * @param src	Source utf16 string.
  *
- * @return EOK, if success, negative otherwise.
+ * @return EOK, if success, an error code otherwise.
  */
-int utf16_to_str(char *dest, size_t size, const uint16_t *src)
+errno_t utf16_to_str(char *dest, size_t size, const uint16_t *src)
 {
 	size_t idx = 0, dest_off = 0;
 	wchar_t ch;
-	int rc = EOK;
+	errno_t rc = EOK;
 
 	/* There must be space for a null terminator in the buffer. */
 	assert(size > 0);
@@ -960,11 +960,11 @@ int utf16_to_str(char *dest, size_t size, const uint16_t *src)
  * @param dlen	Number of utf16 characters that fit in the destination buffer.
  * @param src	Source string.
  *
- * @return EOK, if success, negative otherwise.
+ * @return EOK, if success, an error code otherwise.
  */
-int str_to_utf16(uint16_t *dest, size_t dlen, const char *src)
+errno_t str_to_utf16(uint16_t *dest, size_t dlen, const char *src)
 {
-	int rc = EOK;
+	errno_t rc = EOK;
 	size_t offset = 0;
 	size_t idx = 0;
 	wchar_t c;
@@ -1272,130 +1272,6 @@ bool wstr_remove(wchar_t *str, size_t pos)
 	return true;
 }
 
-/** Convert string to a number.
- * Core of strtol and strtoul functions.
- *
- * @param nptr		Pointer to string.
- * @param endptr	If not NULL, function stores here pointer to the first
- * 			invalid character.
- * @param base		Zero or number between 2 and 36 inclusive.
- * @param sgn		It's set to 1 if minus found.
- * @return		Result of conversion.
- */
-static unsigned long
-_strtoul(const char *nptr, char **endptr, int base, char *sgn)
-{
-	unsigned char c;
-	unsigned long result = 0;
-	unsigned long a, b;
-	const char *str = nptr;
-	const char *tmpptr;
-	
-	while (isspace(*str))
-		str++;
-	
-	if (*str == '-') {
-		*sgn = 1;
-		++str;
-	} else if (*str == '+')
-		++str;
-	
-	if (base) {
-		if ((base == 1) || (base > 36)) {
-			/* FIXME: set errno to EINVAL */
-			return 0;
-		}
-		if ((base == 16) && (*str == '0') && ((str[1] == 'x') ||
-		    (str[1] == 'X'))) {
-			str += 2;
-		}
-	} else {
-		base = 10;
-		
-		if (*str == '0') {
-			base = 8;
-			if ((str[1] == 'X') || (str[1] == 'x'))  {
-				base = 16;
-				str += 2;
-			}
-		}
-	}
-	
-	tmpptr = str;
-
-	while (*str) {
-		c = *str;
-		c = (c >= 'a' ? c - 'a' + 10 : (c >= 'A' ? c - 'A' + 10 :
-		    (c <= '9' ? c - '0' : 0xff)));
-		if (c >= base) {
-			break;
-		}
-		
-		a = (result & 0xff) * base + c;
-		b = (result >> 8) * base + (a >> 8);
-		
-		if (b > (ULONG_MAX >> 8)) {
-			/* overflow */
-			/* FIXME: errno = ERANGE*/
-			return ULONG_MAX;
-		}
-	
-		result = (b << 8) + (a & 0xff);
-		++str;
-	}
-	
-	if (str == tmpptr) {
-		/*
-		 * No number was found => first invalid character is the first
-		 * character of the string.
-		 */
-		/* FIXME: set errno to EINVAL */
-		str = nptr;
-		result = 0;
-	}
-	
-	if (endptr)
-		*endptr = (char *) str;
-
-	if (nptr == str) {
-		/*FIXME: errno = EINVAL*/
-		return 0;
-	}
-
-	return result;
-}
-
-/** Convert initial part of string to long int according to given base.
- * The number may begin with an arbitrary number of whitespaces followed by
- * optional sign (`+' or `-'). If the base is 0 or 16, the prefix `0x' may be
- * inserted and the number will be taken as hexadecimal one. If the base is 0
- * and the number begin with a zero, number will be taken as octal one (as with
- * base 8). Otherwise the base 0 is taken as decimal.
- *
- * @param nptr		Pointer to string.
- * @param endptr	If not NULL, function stores here pointer to the first
- * 			invalid character.
- * @param base		Zero or number between 2 and 36 inclusive.
- * @return		Result of conversion.
- */
-long int strtol(const char *nptr, char **endptr, int base)
-{
-	char sgn = 0;
-	unsigned long number = 0;
-	
-	number = _strtoul(nptr, endptr, base, &sgn);
-
-	if (number > LONG_MAX) {
-		if ((sgn) && (number == (unsigned long) (LONG_MAX) + 1)) {
-			/* FIXME: set 0 to errno */
-			return number;
-		}
-		/* FIXME: set ERANGE to errno */
-		return (sgn ? LONG_MIN : LONG_MAX);
-	}
-	
-	return (sgn ? -number : number);
-}
 
 /** Duplicate string.
  *
@@ -1458,29 +1334,6 @@ char *str_ndup(const char *src, size_t n)
 	return dest;
 }
 
-/** Convert initial part of string to unsigned long according to given base.
- * The number may begin with an arbitrary number of whitespaces followed by
- * optional sign (`+' or `-'). If the base is 0 or 16, the prefix `0x' may be
- * inserted and the number will be taken as hexadecimal one. If the base is 0
- * and the number begin with a zero, number will be taken as octal one (as with
- * base 8). Otherwise the base 0 is taken as decimal.
- *
- * @param nptr		Pointer to string.
- * @param endptr	If not NULL, function stores here pointer to the first
- * 			invalid character
- * @param base		Zero or number between 2 and 36 inclusive.
- * @return		Result of conversion.
- */
-unsigned long strtoul(const char *nptr, char **endptr, int base)
-{
-	char sgn = 0;
-	unsigned long number = 0;
-	
-	number = _strtoul(nptr, endptr, base, &sgn);
-
-	return (sgn ? -number : number);
-}
-
 /** Split string by delimiters.
  *
  * @param s             String to be tokenized. May not be NULL.
@@ -1538,7 +1391,7 @@ char *str_tok(char *s, const char *delim, char **next)
  * @return EOK if conversion was successful.
  *
  */
-static int str_uint(const char *nptr, char **endptr, unsigned int base,
+static errno_t str_uint(const char *nptr, char **endptr, unsigned int base,
     bool *neg, uint64_t *result)
 {
 	assert(endptr != NULL);
@@ -1659,7 +1512,7 @@ static int str_uint(const char *nptr, char **endptr, unsigned int base,
  * @return EOK if conversion was successful.
  *
  */
-int str_uint8_t(const char *nptr, const char **endptr, unsigned int base,
+errno_t str_uint8_t(const char *nptr, const char **endptr, unsigned int base,
     bool strict, uint8_t *result)
 {
 	assert(result != NULL);
@@ -1667,7 +1520,7 @@ int str_uint8_t(const char *nptr, const char **endptr, unsigned int base,
 	bool neg;
 	char *lendptr;
 	uint64_t res;
-	int ret = str_uint(nptr, &lendptr, base, &neg, &res);
+	errno_t ret = str_uint(nptr, &lendptr, base, &neg, &res);
 	
 	if (endptr != NULL)
 		*endptr = (char *) lendptr;
@@ -1706,7 +1559,7 @@ int str_uint8_t(const char *nptr, const char **endptr, unsigned int base,
  * @return EOK if conversion was successful.
  *
  */
-int str_uint16_t(const char *nptr, const char **endptr, unsigned int base,
+errno_t str_uint16_t(const char *nptr, const char **endptr, unsigned int base,
     bool strict, uint16_t *result)
 {
 	assert(result != NULL);
@@ -1714,7 +1567,7 @@ int str_uint16_t(const char *nptr, const char **endptr, unsigned int base,
 	bool neg;
 	char *lendptr;
 	uint64_t res;
-	int ret = str_uint(nptr, &lendptr, base, &neg, &res);
+	errno_t ret = str_uint(nptr, &lendptr, base, &neg, &res);
 	
 	if (endptr != NULL)
 		*endptr = (char *) lendptr;
@@ -1753,7 +1606,7 @@ int str_uint16_t(const char *nptr, const char **endptr, unsigned int base,
  * @return EOK if conversion was successful.
  *
  */
-int str_uint32_t(const char *nptr, const char **endptr, unsigned int base,
+errno_t str_uint32_t(const char *nptr, const char **endptr, unsigned int base,
     bool strict, uint32_t *result)
 {
 	assert(result != NULL);
@@ -1761,7 +1614,7 @@ int str_uint32_t(const char *nptr, const char **endptr, unsigned int base,
 	bool neg;
 	char *lendptr;
 	uint64_t res;
-	int ret = str_uint(nptr, &lendptr, base, &neg, &res);
+	errno_t ret = str_uint(nptr, &lendptr, base, &neg, &res);
 	
 	if (endptr != NULL)
 		*endptr = (char *) lendptr;
@@ -1800,14 +1653,14 @@ int str_uint32_t(const char *nptr, const char **endptr, unsigned int base,
  * @return EOK if conversion was successful.
  *
  */
-int str_uint64_t(const char *nptr, const char **endptr, unsigned int base,
+errno_t str_uint64_t(const char *nptr, const char **endptr, unsigned int base,
     bool strict, uint64_t *result)
 {
 	assert(result != NULL);
 	
 	bool neg;
 	char *lendptr;
-	int ret = str_uint(nptr, &lendptr, base, &neg, result);
+	errno_t ret = str_uint(nptr, &lendptr, base, &neg, result);
 	
 	if (endptr != NULL)
 		*endptr = (char *) lendptr;
@@ -1839,7 +1692,7 @@ int str_uint64_t(const char *nptr, const char **endptr, unsigned int base,
  * @return EOK if conversion was successful.
  *
  */
-int str_size_t(const char *nptr, const char **endptr, unsigned int base,
+errno_t str_size_t(const char *nptr, const char **endptr, unsigned int base,
     bool strict, size_t *result)
 {
 	assert(result != NULL);
@@ -1847,7 +1700,7 @@ int str_size_t(const char *nptr, const char **endptr, unsigned int base,
 	bool neg;
 	char *lendptr;
 	uint64_t res;
-	int ret = str_uint(nptr, &lendptr, base, &neg, &res);
+	errno_t ret = str_uint(nptr, &lendptr, base, &neg, &res);
 	
 	if (endptr != NULL)
 		*endptr = (char *) lendptr;

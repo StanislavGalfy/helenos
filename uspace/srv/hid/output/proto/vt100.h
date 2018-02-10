@@ -34,9 +34,9 @@
 
 #include <io/charfield.h>
 
-typedef void (* vt100_putchar_t)(wchar_t ch);
-typedef void (* vt100_control_puts_t)(const char *str);
-typedef void (* vt100_flush_t)(void);
+typedef void (*vt100_putchar_t)(wchar_t ch);
+typedef void (*vt100_control_puts_t)(const char *str);
+typedef void (*vt100_flush_t)(void);
 
 typedef struct {
 	sysarg_t cols;
@@ -55,8 +55,8 @@ extern vt100_state_t *vt100_state_create(sysarg_t, sysarg_t, vt100_putchar_t,
     vt100_control_puts_t, vt100_flush_t);
 extern void vt100_state_destroy(vt100_state_t *);
 
-extern int vt100_yield(vt100_state_t *);
-extern int vt100_claim(vt100_state_t *);
+extern errno_t vt100_yield(vt100_state_t *);
+extern errno_t vt100_claim(vt100_state_t *);
 extern void vt100_get_dimensions(vt100_state_t *, sysarg_t *, sysarg_t *);
 
 extern void vt100_goto(vt100_state_t *, sysarg_t, sysarg_t);

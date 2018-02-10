@@ -67,7 +67,7 @@ static void tcp_service_cstate_change(tcp_conn_t *, void *, tcp_cstate_t);
 static void tcp_service_recv_data(tcp_conn_t *, void *);
 static void tcp_service_lst_cstate_change(tcp_conn_t *, void *, tcp_cstate_t);
 
-static int tcp_cconn_create(tcp_client_t *, tcp_conn_t *, tcp_cconn_t **);
+static errno_t tcp_cconn_create(tcp_client_t *, tcp_conn_t *, tcp_cconn_t **);
 
 /** Connection callbacks to tie us to lower layer */
 static tcp_cb_t tcp_service_cb = {
@@ -131,7 +131,7 @@ static void tcp_service_lst_cstate_change(tcp_conn_t *conn, void *arg,
 	tcp_clst_t *clst;
 	tcp_cconn_t *cconn;
 	inet_ep2_t epp;
-	int rc;
+	errno_t rc;
 	tcp_error_t trc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_service_lst_cstate_change()");
@@ -301,7 +301,7 @@ static void tcp_ev_new_conn(tcp_clst_t *clst, tcp_cconn_t *cconn)
  *
  * @return EOK on success or ENOMEM if out of memory
  */
-static int tcp_cconn_create(tcp_client_t *client, tcp_conn_t *conn,
+static errno_t tcp_cconn_create(tcp_client_t *client, tcp_conn_t *conn,
     tcp_cconn_t **rcconn)
 {
 	tcp_cconn_t *cconn;
@@ -348,7 +348,7 @@ static void tcp_cconn_destroy(tcp_cconn_t *cconn)
  *
  * @return EOK on success or ENOMEM if out of memory
  */
-static int tcp_clistener_create(tcp_client_t *client, tcp_conn_t *conn,
+static errno_t tcp_clistener_create(tcp_client_t *client, tcp_conn_t *conn,
     tcp_clst_t **rclst)
 {
 	tcp_clst_t *clst;
@@ -393,7 +393,7 @@ static void tcp_clistener_destroy(tcp_clst_t *clst)
  * @return EOK on success, ENOENT if no client connection with the given ID
  *         is found.
  */
-static int tcp_cconn_get(tcp_client_t *client, sysarg_t id,
+static errno_t tcp_cconn_get(tcp_client_t *client, sysarg_t id,
     tcp_cconn_t **rcconn)
 {
 	list_foreach (client->cconn, lclient, tcp_cconn_t, cconn) {
@@ -415,7 +415,7 @@ static int tcp_cconn_get(tcp_client_t *client, sysarg_t id,
  * @return EOK on success, ENOENT if no client listener with the given ID
  *         is found.
  */
-static int tcp_clistener_get(tcp_client_t *client, sysarg_t id,
+static errno_t tcp_clistener_get(tcp_client_t *client, sysarg_t id,
     tcp_clst_t **rclst)
 {
 	list_foreach (client->clst, lclient, tcp_clst_t, clst) {
@@ -436,14 +436,14 @@ static int tcp_clistener_get(tcp_client_t *client, sysarg_t id,
  * @param epp      Endpoint pair
  * @param rconn_id Place to store ID of new connection
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-static int tcp_conn_create_impl(tcp_client_t *client, inet_ep2_t *epp,
+static errno_t tcp_conn_create_impl(tcp_client_t *client, inet_ep2_t *epp,
     sysarg_t *rconn_id)
 {
 	tcp_conn_t *conn;
 	tcp_cconn_t *cconn;
-	int rc;
+	errno_t rc;
 	tcp_error_t trc;
 	char *slocal;
 	char *sremote;
@@ -485,10 +485,10 @@ static int tcp_conn_create_impl(tcp_client_t *client, inet_ep2_t *epp,
  * @param conn_id Connection ID
  * @return EOK on success, ENOENT if no such connection is found
  */
-static int tcp_conn_destroy_impl(tcp_client_t *client, sysarg_t conn_id)
+static errno_t tcp_conn_destroy_impl(tcp_client_t *client, sysarg_t conn_id)
 {
 	tcp_cconn_t *cconn;
-	int rc;
+	errno_t rc;
 
 	rc = tcp_cconn_get(client, conn_id, &cconn);
 	if (rc != EOK) {
@@ -510,15 +510,15 @@ static int tcp_conn_destroy_impl(tcp_client_t *client, sysarg_t conn_id)
  * @param ep      Endpoint
  * @param rlst_id Place to store ID of new listener
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
 */
-static int tcp_listener_create_impl(tcp_client_t *client, inet_ep_t *ep,
+static errno_t tcp_listener_create_impl(tcp_client_t *client, inet_ep_t *ep,
     sysarg_t *rlst_id)
 {
 	tcp_conn_t *conn;
 	tcp_clst_t *clst;
 	inet_ep2_t epp;
-	int rc;
+	errno_t rc;
 	tcp_error_t trc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_listener_create_impl");
@@ -558,10 +558,10 @@ static int tcp_listener_create_impl(tcp_client_t *client, inet_ep_t *ep,
  *
  * @return EOK on success, ENOENT if no such listener is found
  */
-static int tcp_listener_destroy_impl(tcp_client_t *client, sysarg_t lst_id)
+static errno_t tcp_listener_destroy_impl(tcp_client_t *client, sysarg_t lst_id)
 {
 	tcp_clst_t *clst;
-	int rc;
+	errno_t rc;
 
 	rc = tcp_clistener_get(client, lst_id, &clst);
 	if (rc != EOK) {
@@ -581,12 +581,12 @@ static int tcp_listener_destroy_impl(tcp_client_t *client, sysarg_t lst_id)
  * @param client  TCP client
  * @param conn_id Connection ID
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-static int tcp_conn_send_fin_impl(tcp_client_t *client, sysarg_t conn_id)
+static errno_t tcp_conn_send_fin_impl(tcp_client_t *client, sysarg_t conn_id)
 {
 	tcp_cconn_t *cconn;
-	int rc;
+	errno_t rc;
 
 	rc = tcp_cconn_get(client, conn_id, &cconn);
 	if (rc != EOK) {
@@ -606,12 +606,12 @@ static int tcp_conn_send_fin_impl(tcp_client_t *client, sysarg_t conn_id)
  * @param client  TCP client
  * @param conn_id Connection ID
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-static int tcp_conn_push_impl(tcp_client_t *client, sysarg_t conn_id)
+static errno_t tcp_conn_push_impl(tcp_client_t *client, sysarg_t conn_id)
 {
 	tcp_cconn_t *cconn;
-	int rc;
+	errno_t rc;
 
 	rc = tcp_cconn_get(client, conn_id, &cconn);
 	if (rc != EOK) {
@@ -631,12 +631,12 @@ static int tcp_conn_push_impl(tcp_client_t *client, sysarg_t conn_id)
  * @param client  TCP client
  * @param conn_id Connection ID
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-static int tcp_conn_reset_impl(tcp_client_t *client, sysarg_t conn_id)
+static errno_t tcp_conn_reset_impl(tcp_client_t *client, sysarg_t conn_id)
 {
 	tcp_cconn_t *cconn;
-	int rc;
+	errno_t rc;
 
 	rc = tcp_cconn_get(client, conn_id, &cconn);
 	if (rc != EOK) {
@@ -657,13 +657,13 @@ static int tcp_conn_reset_impl(tcp_client_t *client, sysarg_t conn_id)
  * @param data    Data buffer
  * @param size    Data size in bytes
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-static int tcp_conn_send_impl(tcp_client_t *client, sysarg_t conn_id,
+static errno_t tcp_conn_send_impl(tcp_client_t *client, sysarg_t conn_id,
     void *data, size_t size)
 {
 	tcp_cconn_t *cconn;
-	int rc;
+	errno_t rc;
 	tcp_error_t trc;
 
 	rc = tcp_cconn_get(client, conn_id, &cconn);
@@ -687,14 +687,14 @@ static int tcp_conn_send_impl(tcp_client_t *client, sysarg_t conn_id,
  * @param size    Buffer size in bytes
  * @param nrecv   Place to store actual number of bytes received
  *
- * @return EOK on success or negative error code
+ * @return EOK on success or an error code
  */
-static int tcp_conn_recv_impl(tcp_client_t *client, sysarg_t conn_id,
+static errno_t tcp_conn_recv_impl(tcp_client_t *client, sysarg_t conn_id,
     void *data, size_t size, size_t *nrecv)
 {
 	tcp_cconn_t *cconn;
 	xflags_t xflags;
-	int rc;
+	errno_t rc;
 	tcp_error_t trc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_recv_impl()");
@@ -761,7 +761,7 @@ static void tcp_conn_create_srv(tcp_client_t *client, ipc_callid_t iid,
 	size_t size;
 	inet_ep2_t epp;
 	sysarg_t conn_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_create_srv()");
 
@@ -805,7 +805,7 @@ static void tcp_conn_destroy_srv(tcp_client_t *client, ipc_callid_t iid,
     ipc_call_t *icall)
 {
 	sysarg_t conn_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_destroy_srv()");
 
@@ -829,7 +829,7 @@ static void tcp_listener_create_srv(tcp_client_t *client, ipc_callid_t iid,
 	size_t size;
 	inet_ep_t ep;
 	sysarg_t lst_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_listener_create_srv()");
 
@@ -873,7 +873,7 @@ static void tcp_listener_destroy_srv(tcp_client_t *client, ipc_callid_t iid,
     ipc_call_t *icall)
 {
 	sysarg_t lst_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_listener_destroy_srv()");
 
@@ -894,7 +894,7 @@ static void tcp_conn_send_fin_srv(tcp_client_t *client, ipc_callid_t iid,
     ipc_call_t *icall)
 {
 	sysarg_t conn_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_send_fin_srv()");
 
@@ -915,7 +915,7 @@ static void tcp_conn_push_srv(tcp_client_t *client, ipc_callid_t iid,
     ipc_call_t *icall)
 {
 	sysarg_t conn_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_push_srv()");
 
@@ -936,7 +936,7 @@ static void tcp_conn_reset_srv(tcp_client_t *client, ipc_callid_t iid,
     ipc_call_t *icall)
 {
 	sysarg_t conn_id;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_reset_srv()");
 
@@ -960,7 +960,7 @@ static void tcp_conn_send_srv(tcp_client_t *client, ipc_callid_t iid,
 	size_t size;
 	sysarg_t conn_id;
 	void *data;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_send_srv())");
 
@@ -1021,7 +1021,7 @@ static void tcp_conn_recv_srv(tcp_client_t *client, ipc_callid_t iid,
 	sysarg_t conn_id;
 	size_t size, rsize;
 	void *data;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_recv_srv()");
 
@@ -1077,7 +1077,7 @@ static void tcp_conn_recv_wait_srv(tcp_client_t *client, ipc_callid_t iid,
 	sysarg_t conn_id;
 	size_t size, rsize;
 	void *data;
-	int rc;
+	errno_t rc;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_recv_wait_srv()");
 
@@ -1247,11 +1247,11 @@ static void tcp_client_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
 
 /** Initialize TCP service.
  *
- * @return EOK on success or negative error code.
+ * @return EOK on success or an error code.
  */
-int tcp_service_init(void)
+errno_t tcp_service_init(void)
 {
-	int rc;
+	errno_t rc;
 	service_id_t sid;
 
 	async_set_fallback_port_handler(tcp_client_conn, NULL);

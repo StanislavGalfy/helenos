@@ -50,7 +50,7 @@
 #include <proc/thread.h>
 #include <proc/program.h>
 #include <panic.h>
-#include <func.h>
+#include <halt.h>
 #include <cpu.h>
 #include <arch/asm.h>
 #include <mm/page.h>
@@ -252,7 +252,7 @@ void kinit(void *arg)
 		    PAGE_READ | PAGE_WRITE | PAGE_CACHEABLE);
 		assert(page);
 		
-		int rc = program_create_from_image((void *) page, namebuf,
+		errno_t rc = program_create_from_image((void *) page, namebuf,
 		    &programs[i]);
 		
 		if (rc == 0) {

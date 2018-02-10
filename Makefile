@@ -29,6 +29,7 @@
 # Just for this Makefile. Sub-makes will run in parallel if requested.
 .NOTPARALLEL:
 
+CCHECK = tools/sycek/ccheck
 CSCOPE = cscope
 FORMAT = clang-format
 CHECK = tools/check.sh
@@ -46,7 +47,7 @@ CONFIG_HEADER = config.h
 ERRNO_HEADER = abi/include/abi/errno.h
 ERRNO_INPUT = abi/include/abi/errno.in
 
-.PHONY: all precheck cscope cscope_parts autotool config_auto config_default config distclean clean check releasefile release common boot kernel uspace
+.PHONY: all precheck cscope cscope_parts autotool config_auto config_default config distclean clean check releasefile release common boot kernel uspace export-posix
 
 all: kernel uspace
 	$(MAKE) -r -C boot PRECHECK=$(PRECHECK)
@@ -58,6 +59,13 @@ kernel: common
 
 uspace: common
 	$(MAKE) -r -C uspace PRECHECK=$(PRECHECK)
+
+export-posix: common
+ifndef EXPORT_DIR
+	@echo ERROR: Variable EXPORT_DIR is not defined. && false
+else
+	$(MAKE) -r -C uspace export EXPORT_DIR=$(abspath $(EXPORT_DIR))
+endif
 
 precheck: clean
 	$(MAKE) -r all PRECHECK=y
@@ -74,6 +82,15 @@ cscope_parts:
 format:
 	find abi kernel boot uspace -type f -regex '^.*\.[ch]$$' | xargs $(FORMAT) -i -sort-includes -style=file
 
+ccheck: $(CCHECK)
+	tools/ccheck.sh
+
+ccheck-fix: $(CCHECK)
+	tools/ccheck.sh --fix
+
+$(CCHECK):
+	cd tools && ./build-ccheck.sh
+
 doxy:
 	$(MAKE) -r -C doxygen
 
@@ -84,6 +101,13 @@ ifdef JOBS
 else
 	$(CHECK)
 endif
+
+# `sed` pulls a list of "compatibility-only" error codes from `errno.in`,
+# the following grep finds instances of those error codes in HelenOS code.
+check_errno:
+	@ ! cat abi/include/abi/errno.in | \
+	sed -n -e '1,/COMPAT_START/d' -e 's/__errno_entry(\([A-Z0-9]\+\).*/\\b\1\\b/p' | \
+	git grep -n -f - -- ':(exclude)abi' ':(exclude)uspace/lib/posix'
 
 # Autotool (detects compiler features)
 
@@ -128,7 +152,7 @@ clean:
 
 $(ERRNO_HEADER): $(ERRNO_INPUT)
 	echo '/* Generated file. Edit errno.in instead. */' > $@.new
-	sed 's/__errno_entry(\([^,]*\),\([^,]*\),.*/#define \1 \2/' < $< >> $@.new
+	sed 's/__errno_entry(\([^,]*\),\([^,]*\),.*/#define \1 __errno_t(\2)/' < $< >> $@.new
 	mv $@.new $@
 
 -include Makefile.local

@@ -43,6 +43,7 @@
 #include <types/socket/select.h>
 #include <macros.h>
 #include <stdio.h>
+#include <mem.h>
 
 #include "service.h"
 #include "tools.h"
@@ -78,53 +79,50 @@
         }
 
 /** Array of socket create functions */
-int (*socket_create[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (int, int, int, int);
+errno_t (*socket_create[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (int, int, int, int,
+        int *);
 
 /** Array of socket bind functions */
-int (*socket_bind[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
+errno_t (*socket_bind[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
     const struct sockaddr *, socklen_t);
 
 /** Array of socket listen functions */
-int (*socket_listen[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX])(common_socket_t *, int);
+errno_t (*socket_listen[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX])(common_socket_t *, int);
 
 /** Array of socket connect functions */
-int (*socket_connect[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
+errno_t (*socket_connect[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
     const struct sockaddr *, socklen_t);
 
 /** Array of socket accept functions */
-int (*socket_accept[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, int *,
-    const struct sockaddr *, socklen_t *);
+errno_t (*socket_accept[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
+    const struct sockaddr *, socklen_t *, int *);
 
 /** Array of socket setsockopt functions */
-int (*socket_setsockopt[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
+errno_t (*socket_setsockopt[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
     int, int, const void *, socklen_t);
 
 /** Array of socket getsockname functions */
-int (*socket_getsockname[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX])(common_socket_t *, 
+errno_t (*socket_getsockname[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX])(common_socket_t *, 
     const struct sockaddr *, socklen_t *);
 
 /** Array of socket fdisset functions */
-ssize_t (*socket_fdisset[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
-        sysarg_t *);
-
-/** Array of socket fdisset functions */
-bool (*socket_read_avail[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (
-        common_socket_t *);
+errno_t (*socket_read_avail[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (
+        common_socket_t *, bool *);
 
 /** Array of socket sendmsg functions */
-ssize_t (*socket_sendmsg[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
-    const struct msghdr *, int);
+errno_t (*socket_sendmsg[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
+    const struct msghdr *, int, size_t *);
 
 /** Array of socket recvmsg functions */
-int (*socket_recvmsg[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
+errno_t (*socket_recvmsg[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
     struct msghdr *, int, size_t *);
 
 /** Array of socket sendmsg functions */
-ssize_t (*socket_write[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
+errno_t (*socket_write[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
     void *, size_t, size_t *);
 
 /** Array of socket recvmsg functions */
-ssize_t (*socket_read[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
+errno_t (*socket_read[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *,
     void *, size_t, size_t *);
 
 /** Array of socket close functions */
@@ -134,7 +132,7 @@ int (*socket_close[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX])(common_socket_t *);
  * 
  * @param msg - message to deallocate.
  */
-static void free_msghdr(const struct msghdr *msg) {
+static void free_msghdr(struct msghdr *msg) {
         if (msg != NULL) {
                 if (msg->msg_name != NULL)
                         free(msg->msg_name);
@@ -177,11 +175,12 @@ static void socket_create_srv(ipc_callid_t iid, ipc_call_t *icall,
         }
 
         fibril_mutex_lock(&socket_lock);
+        int fd;
         int retval = socket_create[domain][type](domain, type, protocol,
-            session_id);
+            session_id, &fd);
         fibril_mutex_unlock(&socket_lock);
 
-        async_answer_0(iid, retval);
+        async_answer_1(iid, retval, fd);
 }
 
 /** Binds socket to socket address.
@@ -386,8 +385,8 @@ static void socket_accept_srv(ipc_callid_t iid, ipc_call_t *icall)
                 return;
         }
         int fd;
-        int retval = socket_accept[socket->domain][socket->type](socket, &fd, 
-                addr, &addrlen);
+        int retval = socket_accept[socket->domain][socket->type](socket, addr,
+                &addrlen, &fd);
         
         bool rv = async_data_read_receive(&callid, &addrlen);
         if (!rv) {
@@ -639,11 +638,12 @@ static void socket_sendmsg_srv(ipc_callid_t iid, ipc_call_t *icall)
                 fibril_mutex_unlock(&socket_lock);
                 return;
         }
+        size_t nsent;
         int retval = socket_sendmsg[socket->domain][socket->type](socket, msg,
-            flags);
+            flags, &nsent);
 
         fibril_mutex_unlock(&socket_lock);   
-        async_answer_0(iid, retval);
+        async_answer_1(iid, retval, nsent);
         free_msghdr(msg);
 }
 
@@ -888,35 +888,6 @@ static void socket_read_srv(ipc_callid_t iid, ipc_call_t *icall)
         async_answer_1(iid, retval, nrecv);        
 }
 
-/** Checks if message can be received on a socket.
- * 
- * @param iid - async request ID
- * @param icall - async request data
- */
-static void socket_sockfdisset_srv(ipc_callid_t iid, ipc_call_t *icall) 
-{
-        // Get parameters transfered as sysarg_t
-        int sockfd = IPC_GET_ARG1(*icall);
-
-        int retval = 0;
-        fibril_mutex_lock(&socket_lock);    
-        common_socket_t *socket = get_socket_by_id(sockfd);
-        if (socket == NULL) {
-                async_answer_0(iid, EBADF);
-                fibril_mutex_unlock(&socket_lock);
-                return;
-        }
-        if (socket_fdisset[socket->domain][socket->type] == NULL) {
-                async_answer_0(iid, EOPNOTSUPP);
-                fibril_mutex_unlock(&socket_lock);
-                return;
-        }
-        sysarg_t fdisset;
-        retval = socket_fdisset[socket->domain][socket->type](socket, &fdisset);
-        fibril_mutex_unlock(&socket_lock);
-        async_answer_1(iid, retval, fdisset);
-}
-
 /** Closes socket
  * 
  * @param iid - async request ID
@@ -985,13 +956,19 @@ static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall)
                         return;
                 }
 
+                errno_t retval;
                 list_foreach(socket_list, link, common_socket_t, socket) {
                         if (socket_read_avail[socket->domain][socket->type]) {
-                                bool read_avail = socket_read_avail 
-                                        [socket->domain][socket->type](socket);
+                                bool read_avail; 
+                                retval = socket_read_avail [socket->domain]
+                                    [socket->type](socket, &read_avail);
+                                
+                                if (retval != EOK) {
+                                    continue;
+                                }
                                 
                                 readfds_out.fds_bits[socket->id] = read_avail & 
-                                        readfds_in.fds_bits[socket->id];
+                                    readfds_in.fds_bits[socket->id];
                         }
                 }
 
@@ -1172,9 +1149,6 @@ static void socket_client_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
                 case SOCKET_READ:
                         socket_read_srv(callid, &call);
                         break;
-                case SOCKET_FDISSET:
-                        socket_sockfdisset_srv(callid, &call);
-                        break;
                 case SOCKET_CLOSE:
                         socket_close_srv(callid, &call);
                         break;
@@ -1210,7 +1184,6 @@ int socket_service_init(void)
 
         socket_create[AF_INET][SOCK_RAW] = raw_socket;
         socket_setsockopt[AF_INET][SOCK_RAW] = raw_socket_setsockopt;
-        socket_fdisset[AF_INET][SOCK_RAW] = raw_socket_fdisset;
         socket_read_avail[AF_INET][SOCK_RAW] = raw_socket_read_avail;
         socket_sendmsg[AF_INET][SOCK_RAW] = raw_socket_sendmsg;
         socket_recvmsg[AF_INET][SOCK_RAW] = raw_socket_recvmsg;

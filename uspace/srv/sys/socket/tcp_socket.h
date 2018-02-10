@@ -65,19 +65,19 @@ typedef struct {
     
 } tcp_socket_t;
 
-int tcp_socket(int, int, int, int);
-int tcp_socket_setsockopt(common_socket_t *, int, int, const void *, socklen_t);
-int tcp_socket_bind(common_socket_t *, const struct sockaddr *, socklen_t);
-int tcp_socket_listen(common_socket_t *, int);
-int tcp_socket_connect(common_socket_t *, const struct sockaddr *, socklen_t);
-int tcp_socket_getsockname(common_socket_t *, const struct sockaddr *,
+errno_t tcp_socket(int, int, int, int, int *);
+errno_t tcp_socket_setsockopt(common_socket_t *, int, int, const void *, socklen_t);
+errno_t tcp_socket_bind(common_socket_t *, const struct sockaddr *, socklen_t);
+errno_t tcp_socket_listen(common_socket_t *, int);
+errno_t tcp_socket_connect(common_socket_t *, const struct sockaddr *, socklen_t);
+errno_t tcp_socket_getsockname(common_socket_t *, const struct sockaddr *,
         socklen_t *);
-int tcp_socket_accept(common_socket_t *, int *, const struct sockaddr *,
-        socklen_t *);
-bool tcp_socket_read_avail(common_socket_t *);
-int tcp_socket_write(common_socket_t *, void *, size_t, size_t *);
-int tcp_socket_read(common_socket_t *, void *, size_t, size_t *);
-int tcp_socket_close(common_socket_t *);
+errno_t tcp_socket_accept(common_socket_t *, const struct sockaddr *,
+        socklen_t *, int *);
+errno_t tcp_socket_read_avail(common_socket_t *, bool *);
+errno_t tcp_socket_write(common_socket_t *, void *, size_t, size_t *);
+errno_t tcp_socket_read(common_socket_t *, void *, size_t, size_t *);
+errno_t tcp_socket_close(common_socket_t *);
 
 #endif
 

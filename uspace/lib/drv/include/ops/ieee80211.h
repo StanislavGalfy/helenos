@@ -47,10 +47,10 @@ typedef struct ieee80211_iface {
 	 * @param results Structure where to put scan results.
 	 * @param now     Whether to initiate scan immediately.
 	 *
-	 * @return EOK if succeed, negative error code otherwise.
+	 * @return EOK if succeed, error code otherwise.
 	 *
 	 */
-	int (*get_scan_results)(ddf_fun_t *, ieee80211_scan_results_t *, bool);
+	errno_t (*get_scan_results)(ddf_fun_t *, ieee80211_scan_results_t *, bool);
 	
 	/** Connect IEEE 802.11 device to specified network.
 	 *
@@ -58,19 +58,19 @@ typedef struct ieee80211_iface {
 	 * @param ssid     Network SSID.
 	 * @param password Network password (empty string if not needed).
 	 *
-	 * @return EOK if succeed, negative error code otherwise.
+	 * @return EOK if succeed, error code otherwise.
 	 *
 	 */
-	int (*connect)(ddf_fun_t *, char *, char *);
+	errno_t (*connect)(ddf_fun_t *, char *, char *);
 	
 	/** Disconnect IEEE 802.11 device from network.
 	 *
 	 * @param fun IEEE 802.11 function.
 	 *
-	 * @return EOK if succeed, negative error code otherwise.
+	 * @return EOK if succeed, error code otherwise.
 	 *
 	 */
-	int (*disconnect)(ddf_fun_t *);
+	errno_t (*disconnect)(ddf_fun_t *);
 } ieee80211_iface_t;
 
 #endif

@@ -48,12 +48,12 @@ typedef struct {
 	/** Device providing keyboard connection */
 	chardev_t *chardev;
 	/** Callback connection to client */
-	async_sess_t *client_sess; 
+	async_sess_t *client_sess;
 	/** Fibril retrieving and parsing data */
 	fid_t polling_fibril;
 } at_kbd_t;
 
-extern int at_kbd_init(at_kbd_t *, ddf_dev_t *);
+extern errno_t at_kbd_init(at_kbd_t *, ddf_dev_t *);
 
 #endif
 

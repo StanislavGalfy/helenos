@@ -41,7 +41,7 @@
 
 #include "posix/sys/types.h"
 
-extern void *__POSIX_DEF__(alloca)(size_t);
+extern void *alloca(size_t);
 
 #endif
 

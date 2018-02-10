@@ -35,12 +35,7 @@
 #ifndef POSIX_FCNTL_H_
 #define POSIX_FCNTL_H_
 
-#ifndef __POSIX_DEF__
-#define __POSIX_DEF__(x) x
-#endif
-
 #include "sys/types.h"
-#include "errno.h"
 
 #undef O_CREAT
 #undef O_EXCL
@@ -95,9 +90,8 @@
 
 #define O_NONBLOCK 0x4000
 
-extern int __POSIX_DEF__(open)(const char *pathname, int flags, ...);
-extern int __POSIX_DEF__(fcntl)(int fd, int cmd, ...);
-
+extern int open(const char *pathname, int flags, ...);
+extern int fcntl(int fd, int cmd, ...);
 
 #endif /* POSIX_FCNTL_H_ */
 

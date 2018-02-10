@@ -34,16 +34,26 @@
 
 #include <stdlib.h>
 
-static long glbl_seed = 1;
+static int glbl_seed = 1;
 
-long int random(void)
+int rand(void)
 {
 	return glbl_seed = ((1366 * glbl_seed + 150889) % RAND_MAX);
 }
 
-void srandom(unsigned int seed)
+int random(void)
+{
+        return rand();
+}
+
+void srand(unsigned int seed)
 {
 	glbl_seed = seed % RAND_MAX;
+}
+
+void srandom(unsigned int seed)
+{
+        srand(seed);
 }
 
 /** @}

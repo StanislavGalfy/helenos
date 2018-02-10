@@ -80,10 +80,10 @@ fs_index_t udf_long_ad_to_pos(udf_instance_t *instance, udf_long_ad_t *long_ad)
  * @param addr       Position sector with Volume Descriptor
  * @param vd         Returned value - Volume Descriptor.
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-static int udf_volume_recongnition_structure_test(service_id_t service_id,
+static errno_t udf_volume_recongnition_structure_test(service_id_t service_id,
     aoff64_t addr, udf_vrs_descriptor_t *vd)
 {
 	return block_read_bytes_direct(service_id, addr,
@@ -97,9 +97,9 @@ static int udf_volume_recongnition_structure_test(service_id_t service_id,
  *
  * @param service_id
  *
- * @return    EOK on success or a negative error code.
+ * @return    EOK on success or an error code.
  */
-int udf_volume_recongnition(service_id_t service_id) 
+errno_t udf_volume_recongnition(service_id_t service_id) 
 {
 	aoff64_t addr = VRS_ADDR;
 	bool nsr_found = false;
@@ -108,7 +108,7 @@ int udf_volume_recongnition(service_id_t service_id)
 	if (!vd)
 		return ENOMEM;
 	
-	int rc = udf_volume_recongnition_structure_test(service_id, addr, vd);
+	errno_t rc = udf_volume_recongnition_structure_test(service_id, addr, vd);
 	if (rc != EOK) {
 		free(vd);
 		return rc;
@@ -166,13 +166,13 @@ static void udf_prepare_tag(udf_descriptor_tag_t *tag)
  * @param avd         Returned value - Anchor Volume Descriptor
  * @param sector_size Expected sector size
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-static int udf_get_anchor_volume_descriptor_by_ssize(service_id_t service_id,
+static errno_t udf_get_anchor_volume_descriptor_by_ssize(service_id_t service_id,
     udf_anchor_volume_descriptor_t *avd, uint32_t sector_size)
 {
-	int rc = block_read_bytes_direct(service_id,
+	errno_t rc = block_read_bytes_direct(service_id,
 	    UDF_AVDP_SECTOR * sector_size,
 	    sizeof(udf_anchor_volume_descriptor_t), avd);
 	if (rc != EOK)
@@ -203,16 +203,16 @@ static int udf_get_anchor_volume_descriptor_by_ssize(service_id_t service_id,
  * @param service_id
  * @param avd        Returned value - Anchor Volume Descriptor
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int udf_get_anchor_volume_descriptor(service_id_t service_id,
+errno_t udf_get_anchor_volume_descriptor(service_id_t service_id,
     udf_anchor_volume_descriptor_t *avd)
 {
 	uint32_t default_sector_size[] = {512, 1024, 2048, 4096, 8192, 0};
 	
 	udf_instance_t *instance;
-	int rc = fs_instance_get(service_id, (void **) &instance);
+	errno_t rc = fs_instance_get(service_id, (void **) &instance);
 	if (rc != EOK)
 		return rc;
 	
@@ -356,14 +356,14 @@ static bool udf_check_prevailing_pd(udf_partition_descriptor_t *pd, size_t cnt,
  * @param pos      Position (Extended) File entry descriptor
  * @param id       Index of partition in instance::partitions array
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-static int udf_read_virtual_partition(udf_instance_t *instance, uint32_t pos,
+static errno_t udf_read_virtual_partition(udf_instance_t *instance, uint32_t pos,
     uint32_t id)
 {
 	block_t *block = NULL;
-	int rc = block_get(&block, instance->service_id, pos,
+	errno_t rc = block_get(&block, instance->service_id, pos,
 	    BLOCK_FLAGS_NONE);
 	if (rc != EOK)
 		return rc;
@@ -437,10 +437,10 @@ static size_t udf_find_partition(udf_partition_descriptor_t *pd, size_t pd_cnt,
  * @param pd_cnt   Count of items in pd array
  * @param instance UDF instance
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-static int udf_fill_volume_info(udf_logical_volume_descriptor_t *lvd,
+static errno_t udf_fill_volume_info(udf_logical_volume_descriptor_t *lvd,
     size_t lvd_cnt, udf_partition_descriptor_t *pd, size_t pd_cnt,
     udf_instance_t *instance)
 {
@@ -552,7 +552,7 @@ static int udf_fill_volume_info(udf_logical_volume_descriptor_t *lvd,
 				
 				instance->partitions[j].number =
 				    FLE16(metadata->partition_number);
-				int rc = udf_read_virtual_partition(instance,
+				errno_t rc = udf_read_virtual_partition(instance,
 				    FLE32(metadata->metadata_fileloc) +
 				    FLE32(pd[pd_num].starting_location), j);
 				if (rc != EOK) {
@@ -597,14 +597,14 @@ static int udf_fill_volume_info(udf_logical_volume_descriptor_t *lvd,
  * @param service_id
  * @param addr       UDF extent descriptor (ECMA 167 3/7.1)
  *
- * @return EOK on success or a negative error code.
+ * @return EOK on success or an error code.
  *
  */
-int udf_read_volume_descriptor_sequence(service_id_t service_id,
+errno_t udf_read_volume_descriptor_sequence(service_id_t service_id,
     udf_extent_t addr)
 {
 	udf_instance_t *instance;
-	int rc = fs_instance_get(service_id, (void **) &instance);
+	errno_t rc = fs_instance_get(service_id, (void **) &instance);
 	if (rc != EOK)
 		return rc;
 	

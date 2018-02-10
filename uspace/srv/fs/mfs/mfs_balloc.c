@@ -37,13 +37,13 @@ static int
 find_free_bit_and_set(bitchunk_t *b, const int bsize,
     const bool native, unsigned start_bit);
 
-static int
+static errno_t
 mfs_free_bit(struct mfs_instance *inst, uint32_t idx, bmap_id_t bid);
 
-static int
+static errno_t
 mfs_alloc_bit(struct mfs_instance *inst, uint32_t *idx, bmap_id_t bid);
 
-static int
+static errno_t
 mfs_count_free_bits(struct mfs_instance *inst, bmap_id_t bid, uint32_t *free);
 
 
@@ -53,12 +53,12 @@ mfs_count_free_bits(struct mfs_instance *inst, bmap_id_t bid, uint32_t *free);
  * @param inum		Pointer to a 32 bit number where the index of
  * 			the new inode will be saved.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-int
+errno_t
 mfs_alloc_inode(struct mfs_instance *inst, uint32_t *inum)
 {
-	int r = mfs_alloc_bit(inst, inum, BMAP_INODE);
+	errno_t r = mfs_alloc_bit(inst, inum, BMAP_INODE);
 	return r;
 }
 
@@ -67,9 +67,9 @@ mfs_alloc_inode(struct mfs_instance *inst, uint32_t *inum)
  * @param inst		Pointer to the filesystem instance.
  * @param inum		Number of the inode to free.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-int
+errno_t
 mfs_free_inode(struct mfs_instance *inst, uint32_t inum)
 {
 	return mfs_free_bit(inst, inum, BMAP_INODE);
@@ -81,12 +81,12 @@ mfs_free_inode(struct mfs_instance *inst, uint32_t inum)
  * @param zone		Pointer to a 32 bit number where the index
  * 			of the zone will be saved.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-int
+errno_t
 mfs_alloc_zone(struct mfs_instance *inst, uint32_t *zone)
 {
-	int r = mfs_alloc_bit(inst, zone, BMAP_ZONE);
+	errno_t r = mfs_alloc_bit(inst, zone, BMAP_ZONE);
 	if (r != EOK)
 		return r;
 
@@ -104,12 +104,12 @@ mfs_alloc_zone(struct mfs_instance *inst, uint32_t *zone)
  * @param inst		Pointer to the filesystem instance.
  * @param zone		Index of the zone to free.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-int
+errno_t
 mfs_free_zone(struct mfs_instance *inst, uint32_t zone)
 {
-	int r;
+	errno_t r;
 
 	zone -= inst->sbi->firstdatazone - 1;
 
@@ -131,9 +131,9 @@ mfs_free_zone(struct mfs_instance *inst, uint32_t zone)
  * @param zones         Pointer to the memory location where the result
  *                      will be stored.
  *
- * @return              EOK on success or a negative error code.
+ * @return              EOK on success or an error code.
  */
-int
+errno_t
 mfs_count_free_zones(struct mfs_instance *inst, uint32_t *zones)
 {
 	return mfs_count_free_bits(inst, BMAP_ZONE, zones);
@@ -145,10 +145,10 @@ mfs_count_free_zones(struct mfs_instance *inst, uint32_t *zones)
  * @param zones         Pointer to the memory location where the result
  *                      will be stored.
  *
- * @return              EOK on success or a negative error code.
+ * @return              EOK on success or an error code.
  */
 
-int
+errno_t
 mfs_count_free_inodes(struct mfs_instance *inst, uint32_t *inodes)
 {
 	return mfs_count_free_bits(inst, BMAP_INODE, inodes);
@@ -161,12 +161,12 @@ mfs_count_free_inodes(struct mfs_instance *inst, uint32_t *inodes)
  * @param free          Pointer to the memory location where the result
  *                      will be stores.
  *
- * @return              EOK on success or a negative error code.
+ * @return              EOK on success or an error code.
  */
-static int
+static errno_t
 mfs_count_free_bits(struct mfs_instance *inst, bmap_id_t bid, uint32_t *free)
 {
-	int r;
+	errno_t r;
 	unsigned start_block;
 	unsigned long nblocks;
 	unsigned long nbits;
@@ -225,13 +225,13 @@ mfs_count_free_bits(struct mfs_instance *inst, bmap_id_t bid, uint32_t *free)
  * @param bid		BMAP_ZONE if operating on the zone's bitmap,
  * 			BMAP_INODE if operating on the inode's bitmap.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-static int
+static errno_t
 mfs_free_bit(struct mfs_instance *inst, uint32_t idx, bmap_id_t bid)
 {
 	struct mfs_sb_info *sbi;
-	int r;
+	errno_t r;
 	unsigned start_block;
 	unsigned *search;
 	block_t *b;
@@ -245,7 +245,7 @@ mfs_free_bit(struct mfs_instance *inst, uint32_t idx, bmap_id_t bid)
 		if (idx > sbi->nzones) {
 			printf(NAME ": Error! Trying to free beyond the "
 			    "bitmap max size\n");
-			return -1;
+			return EIO;
 		}
 	} else {
 		/* bid == BMAP_INODE */
@@ -253,7 +253,7 @@ mfs_free_bit(struct mfs_instance *inst, uint32_t idx, bmap_id_t bid)
 		if (idx > sbi->ninodes) {
 			printf(NAME ": Error! Trying to free beyond the "
 			    "bitmap max size\n");
-			return -1;
+			return EIO;
 		}
 	}
 
@@ -292,9 +292,9 @@ out_err:
  * @param bid		BMAP_ZONE if operating on the zone's bitmap,
  * 			BMAP_INODE if operating on the inode's bitmap.
  *
- * @return		EOK on success or a negative error code.
+ * @return		EOK on success or an error code.
  */
-static int
+static errno_t
 mfs_alloc_bit(struct mfs_instance *inst, uint32_t *idx, bmap_id_t bid)
 {
 	struct mfs_sb_info *sbi;
@@ -302,7 +302,8 @@ mfs_alloc_bit(struct mfs_instance *inst, uint32_t *idx, bmap_id_t bid)
 	unsigned long nblocks;
 	unsigned *search, i, start_block;
 	unsigned bits_per_block;
-	int r, freebit;
+	errno_t r;
+	int freebit;
 
 	sbi = inst->sbi;
 

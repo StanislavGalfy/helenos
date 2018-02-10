@@ -58,7 +58,7 @@ vfs_info_t mfs_vfs_info = {
 
 int main(int argc, char **argv)
 {
-	int rc;
+	errno_t rc;
 
 	printf(NAME ": HelenOS Minix file system server\n");
 
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
 			mfs_vfs_info.instance = strtol(argv[2], NULL, 10);
 		else {
 			printf(NAME " Unrecognized parameters");
-			rc = -1;
+			rc = EINVAL;
 			goto err;
 		}
 	}
@@ -77,7 +77,8 @@ int main(int argc, char **argv)
 
 	if (!vfs_sess) {
 		printf(NAME ": failed to connect to VFS\n");
-		return -1;
+		rc = errno;
+		goto err;
 	}
 
 	rc = mfs_global_init();

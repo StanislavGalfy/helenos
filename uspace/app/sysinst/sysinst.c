@@ -46,6 +46,7 @@
 #include <str_error.h>
 #include <task.h>
 #include <vfs/vfs.h>
+#include <str.h>
 
 #include "futil.h"
 #include "grub.h"
@@ -82,9 +83,9 @@
  * @param dev Disk device to label
  * @param pdev Place to store partition device name
  *
- * @return EOK on success or error code
+ * @return EOK on success or an error code
  */
-static int sysinst_label_dev(const char *dev, char **pdev)
+static errno_t sysinst_label_dev(const char *dev, char **pdev)
 {
 	fdisk_t *fdisk;
 	fdisk_dev_t *fdev;
@@ -92,7 +93,7 @@ static int sysinst_label_dev(const char *dev, char **pdev)
 	fdisk_part_spec_t pspec;
 	cap_spec_t cap;
 	service_id_t sid;
-	int rc;
+	errno_t rc;
 
 	printf("sysinst_label_dev(): get service ID '%s'\n", dev);
 	rc = loc_service_get_id(dev, &sid, 0);
@@ -151,13 +152,13 @@ static int sysinst_label_dev(const char *dev, char **pdev)
 /** Mount target file system.
  *
  * @param dev Partition device
- * @return EOK on success or error code
+ * @return EOK on success or an error code
  */
-static int sysinst_fs_mount(const char *dev)
+static errno_t sysinst_fs_mount(const char *dev)
 {
 	task_wait_t twait;
 	task_exit_t texit;
-	int rc;
+	errno_t rc;
 	int trc;
 
 	printf("sysinst_fs_mount(): start filesystem server\n");
@@ -190,13 +191,13 @@ static int sysinst_fs_mount(const char *dev)
 
 /** Copy boot files.
  *
- * @return EOK on success or error code
+ * @return EOK on success or an error code
  */
-static int sysinst_copy_boot_files(void)
+static errno_t sysinst_copy_boot_files(void)
 {
 	task_wait_t twait;
 	task_exit_t texit;
-	int rc;
+	errno_t rc;
 	int trc;
 
 	printf("sysinst_copy_boot_files(): start filesystem server\n");
@@ -257,9 +258,9 @@ static void set_unaligned_u64le(uint8_t *a, uint64_t data)
  * Install Grub's boot blocks.
  *
  * @param devp Disk device
- * @return EOK on success or error code
+ * @return EOK on success or an error code
  */
-static int sysinst_copy_boot_blocks(const char *devp)
+static errno_t sysinst_copy_boot_blocks(const char *devp)
 {
 	void *boot_img;
 	size_t boot_img_size;
@@ -271,7 +272,7 @@ static int sysinst_copy_boot_blocks(const char *devp)
 	aoff64_t core_start;
 	aoff64_t core_blocks;
 	grub_boot_blocklist_t *first_bl, *bl;
-	int rc;
+	errno_t rc;
 
 	printf("sysinst_copy_boot_blocks: Read boot block image.\n");
 	rc = futil_get_file(BOOT_FILES_SRC "/boot/grub/i386-pc/boot.img",
@@ -352,11 +353,11 @@ static int sysinst_copy_boot_blocks(const char *devp)
 /** Install system to a device.
  *
  * @param dev Device to install to.
- * @return EOK on success or error code
+ * @return EOK on success or an error code
  */
-static int sysinst_install(const char *dev)
+static errno_t sysinst_install(const char *dev)
 {
-	int rc;
+	errno_t rc;
 	char *pdev;
 
 	rc = sysinst_label_dev(dev, &pdev);

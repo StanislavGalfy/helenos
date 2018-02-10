@@ -45,11 +45,11 @@
 
 /** Operations to manipulate page mappings. */
 typedef struct {
-	void (* mapping_insert)(as_t *, uintptr_t, uintptr_t, unsigned int);
-	void (* mapping_remove)(as_t *, uintptr_t);
-	bool (* mapping_find)(as_t *, uintptr_t, bool, pte_t *);
-	void (* mapping_update)(as_t *, uintptr_t, bool, pte_t *);
-	void (* mapping_make_global)(uintptr_t, size_t);
+	void (*mapping_insert)(as_t *, uintptr_t, uintptr_t, unsigned int);
+	void (*mapping_remove)(as_t *, uintptr_t);
+	bool (*mapping_find)(as_t *, uintptr_t, bool, pte_t *);
+	void (*mapping_update)(as_t *, uintptr_t, bool, pte_t *);
+	void (*mapping_make_global)(uintptr_t, size_t);
 } page_mapping_operations_t;
 
 extern page_mapping_operations_t *page_mapping_operations;
@@ -66,8 +66,8 @@ extern void page_mapping_make_global(uintptr_t, size_t);
 extern pte_t *page_table_create(unsigned int);
 extern void page_table_destroy(pte_t *);
 
-extern int page_find_mapping(uintptr_t, uintptr_t *);
-extern sysarg_t sys_page_find_mapping(uintptr_t, uintptr_t *);
+extern errno_t page_find_mapping(uintptr_t, uintptr_t *);
+extern sys_errno_t sys_page_find_mapping(uintptr_t, uintptr_t *);
 
 #endif
 
