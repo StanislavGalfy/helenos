@@ -42,6 +42,7 @@
 #include <stdlib.h>
 #include <types/socket/in.h>
 #include <stdio.h>
+#include <time.h>
 
 /** Macro to handle return code from async_data_write_start call */
 #define CHECK_RC() \
@@ -207,7 +208,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
  * @return - number of sent bytes on success, SOCK_ERR on failure
  */
 ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)
-{  
+{
         async_exch_t *exch = async_exchange_begin(sess);
 
         ipc_call_t answer;
@@ -344,6 +345,8 @@ ssize_t sockread(int sockfd, void *buf, size_t count)
  * @return
  */
 int listen(int sockfd, int backlog) {
+        async_sleep(1);
+        
         async_exch_t *exch = async_exchange_begin(sess);
 
         ipc_call_t answer;
@@ -500,14 +503,14 @@ int sockselect(int nfds, fd_set *readfds, fd_set *writefds,
         async_exch_t *exch = async_exchange_begin(sess);
         
         bool is_readfds = readfds != NULL;
-        //bool is_writefds =  writefds != NULL;
-        //bool is_exceptfds = exceptfds != NULL;
-        //bool is_timeout = timeout != NULL;
+        bool is_writefds =  writefds != NULL;
+        bool is_exceptfds = exceptfds != NULL;
+        bool is_timeout = timeout != NULL;
         
         ipc_call_t answer;
         // Send parameters that can be sent as sysarg_t (sockfd)
-        aid_t req = async_send_2(exch, SOCKET_SELECT, nfds, is_readfds,
-                &answer);
+        aid_t req = async_send_5(exch, SOCKET_SELECT, nfds, is_readfds, 
+            is_writefds, is_exceptfds, is_timeout, &answer);
         
         int rc;
         if (is_readfds) {
@@ -516,24 +519,26 @@ int sockselect(int nfds, fd_set *readfds, fd_set *writefds,
             rc = async_data_read_start(exch, readfds, sizeof(fd_set));
             CHECK_RC();
         }
-        /*
+        
         if (is_writefds) {        
             rc = async_data_write_start(exch, writefds, sizeof(fd_set));
             CHECK_RC();
             rc = async_data_read_start(exch, writefds, sizeof(fd_set));
             CHECK_RC();
         }
+        
         if (is_exceptfds) {       
             rc = async_data_write_start(exch, exceptfds, sizeof(fd_set));
             CHECK_RC();
             rc = async_data_read_start(exch, exceptfds, sizeof(fd_set));
             CHECK_RC();
         }
+        
         if (is_timeout) {        
             rc = async_data_write_start(exch, timeout, sizeof(struct timeval));
             CHECK_RC();
         }
-         */
+        
         async_exchange_end(exch);
         int retval;
         async_wait_for(req, &retval);

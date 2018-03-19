@@ -223,7 +223,6 @@ static errno_t inetcfg_sroute_delete(sysarg_t sroute_id)
 		return ENOENT;
 
 	inet_sroute_remove(sroute);
-	inet_sroute_delete(sroute);
 
 	return EOK;
 }

@@ -447,3 +447,6 @@ nbproject/
 uspace/dist/*
 uspace/srv/sys/socket/socket
 tools/sycek/
+uspace/lib/posix/gcc.specs
+uspace/lib/posix/link.ld
+

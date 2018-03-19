@@ -57,6 +57,7 @@ extern void tcp_conn_segment_arrived(tcp_conn_t *, inet_ep2_t *,
     tcp_segment_t *);
 extern void tcp_unexpected_segment(inet_ep2_t *, tcp_segment_t *);
 extern void tcp_ep2_flipped(inet_ep2_t *, inet_ep2_t *);
+extern void tcp_conn_remove(tcp_conn_t *);
 
 extern tcp_lb_t tcp_conn_lb;
 

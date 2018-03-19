@@ -254,8 +254,18 @@ RD_DATA_NON_ESSENTIAL = \
         $(USPACE_PATH)/app/bird/basic-rip-bird.sh \
 	$(USPACE_PATH)/app/bird/triangle-ospf-bird.sh \
         $(USPACE_PATH)/app/bird/triangle-rip-bird.sh \
-        $(USPACE_PATH)/app/bird/bird.conf \
-        $(USPACE_PATH)/app/bird/run-bird.sh \
+        $(USPACE_PATH)/app/bird/birdA.conf \
+        $(USPACE_PATH)/app/bird/birdA1.conf \
+        $(USPACE_PATH)/app/bird/birdA2.conf \
+        $(USPACE_PATH)/app/bird/birdB1.conf \
+        $(USPACE_PATH)/app/bird/birdC.conf \
+        $(USPACE_PATH)/app/bird/birdC1.conf \
+        $(USPACE_PATH)/app/bird/run-birdA.sh \
+        $(USPACE_PATH)/app/bird/run-birdA1.sh \
+        $(USPACE_PATH)/app/bird/run-birdA2.sh \
+        $(USPACE_PATH)/app/bird/run-birdB1.sh \
+        $(USPACE_PATH)/app/bird/run-birdC.sh \
+        $(USPACE_PATH)/app/bird/run-birdC1.sh \
 
 
 COMPONENTS = \

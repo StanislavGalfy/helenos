@@ -141,6 +141,7 @@ static void tcp_service_lst_cstate_change(tcp_conn_t *conn, void *arg,
 	if ((old_state == st_syn_sent || old_state == st_syn_received) &&
 	    (nstate == st_established)) {
 		/* Connection established */
+                tcp_conn_remove(clst->conn);
 		clst->conn = NULL;
 
 		rc = tcp_cconn_create(clst->client, conn, &cconn);
@@ -495,7 +496,6 @@ static errno_t tcp_conn_destroy_impl(tcp_client_t *client, sysarg_t conn_id)
 		assert(rc == ENOENT);
 		return ENOENT;
 	}
-        log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_destroy_impl <<<<<<<<<<<<<<<<<<<<<<<<<");
 	tcp_uc_close(cconn->conn);
 	tcp_uc_delete(cconn->conn);
 	tcp_cconn_destroy(cconn);
@@ -569,7 +569,7 @@ static errno_t tcp_listener_destroy_impl(tcp_client_t *client, sysarg_t lst_id)
 		return ENOENT;
 	}
 
-//	tcp_uc_close(cconn->conn);
+        tcp_conn_remove(clst->conn);
 	tcp_clistener_destroy(clst);
 	return EOK;
 }

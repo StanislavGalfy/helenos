@@ -40,7 +40,6 @@
 #include <ipc/tcp.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <io/log.h>
 #include <mem.h>
 
 static void tcp_cb_conn(ipc_callid_t, ipc_call_t *, void *);
@@ -170,7 +169,6 @@ static errno_t tcp_conn_new(tcp_t *tcp, sysarg_t id, tcp_cb_t *cb, void *arg,
 
 	conn = calloc(1, sizeof(tcp_conn_t));
         
-        log_msg(LOG_DEFAULT, LVL_DEBUG, "TCP_CONN_NEW - Ptr: %p", conn);
 	if (conn == NULL)
 		return ENOMEM;
 

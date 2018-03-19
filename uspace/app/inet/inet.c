@@ -485,6 +485,79 @@ out:
 	return rc;
 }
 
+static errno_t sroute_log(void)
+{
+	sysarg_t *sroute_list = NULL;
+	inet_sroute_info_t srinfo;
+
+	size_t count;
+	size_t i;
+	errno_t rc;
+	char *dest_str = NULL;
+	char *router_str = NULL;
+
+	srinfo.name = NULL;
+
+	rc = inetcfg_get_sroute_list(&sroute_list, &count,
+            INET_SROUTE_STATUS_ACTIVE);
+	if (rc != EOK) {
+		printf(NAME ": Failed getting address list.\n");
+		return rc;
+	}
+        printf ("route count: %d\n", count);
+
+        FILE *file = fopen("routes.log", "w");
+
+	for (i = 0; i < count; i++) {
+		rc = inetcfg_sroute_get(sroute_list[i], &srinfo,
+                    INET_SROUTE_STATUS_ACTIVE);
+		if (rc != EOK) {
+			printf("Failed getting properties of static route %zu.\n",
+			    (size_t)sroute_list[i]);
+			srinfo.name = NULL;
+			continue;
+		}
+
+		rc = inet_naddr_format(&srinfo.dest, &dest_str);
+		if (rc != EOK) {
+			printf("Memory allocation failed.\n");
+			dest_str = NULL;
+			goto out;
+		}
+
+		rc = inet_addr_format(&srinfo.router, &router_str);
+		if (rc != EOK) {
+			printf("Memory allocation failed.\n");
+			router_str = NULL;
+			goto out;
+		}
+
+		fprintf(file, "%s %s %s\n", dest_str, router_str,
+		    srinfo.name);
+
+		free(srinfo.name);
+		free(dest_str);
+		free(router_str);
+
+		router_str = NULL;
+		srinfo.name = NULL;
+		dest_str = NULL;
+	}
+
+out:
+        fclose(file);
+	if (srinfo.name != NULL)
+		free(srinfo.name);
+	if (dest_str != NULL)
+		free(dest_str);
+	if (router_str != NULL)
+		free(router_str);
+
+	free(sroute_list);
+
+	return EOK;
+}
+
 int main(int argc, char *argv[])
 {
 	errno_t rc;
@@ -515,6 +588,10 @@ int main(int argc, char *argv[])
 			return 1;
 	} else if (str_cmp(argv[1], "list-sr") == 0) {
 		rc = sroute_list();
+		if (rc != EOK)
+			return 1;
+	} else if (str_cmp(argv[1], "log-sr") == 0) {
+		rc = sroute_log();
 		if (rc != EOK)
 			return 1;
 	} else if (str_cmp(argv[1], "create-sr") == 0) {

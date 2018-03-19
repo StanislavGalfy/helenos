@@ -54,7 +54,7 @@
 #include "ucall.h"
 
 #define RCV_BUF_SIZE 4096/*2*/
-#define SND_BUF_SIZE 4096
+#define SND_BUF_SIZE (4096 * 16)
 
 #define MAX_SEGMENT_LIFETIME	(15*1000*1000) //(2*60*1000*1000)
 #define TIME_WAIT_TIMEOUT	(2*MAX_SEGMENT_LIFETIME)
@@ -209,6 +209,7 @@ error:
  *
  * @param conn		Connection
  */
+/*
 static void tcp_conn_free(tcp_conn_t *conn)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "%s: tcp_conn_free(%p)", conn->name, conn);
@@ -227,7 +228,7 @@ static void tcp_conn_free(tcp_conn_t *conn)
 	if (conn->tw_timer != NULL)
 		fibril_timer_destroy(conn->tw_timer);
 	free(conn);
-}
+}*/
 
 /** Add reference to connection.
  *
@@ -289,7 +290,7 @@ void tcp_conn_unlock(tcp_conn_t *conn)
  */
 void tcp_conn_delete(tcp_conn_t *conn)
 {
-	log_msg(LOG_DEFAULT, LVL_DEBUG, "%s: tcp_conn_delete(%p) <<<<<<<<<<<<<<<<<<<<<<<<<", conn->name, conn);
+	log_msg(LOG_DEFAULT, LVL_DEBUG, "%s: tcp_conn_delete(%p)", conn->name, conn);
 
 	assert(conn->deleted == false);
 	conn->deleted = true;
@@ -330,7 +331,7 @@ errno_t tcp_conn_add(tcp_conn_t *conn)
  *
  * Remove connection from the connection map.
  */
-static void tcp_conn_remove(tcp_conn_t *conn)
+void tcp_conn_remove(tcp_conn_t *conn)
 {
 	if (!conn->mapped)
 		return;
@@ -1066,11 +1067,8 @@ static cproc_t tcp_conn_seg_proc_text(tcp_conn_t *conn, tcp_segment_t *seg)
 	/* Signal to the receive function that new data has arrived */
 	if (xfer_size > 0) {
 		fibril_condvar_broadcast(&conn->rcv_buf_cv);
-                log_msg(LOG_DEFAULT, LVL_DEBUG, "Signal 1 conn: %p, cb: %p <<<", conn, conn->cb);
-		if (conn->cb != NULL && conn->cb->recv_data != NULL) {
-                        log_msg(LOG_DEFAULT, LVL_DEBUG, "Signal 2 <<<");
+		if (conn->cb != NULL && conn->cb->recv_data != NULL)
 			conn->cb->recv_data(conn, conn->cb_arg);
-                }
 	}
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "Received %zu bytes of data.", xfer_size);

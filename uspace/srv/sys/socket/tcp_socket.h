@@ -47,6 +47,8 @@ typedef struct {
         /** Datagram received from inet */
         tcp_conn_t *tcp_conn;
         
+        bool is_incoming;
+        
         fibril_condvar_t tcp_conn_fcv;
 } tcp_sock_conn_t;
 
@@ -63,6 +65,8 @@ typedef struct {
     
     list_t tcp_conn_queue;
     
+    tcp_listener_t *tcp_listener;
+    
 } tcp_socket_t;
 
 errno_t tcp_socket(int, int, int, int, int *);
@@ -75,6 +79,7 @@ errno_t tcp_socket_getsockname(common_socket_t *, const struct sockaddr *,
 errno_t tcp_socket_accept(common_socket_t *, const struct sockaddr *,
         socklen_t *, int *);
 errno_t tcp_socket_read_avail(common_socket_t *, bool *);
+errno_t tcp_socket_write_avail(common_socket_t *, bool *);
 errno_t tcp_socket_write(common_socket_t *, void *, size_t, size_t *);
 errno_t tcp_socket_read(common_socket_t *, void *, size_t, size_t *);
 errno_t tcp_socket_close(common_socket_t *);

@@ -109,6 +109,10 @@ errno_t (*socket_getsockname[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX])(common_socket_t *,
 errno_t (*socket_read_avail[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (
         common_socket_t *, bool *);
 
+/** Array of socket fdisset functions */
+errno_t (*socket_write_avail[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (
+        common_socket_t *, bool *);
+
 /** Array of socket sendmsg functions */
 errno_t (*socket_sendmsg[SOCK_DOMAIN_MAX][SOCK_TYPE_MAX]) (common_socket_t *, 
     const struct msghdr *, int, size_t *);
@@ -340,7 +344,7 @@ static void socket_connect_srv(ipc_callid_t iid, ipc_call_t *icall)
         fibril_mutex_unlock(&socket_lock);
 
         async_answer_0(iid, retval);
-        free(addr);    
+        free(addr);
 }
 
 /** Accept socket connection
@@ -377,7 +381,7 @@ static void socket_accept_srv(ipc_callid_t iid, ipc_call_t *icall)
                 return;
         }
 
-        if (socket_connect[socket->domain][socket->type] == NULL) {
+        if (socket_accept[socket->domain][socket->type] == NULL) {
                 fibril_mutex_unlock(&socket_lock);
                 async_answer_0(callid, EOPNOTSUPP);
                 async_answer_0(iid, EOPNOTSUPP);
@@ -923,12 +927,14 @@ static void socket_close_srv(ipc_callid_t iid, ipc_call_t *icall)
 
 static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall) 
 {
+        fibril_mutex_lock(&socket_lock);
+
         //int nfds = IPC_GET_ARG1(*icall);
         bool is_readfds = IPC_GET_ARG2(*icall);
-        //bool is_writefds =  IPC_GET_ARG3(*icall);
-        //bool is_exceptfds = IPC_GET_ARG4(*icall);
-        //bool is_timeout = IPC_GET_ARG5(*icall);
-        //struct timeval timeout;
+        bool is_writefds =  IPC_GET_ARG3(*icall);
+        bool is_exceptfds = IPC_GET_ARG4(*icall);
+        bool is_timeout = IPC_GET_ARG5(*icall);
+        struct timeval timeout;
         
         size_t size;
         ipc_callid_t callid;
@@ -946,6 +952,7 @@ static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall)
                 if (!rv) {
                         async_answer_0(callid, EREFUSED);
                         async_answer_0(iid, EREFUSED);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
 
@@ -953,6 +960,7 @@ static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall)
                 if (rc != EOK) {
                         async_answer_0(callid, rc);
                         async_answer_0(iid, rc);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
 
@@ -960,7 +968,7 @@ static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall)
                 list_foreach(socket_list, link, common_socket_t, socket) {
                         if (socket_read_avail[socket->domain][socket->type]) {
                                 bool read_avail; 
-                                retval = socket_read_avail [socket->domain]
+                                retval = socket_read_avail[socket->domain]
                                     [socket->type](socket, &read_avail);
                                 
                                 if (retval != EOK) {
@@ -978,6 +986,7 @@ static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall)
                         //fibril_mutex_unlock(&socket_lock);
                         async_answer_0(callid, EREFUSED);
                         async_answer_0(iid, EREFUSED);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
                 rc = async_data_read_finalize(callid, &readfds_out, size);
@@ -985,53 +994,77 @@ static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall)
                         //fibril_mutex_unlock(&socket_lock);
                         async_answer_0(callid, rc);
                         async_answer_0(iid, rc);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
         }
         
         async_answer_0(iid, EOK);
-        /*
+
         if (is_writefds) {
-                fd_set writefds;
-                fd_set exceptfds;
+                fd_set writefds_in;
+                fd_set writefds_out;
+                memset(&writefds_out.fds_bits, 0, sizeof(writefds_out.fds_bits));
             
                 //receive write file descriptors
                 rv = async_data_write_receive(&callid, &size);
                 if (!rv) {
                         async_answer_0(callid, EREFUSED);
                         async_answer_0(iid, EREFUSED);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
 
-                rc = async_data_write_finalize(callid, &writefds, size);
+                rc = async_data_write_finalize(callid, &writefds_in, size);
                 if (rc != EOK) {
                         async_answer_0(callid, rc);
                         async_answer_0(iid, rc);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
+
+                errno_t retval;
+                list_foreach(socket_list, link, common_socket_t, socket) {
+                        if (socket_write_avail[socket->domain][socket->type]) {
+                                bool write_avail;
+                                retval = socket_write_avail[socket->domain]
+                                    [socket->type](socket, &write_avail);
+
+                                if (retval != EOK) {
+                                    continue;
+                                }
+
+                                writefds_out.fds_bits[socket->id] = write_avail
+                                    & writefds_in.fds_bits[socket->id];
+                        }
+                }
+
                 //send write file descriptors
                 rv = async_data_read_receive(&callid, &size);
                 if (!rv) {
-                        //fibril_mutex_unlock(&socket_lock);
                         async_answer_0(callid, EREFUSED);
                         async_answer_0(iid, EREFUSED);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
-                rc = async_data_read_finalize(callid, &writefds, size);
+                rc = async_data_read_finalize(callid, &writefds_out, size);
                 if (rc != EOK) {
-                        //fibril_mutex_unlock(&socket_lock);
                         async_answer_0(callid, rc);
                         async_answer_0(iid, rc);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
         }
 
         if (is_exceptfds) {
+                fd_set exceptfds;
+
                 //receive except file descriptors
                 rv = async_data_write_receive(&callid, &size);
                 if (!rv) {
                         async_answer_0(callid, EREFUSED);
                         async_answer_0(iid, EREFUSED);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
 
@@ -1039,22 +1072,23 @@ static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall)
                 if (rc != EOK) {
                         async_answer_0(callid, rc);
                         async_answer_0(iid, rc);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
 
                 //send except file descriptors
                 rv = async_data_read_receive(&callid, &size);
                 if (!rv) {
-                        //fibril_mutex_unlock(&socket_lock);
                         async_answer_0(callid, EREFUSED);
                         async_answer_0(iid, EREFUSED);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
                 rc = async_data_read_finalize(callid, &exceptfds, size);
                 if (rc != EOK) {
-                        //fibril_mutex_unlock(&socket_lock);
                         async_answer_0(callid, rc);
                         async_answer_0(iid, rc);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
         }
@@ -1065,6 +1099,7 @@ static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall)
                 if (!rv) {
                         async_answer_0(callid, EREFUSED);
                         async_answer_0(iid, EREFUSED);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
 
@@ -1072,10 +1107,11 @@ static void socket_select_srv(ipc_callid_t iid, ipc_call_t *icall)
                 if (rc != EOK) {
                         async_answer_0(callid, rc);
                         async_answer_0(iid, rc);
+                        fibril_mutex_unlock(&socket_lock);
                         return;
                 }
         }
-         */
+        fibril_mutex_unlock(&socket_lock);
 }
 
 /** Handle Socket client connection.
@@ -1198,12 +1234,13 @@ int socket_service_init(void)
         socket_close[AF_INET][SOCK_DGRAM] = udp_socket_close;
 
         socket_create[AF_INET][SOCK_STREAM] = tcp_socket;
-        socket_setsockopt[AF_INET][SOCK_STREAM] = udp_socket_setsockopt;
+        socket_setsockopt[AF_INET][SOCK_STREAM] = tcp_socket_setsockopt;
         socket_bind[AF_INET][SOCK_STREAM] = tcp_socket_bind;
         socket_listen[AF_INET][SOCK_STREAM] = tcp_socket_listen;
         socket_connect[AF_INET][SOCK_STREAM] = tcp_socket_connect;
         socket_accept[AF_INET][SOCK_STREAM] = tcp_socket_accept;
         socket_read_avail[AF_INET][SOCK_STREAM] = tcp_socket_read_avail;
+        socket_write_avail[AF_INET][SOCK_STREAM] = tcp_socket_write_avail;
         socket_write[AF_INET][SOCK_STREAM] = tcp_socket_write;
         socket_read[AF_INET][SOCK_STREAM] = tcp_socket_read;
         socket_close[AF_INET][SOCK_STREAM] = tcp_socket_close;

@@ -217,13 +217,18 @@ errno_t raw_socket_sendmsg(common_socket_t *socket, const struct msghdr *msg,
         dgram.dest.addr = htonl(sa->sin_addr.s_addr);
         dgram.dest.version = ip_v4;
         inet_addr_t src;
-        int rc = get_link_addr(raw_socket->iplink, &src);
-        if (rc != EOK)
-                return rc;    
+        errno_t rc = get_link_addr(raw_socket->iplink, &src);
+        if (rc != EOK) {
+                log_msg(LOG_DEFAULT, LVL_DEBUG2, 
+                    "  * get_link_addr return code: %d", rc);
+                return rc;
+        }
         dgram.src = src;
     
         *nsent = dgram.size;
-        return inet_send(&dgram, INET_TTL_MAX, 0);
+        rc = inet_send(&dgram, INET_TTL_MAX, 0);
+        log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * inet_send return code: %d", rc);
+        return rc;
 }
 
 /** Received OSPF datagram callback.
@@ -243,21 +248,26 @@ int raw_socket_inet_ev_recv(inet_dgram_t *dgram)
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * message source: %d",
             dgram->src.addr);
         log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * message link: %d", dgram->iplink);
-                
+
+        fibril_mutex_lock(&socket_lock);
 
         list_foreach(socket_list, link, common_socket_t, socket) {
-                if (socket->domain != AF_INET || socket->type != SOCK_RAW)
+                if (socket->domain != AF_INET || socket->type != SOCK_RAW) {
                         continue;
+                }
                 
                 raw_socket_t *raw_socket = (raw_socket_t*)socket;
-                if (raw_socket->iplink != dgram->iplink)
+                if (raw_socket->iplink != dgram->iplink) {
                         continue;
+                }
 
                 raw_msg_t* raw_msg = malloc(sizeof(raw_msg_t));
                 // If there is no more memory, just discard the datagram and 
                 // return EOK
-                if (raw_msg == NULL)
+                if (raw_msg == NULL) {
+                        fibril_mutex_unlock(&socket_lock);
                         return EOK;
+                }
 
                 link_initialize(&raw_msg->msg_queue_link);
                 raw_msg->dgram.iplink = dgram->iplink;
@@ -269,6 +279,7 @@ int raw_socket_inet_ev_recv(inet_dgram_t *dgram)
                 // return EOK
                 if (raw_msg->dgram.data == NULL) {
                         free(raw_msg);
+                        fibril_mutex_unlock(&socket_lock);
                         return EOK;
                 }
                 memcpy(raw_msg->dgram.data, dgram->data, dgram->size);
@@ -277,6 +288,7 @@ int raw_socket_inet_ev_recv(inet_dgram_t *dgram)
                 list_append(&raw_msg->msg_queue_link, &raw_socket->msg_queue);
         }
         
+        fibril_mutex_unlock(&socket_lock);
         return EOK;
 }
 
