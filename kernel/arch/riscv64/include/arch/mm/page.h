@@ -40,7 +40,7 @@
 #define PAGE_WIDTH  FRAME_WIDTH
 #define PAGE_SIZE   FRAME_SIZE
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 	#define KA2PA(x)  (((uintptr_t) (x)) - UINT64_C(0xffff800000000000))
 	#define PA2KA(x)  (((uintptr_t) (x)) + UINT64_C(0xffff800000000000))
 #else
@@ -158,7 +158,7 @@
 #define PTE_WRITABLE_ARCH(pte)    ((pte)->writable != 0)
 #define PTE_EXECUTABLE_ARCH(pte)  ((pte)->executable != 0)
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 
 #include <mm/mm.h>
 #include <arch/interrupt.h>
@@ -181,7 +181,7 @@ typedef struct {
 NO_TRACE static inline unsigned int get_pt_flags(pte_t *pt, size_t i)
 {
 	pte_t *entry = &pt[i];
-	
+
 	return (((!entry->valid) << PAGE_PRESENT_SHIFT) |
 	    (entry->user << PAGE_USER_SHIFT) |
 	    (entry->readable << PAGE_READ_SHIFT) |
@@ -193,7 +193,7 @@ NO_TRACE static inline unsigned int get_pt_flags(pte_t *pt, size_t i)
 NO_TRACE static inline void set_pt_flags(pte_t *pt, size_t i, int flags)
 {
 	pte_t *entry = &pt[i];
-	
+
 	entry->valid = !(flags & PAGE_NOT_PRESENT);
 	entry->readable = (flags & PAGE_READ) != 0;
 	entry->writable = (flags & PAGE_WRITE) != 0;
@@ -215,7 +215,7 @@ extern void page_arch_init(void);
 extern void page_fault(unsigned int, istate_t *);
 extern void write_satp(uintptr_t);
 
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
 #endif
 

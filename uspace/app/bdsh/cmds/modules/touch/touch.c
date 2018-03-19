@@ -68,7 +68,7 @@ void help_cmd_touch(unsigned int level)
 		    "   -c, --no-create  Do not create new files\n",
 		    cmdname);
 	}
-	
+
 	return;
 }
 
@@ -84,10 +84,15 @@ int cmd_touch(char **argv)
 	vfs_stat_t file_stat;
 	int fd = -1;
 	char *buff = NULL;
-	
+
 	DIR *dirp;
-	
-	for (c = 0, optreset = 1, optind = 0, longind = 0; c != -1; ) {
+
+	c = 0;
+	optreset = 1;
+	optind = 0;
+	longind = 0;
+
+	while (c != -1) {
 		c = getopt_long(argc, argv, "c", long_options, &longind);
 		switch (c) {
 		case 'c':
@@ -95,13 +100,13 @@ int cmd_touch(char **argv)
 			break;
 		}
 	}
-	
+
 	if (argc - optind < 1) {
 		printf("%s: Incorrect number of arguments. Try `help %s extended'\n",
 		    cmdname, cmdname);
 		return CMD_FAILURE;
 	}
-	
+
 	for (i = optind; argv[i] != NULL; i++) {
 		buff = str_dup(argv[i]);
 		if (buff == NULL) {
@@ -109,7 +114,7 @@ int cmd_touch(char **argv)
 			ret++;
 			continue;
 		}
-		
+
 		dirp = opendir(buff);
 		if (dirp) {
 			cli_error(CL_ENOTSUP, "`%s' is a directory", buff);
@@ -118,7 +123,7 @@ int cmd_touch(char **argv)
 			ret++;
 			continue;
 		}
-		
+
 		/* Check whether file exists if -c (--no-create) option is given */
 		if ((!no_create) ||
 		    ((no_create) && (vfs_stat_path(buff, &file_stat) == EOK))) {
@@ -127,7 +132,7 @@ int cmd_touch(char **argv)
 				fd = -1;
 			}
 		}
-		
+
 		if (fd < 0) {
 			cli_error(CL_EFAIL, "Could not update or create `%s'", buff);
 			free(buff);
@@ -137,10 +142,10 @@ int cmd_touch(char **argv)
 			vfs_put(fd);
 			fd = -1;
 		}
-		
+
 		free(buff);
 	}
-	
+
 	if (ret)
 		return CMD_FAILURE;
 	else

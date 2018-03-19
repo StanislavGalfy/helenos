@@ -96,36 +96,36 @@ static void inet_default_conn(ipc_callid_t, ipc_call_t *, void *);
 static errno_t inet_init(void)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_init()");
-	
+
 	port_id_t port;
 	errno_t rc = async_create_port(INTERFACE_INET,
 	    inet_default_conn, NULL, &port);
 	if (rc != EOK)
 		return rc;
-	
+
 	rc = async_create_port(INTERFACE_INETCFG,
 	    inet_cfg_conn, NULL, &port);
 	if (rc != EOK)
 		return rc;
-	
+
 	rc = async_create_port(INTERFACE_INETPING,
 	    inetping_conn, NULL, &port);
 	if (rc != EOK)
 		return rc;
-	
+
 	rc = loc_server_register(NAME);
 	if (rc != EOK) {
 		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed registering server: %s.", str_error(rc));
 		return EEXIST;
 	}
-	
+
 	service_id_t sid;
 	rc = loc_service_register(SERVICE_NAME_INET, &sid);
 	if (rc != EOK) {
 		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed registering service: %s.", str_error(rc));
 		return EEXIST;
 	}
-	
+
 	return EOK;
 }
 
@@ -193,7 +193,7 @@ errno_t inet_route_packet(inet_dgram_t *dgram, uint8_t proto, uint8_t ttl,
 		if (dgram->src.version != ip_v4 ||
 			dgram->dest.version != ip_v4)
 			return EINVAL;
-                
+
 		return inet_link_send_dgram(ilink, dgram->src.addr,
 		    dgram->dest.addr, dgram, proto, ttl, df);
 	}
@@ -244,9 +244,9 @@ static void inet_get_srcaddr_srv(inet_client_t *client, ipc_callid_t iid,
     ipc_call_t *icall)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_get_srcaddr_srv()");
-	
+
 	uint8_t tos = IPC_GET_ARG1(*icall);
-	
+
 	ipc_callid_t callid;
 	size_t size;
 	if (!async_data_write_receive(&callid, &size)) {
@@ -254,46 +254,46 @@ static void inet_get_srcaddr_srv(inet_client_t *client, ipc_callid_t iid,
 		async_answer_0(iid, EREFUSED);
 		return;
 	}
-	
+
 	if (size != sizeof(inet_addr_t)) {
 		async_answer_0(callid, EINVAL);
 		async_answer_0(iid, EINVAL);
 		return;
 	}
-	
+
 	inet_addr_t remote;
 	errno_t rc = async_data_write_finalize(callid, &remote, size);
 	if (rc != EOK) {
 		async_answer_0(callid, rc);
 		async_answer_0(iid, rc);
 	}
-	
+
 	inet_addr_t local;
 	rc = inet_get_srcaddr(&remote, tos, &local);
 	if (rc != EOK) {
 		async_answer_0(iid, rc);
 		return;
 	}
-	
+
 	if (!async_data_read_receive(&callid, &size)) {
 		async_answer_0(callid, EREFUSED);
 		async_answer_0(iid, EREFUSED);
 		return;
 	}
-	
+
 	if (size != sizeof(inet_addr_t)) {
 		async_answer_0(callid, EINVAL);
 		async_answer_0(iid, EINVAL);
 		return;
 	}
-	
+
 	rc = async_data_read_finalize(callid, &local, size);
 	if (rc != EOK) {
 		async_answer_0(callid, rc);
 		async_answer_0(iid, rc);
 		return;
 	}
-	
+
 	async_answer_0(iid, rc);
 }
 
@@ -301,15 +301,15 @@ static void inet_send_srv(inet_client_t *client, ipc_callid_t iid,
     ipc_call_t *icall)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_send_srv()");
-	
+
 	inet_dgram_t dgram;
-	
+
 	dgram.iplink = IPC_GET_ARG1(*icall);
 	dgram.tos = IPC_GET_ARG2(*icall);
-	
+
 	uint8_t ttl = IPC_GET_ARG3(*icall);
 	int df = IPC_GET_ARG4(*icall);
-	
+
 	ipc_callid_t callid;
 	size_t size;
 	if (!async_data_write_receive(&callid, &size)) {
@@ -317,46 +317,46 @@ static void inet_send_srv(inet_client_t *client, ipc_callid_t iid,
 		async_answer_0(iid, EREFUSED);
 		return;
 	}
-	
+
 	if (size != sizeof(inet_addr_t)) {
 		async_answer_0(callid, EINVAL);
 		async_answer_0(iid, EINVAL);
 		return;
 	}
-	
+
 	errno_t rc = async_data_write_finalize(callid, &dgram.src, size);
 	if (rc != EOK) {
 		async_answer_0(callid, rc);
 		async_answer_0(iid, rc);
 	}
-	
+
 	if (!async_data_write_receive(&callid, &size)) {
 		async_answer_0(callid, EREFUSED);
 		async_answer_0(iid, EREFUSED);
 		return;
 	}
-	
+
 	if (size != sizeof(inet_addr_t)) {
 		async_answer_0(callid, EINVAL);
 		async_answer_0(iid, EINVAL);
 		return;
 	}
-	
+
 	rc = async_data_write_finalize(callid, &dgram.dest, size);
 	if (rc != EOK) {
 		async_answer_0(callid, rc);
 		async_answer_0(iid, rc);
 	}
-	
+
 	rc = async_data_write_accept(&dgram.data, false, 0, 0, 0,
 	    &dgram.size);
 	if (rc != EOK) {
 		async_answer_0(iid, rc);
 		return;
 	}
-	
+
 	rc = inet_send(client, &dgram, client->protocol, ttl, df);
-	
+
 	free(dgram.data);
 	async_answer_0(iid, rc);
 }
@@ -535,7 +535,7 @@ errno_t inet_recv_dgram(inet_dgram_t *dgram, uint8_t proto, uint8_t ttl, bool df
 	}
 
 	/* Try to forward the datagram */
-        
+
         if (ttl == 1) {
                 log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_recv_dgram refused ...");
                 return EREFUSED;
@@ -550,7 +550,7 @@ errno_t inet_recv_dgram(inet_dgram_t *dgram, uint8_t proto, uint8_t ttl, bool df
 int inet_recv_packet(inet_packet_t *packet)
 {
 	inet_dgram_t dgram;
-        
+
         log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_recv_packet()");
 
 	/* Check if packet is a complete datagram */

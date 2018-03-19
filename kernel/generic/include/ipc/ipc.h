@@ -76,22 +76,27 @@ typedef struct answerbox {
 
 	/** Answerbox is active until it enters cleanup. */
 	bool active;
-	
+
 	struct task *task;
-	
+
 	waitq_t wq;
-	
+
+	/**
+	 * Number of answers the answerbox is expecting to eventually arrive.
+	 */
+	atomic_t active_calls;
+
 	/** Phones connected to this answerbox. */
 	list_t connected_phones;
 	/** Received calls. */
 	list_t calls;
 	list_t dispatched_calls;  /* Should be hash table in the future */
-	
+
 	/** Answered calls. */
 	list_t answers;
-	
+
 	IRQ_SPINLOCK_DECLARE(irq_lock);
-	
+
 	/** Notifications from IRQ handlers. */
 	list_t irq_notifs;
 } answerbox_t;
@@ -125,7 +130,7 @@ typedef struct call {
 
 	/** Answerbox link. */
 	link_t ab_link;
-	
+
 	unsigned int flags;
 
 	/** Protects the forget member. */
@@ -144,13 +149,13 @@ typedef struct call {
 
 	/** True if the call is in the active list. */
 	bool active;
-	
+
 	/**
 	 * Identification of the caller.
 	 * Valid only when the call is not forgotten.
 	 */
 	struct task *sender;
-	
+
 	/*
 	 * Answerbox that will receive the answer.
 	 * This will most of the times be the sender's answerbox,
@@ -160,10 +165,10 @@ typedef struct call {
 
 	/** Phone which was used to send the call. */
 	phone_t *caller_phone;
-	
+
 	/** Private data to internal IPC. */
 	sysarg_t priv;
-	
+
 	/** Data passed from/to userspace. */
 	ipc_data_t data;
 
@@ -176,7 +181,7 @@ typedef struct call {
 
 extern slab_cache_t *phone_cache;
 
-extern answerbox_t *ipc_phone_0;
+extern answerbox_t *ipc_box_0;
 
 extern void ipc_init(void);
 

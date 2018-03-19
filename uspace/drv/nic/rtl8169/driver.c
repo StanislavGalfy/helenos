@@ -33,6 +33,7 @@
 #include <align.h>
 #include <byteorder.h>
 #include <libarch/barrier.h>
+#include <stdbool.h>
 
 #include <as.h>
 #include <ddf/log.h>
@@ -58,9 +59,9 @@ static errno_t rtl8169_get_operation_mode(ddf_fun_t *fun, int *speed,
     nic_channel_mode_t *duplex, nic_role_t *role);
 static errno_t rtl8169_set_operation_mode(ddf_fun_t *fun, int speed,
     nic_channel_mode_t duplex, nic_role_t role);
-static errno_t rtl8169_pause_get(ddf_fun_t *fun, nic_result_t *we_send, 
+static errno_t rtl8169_pause_get(ddf_fun_t *fun, nic_result_t *we_send,
     nic_result_t *we_receive, uint16_t *time);
-static errno_t rtl8169_pause_set(ddf_fun_t *fun, int allow_send, int allow_receive, 
+static errno_t rtl8169_pause_set(ddf_fun_t *fun, int allow_send, int allow_receive,
     uint16_t time);
 static errno_t rtl8169_autoneg_enable(ddf_fun_t *fun, uint32_t advertisement);
 static errno_t rtl8169_autoneg_disable(ddf_fun_t *fun);
@@ -207,7 +208,7 @@ static errno_t rtl8169_fill_resource_info(ddf_dev_t *dev, const hw_res_list_pars
 	if (hw_resources->irqs.count != 1) {
 		ddf_msg(LVL_ERROR, "%s device: unexpected irq count", ddf_dev_get_name(dev));
 		return EINVAL;
-	};
+	}
 
 	if (hw_resources->io_ranges.count != 1) {
 		ddf_msg(LVL_ERROR, "%s device: unexpected io ranges count", ddf_dev_get_name(dev));
@@ -236,7 +237,7 @@ static errno_t rtl8169_allocate_buffers(rtl8169_t *rtl8169)
 
 	/* Allocate TX ring */
 	rtl8169->tx_ring = AS_AREA_ANY;
-	rc = dmamem_map_anonymous(TX_RING_SIZE, DMAMEM_4GiB, 
+	rc = dmamem_map_anonymous(TX_RING_SIZE, DMAMEM_4GiB,
 	    AS_AREA_READ | AS_AREA_WRITE, 0, &rtl8169->tx_ring_phys,
 	    (void **)&rtl8169->tx_ring);
 
@@ -250,7 +251,7 @@ static errno_t rtl8169_allocate_buffers(rtl8169_t *rtl8169)
 
 	/* Allocate RX ring */
 	rtl8169->rx_ring = AS_AREA_ANY;
-	rc = dmamem_map_anonymous(RX_RING_SIZE, DMAMEM_4GiB, 
+	rc = dmamem_map_anonymous(RX_RING_SIZE, DMAMEM_4GiB,
 	    AS_AREA_READ | AS_AREA_WRITE, 0, &rtl8169->rx_ring_phys,
 	    (void **)&rtl8169->rx_ring);
 
@@ -264,7 +265,7 @@ static errno_t rtl8169_allocate_buffers(rtl8169_t *rtl8169)
 
 	/* Allocate TX buffers */
 	rtl8169->tx_buff = AS_AREA_ANY;
-	rc = dmamem_map_anonymous(TX_BUFFERS_SIZE, DMAMEM_4GiB, 
+	rc = dmamem_map_anonymous(TX_BUFFERS_SIZE, DMAMEM_4GiB,
 	    AS_AREA_READ | AS_AREA_WRITE, 0, &rtl8169->tx_buff_phys,
 	    &rtl8169->tx_buff);
 
@@ -276,7 +277,7 @@ static errno_t rtl8169_allocate_buffers(rtl8169_t *rtl8169)
 
 	/* Allocate RX buffers */
 	rtl8169->rx_buff = AS_AREA_ANY;
-	rc = dmamem_map_anonymous(RX_BUFFERS_SIZE, DMAMEM_4GiB, 
+	rc = dmamem_map_anonymous(RX_BUFFERS_SIZE, DMAMEM_4GiB,
 	    AS_AREA_READ | AS_AREA_WRITE, 0, &rtl8169->rx_buff_phys,
 	    &rtl8169->rx_buff);
 
@@ -351,7 +352,7 @@ static errno_t rtl8169_dev_initialize(ddf_dev_t *dev)
 
 	ddf_msg(LVL_DEBUG, "The device is initialized");
 	return ret;
-	
+
 failed:
 	ddf_msg(LVL_ERROR, "The device initialization failed");
 	rtl8169_dev_cleanup(dev);
@@ -459,7 +460,7 @@ static errno_t rtl8169_dev_add(ddf_dev_t *dev)
 		ddf_msg(LVL_ERROR, "Failed adding function to category");
 		goto err_fun_bind;
 	}
-	
+
 	ddf_msg(LVL_NOTE, "The %s device has been successfully initialized.",
 	    ddf_dev_get_name(dev));
 	return EOK;
@@ -511,13 +512,13 @@ static errno_t rtl8169_get_device_info(ddf_fun_t *fun, nic_device_info_t *info)
 
 	if (rtl8169->pci_vid == PCI_VID_REALTEK)
 		str_cpy(info->vendor_name, NIC_VENDOR_MAX_LENGTH, "Realtek");
-	
+
 	if (rtl8169->pci_vid == PCI_VID_DLINK)
 		str_cpy(info->vendor_name, NIC_VENDOR_MAX_LENGTH, "D-Link");
-	
+
 	if (rtl8169->pci_pid == 0x8168)
 		str_cpy(info->model_name, NIC_MODEL_MAX_LENGTH, "RTL8168");
-	
+
 	if (rtl8169->pci_pid == 0x8169)
 		str_cpy(info->model_name, NIC_MODEL_MAX_LENGTH, "RTL8169");
 
@@ -576,7 +577,7 @@ static errno_t rtl8169_set_operation_mode(ddf_fun_t *fun, int speed,
 
 	bmcr = rtl8169_mii_read(rtl8169, MII_BMCR);
 	bmcr &= ~(BMCR_DUPLEX | BMCR_SPD_100 | BMCR_SPD_1000);
-	
+
 	/* Disable autonegotiation */
 	bmcr &= ~BMCR_AN_ENABLE;
 
@@ -593,13 +594,13 @@ static errno_t rtl8169_set_operation_mode(ddf_fun_t *fun, int speed,
 	return EOK;
 }
 
-static errno_t rtl8169_pause_get(ddf_fun_t *fun, nic_result_t *we_send, 
+static errno_t rtl8169_pause_get(ddf_fun_t *fun, nic_result_t *we_send,
     nic_result_t *we_receive, uint16_t *time)
 {
 	return EOK;
 }
 
-static errno_t rtl8169_pause_set(ddf_fun_t *fun, int allow_send, int allow_receive, 
+static errno_t rtl8169_pause_set(ddf_fun_t *fun, int allow_send, int allow_receive,
     uint16_t time)
 {
 	return EOK;
@@ -673,7 +674,7 @@ static void rtl8169_rx_ring_refill(rtl8169_t *rtl8169, unsigned int first,
 	uint64_t buff_phys;
 	unsigned int i = first;
 
-	for (;;) {
+	while (true) {
 		descr = &rtl8169->rx_ring[i];
 		buff_phys = rtl8169->rx_buff_phys + (BUFFER_SIZE * i);
 		descr->control = BUFFER_SIZE | CONTROL_OWN;
@@ -917,7 +918,7 @@ static errno_t rtl8169_multicast_set(nic_t *nic_data, nic_multicast_mode_t mode,
 static errno_t rtl8169_broadcast_set(nic_t *nic_data, nic_broadcast_mode_t mode)
 {
 	rtl8169_t *rtl8169 = nic_get_specific(nic_data);
-	
+
 	/* Configure Receive Control Register */
 	uint32_t rcr = pio_read_32(rtl8169->regs + RCR);
 
@@ -960,7 +961,7 @@ static void rtl8169_transmit_done(ddf_dev_t *dev)
 		descr->control &= (~CONTROL_OWN);
 		write_barrier();
 		ddf_msg(LVL_DEBUG, "TX status for descr %d: 0x%08x", tail, descr->control);
-	
+
 		tail = (tail + 1) % TX_BUFFERS_COUNT;
 		sent++;
 	}
@@ -990,7 +991,7 @@ static void rtl8169_receive_done(ddf_dev_t *dev)
 
 	tail = rtl8169->rx_tail;
 
-	for (;;) {
+	while (true) {
 		descr = &rtl8169->rx_ring[tail];
 
 		if (descr->control & CONTROL_OWN)
@@ -1004,7 +1005,7 @@ static void rtl8169_receive_done(ddf_dev_t *dev)
 
 		if (descr->control & CONTROL_FS)
 			fsidx = tail;
-		
+
 		if (descr->control & CONTROL_LS) {
 			ddf_msg(LVL_DEBUG, "received message at slot %d, control 0x%08x", tail, descr->control);
 

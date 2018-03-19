@@ -26,9 +26,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/** @addtogroup libc 
+/** @addtogroup libc
  * @{
- */ 
+ */
 
 /**
  * @file
@@ -95,9 +95,10 @@ static token_t next_token(token_t *cur)
 		ret.stop = cur->stop + 2;
 		return ret;
 	}
-	unsigned i;
-	for (i = 1; cur->stop[i] && cur->stop[i] != '/'; i++)
-		;
+	unsigned i = 1;
+	while (cur->stop[i] && cur->stop[i] != '/')
+		i++;
+	
 	ret.kind = TK_COMP;
 	ret.start = &cur->stop[1];
 	ret.stop = &cur->stop[i - 1];
@@ -328,7 +329,7 @@ restart:
 		state = trans[state][t.kind].s;
 		t = next_token(&t);
 	}
-	
+
 	switch (state) {
 	case S_RESTART:
 		goto restart;
@@ -337,7 +338,7 @@ restart:
 	case S_ACCEPT:
 		if (lenp)
 			*lenp = (size_t)((tlcomp.stop - tfsl.start) + 1);
-		return tfsl.start; 
+		return tfsl.start;
 	default:
 		abort();
 	}

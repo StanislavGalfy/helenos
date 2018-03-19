@@ -41,7 +41,7 @@
 #define PAGE_WIDTH  FRAME_WIDTH
 #define PAGE_SIZE   FRAME_SIZE
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 	#define KA2PA(x)  (((uintptr_t) (x)) - 0x80000000)
 	#define PA2KA(x)  (((uintptr_t) (x)) + 0x80000000)
 #else
@@ -145,7 +145,7 @@
 #define PTE_WRITABLE_ARCH(pte)    1
 #define PTE_EXECUTABLE_ARCH(pte)  1
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 
 #include <mm/mm.h>
 #include <arch/interrupt.h>
@@ -164,7 +164,7 @@ typedef struct {
 NO_TRACE static inline unsigned int get_pt_flags(pte_t *pt, size_t i)
 {
 	pte_t *entry = &pt[i];
-	
+
 	return (((!entry->page_cache_disable) << PAGE_CACHEABLE_SHIFT) |
 	    ((!entry->present) << PAGE_PRESENT_SHIFT) |
 	    (1 << PAGE_USER_SHIFT) |
@@ -177,7 +177,7 @@ NO_TRACE static inline unsigned int get_pt_flags(pte_t *pt, size_t i)
 NO_TRACE static inline void set_pt_flags(pte_t *pt, size_t i, int flags)
 {
 	pte_t *entry = &pt[i];
-	
+
 	entry->page_cache_disable = !(flags & PAGE_CACHEABLE);
 	entry->present = !(flags & PAGE_NOT_PRESENT);
 	entry->global = (flags & PAGE_GLOBAL) != 0;
@@ -193,7 +193,7 @@ NO_TRACE static inline void set_pt_present(pte_t *pt, size_t i)
 
 extern void page_arch_init(void);
 
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
 #endif
 

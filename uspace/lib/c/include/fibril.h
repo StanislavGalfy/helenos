@@ -35,19 +35,12 @@
 #ifndef LIBC_FIBRIL_H_
 #define LIBC_FIBRIL_H_
 
-#include <libarch/fibril.h>
+#include <context.h>
 #include <types/common.h>
 #include <adt/list.h>
 #include <libarch/tls.h>
 
-#define context_set_generic(c, _pc, stack, size, ptls) \
-	do { \
-		(c)->pc = (sysarg_t) (_pc); \
-		(c)->sp = ((sysarg_t) (stack)) + (size) - SP_DELTA; \
-		(c)->tls = (sysarg_t) (ptls); \
-	} while (0)
-
-#define FIBRIL_WRITER	1 
+#define FIBRIL_WRITER	1
 
 struct fibril;
 
@@ -72,11 +65,11 @@ typedef struct fibril {
 	void *arg;
 	errno_t (*func)(void *);
 	tcb_t *tcb;
-	
+
 	struct fibril *clean_after_me;
 	errno_t retval;
 	int flags;
-	
+
 	fibril_owner_info_t *waits_for;
 
 	unsigned int switches;
@@ -85,13 +78,8 @@ typedef struct fibril {
 /** Fibril-local variable specifier */
 #define fibril_local __thread
 
-extern int context_save(context_t *ctx) __attribute__((returns_twice));
-extern void context_restore(context_t *ctx) __attribute__((noreturn));
-
 #define FIBRIL_DFLT_STK_SIZE	0
 
-#define fibril_create(func, arg) \
-	fibril_create_generic((func), (arg), FIBRIL_DFLT_STK_SIZE)
 extern fid_t fibril_create_generic(errno_t (*func)(void *), void *arg, size_t);
 extern void fibril_destroy(fid_t fid);
 extern fibril_t *fibril_setup(void);
@@ -101,6 +89,11 @@ extern void fibril_add_ready(fid_t fid);
 extern void fibril_add_manager(fid_t fid);
 extern void fibril_remove_manager(void);
 extern fid_t fibril_get_id(void);
+
+static inline fid_t fibril_create(errno_t (*func)(void *), void *arg)
+{
+	return fibril_create_generic(func, arg, FIBRIL_DFLT_STK_SIZE);
+}
 
 static inline int fibril_yield(void)
 {

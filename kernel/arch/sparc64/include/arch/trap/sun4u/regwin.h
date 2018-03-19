@@ -32,7 +32,7 @@
 #ifndef KERN_sparc64_sun4u_REGWIN_H_
 #define KERN_sparc64_sun4u_REGWIN_H_
 
-#ifdef __ASM__
+#ifdef __ASSEMBLER__
 
 /*
  * Macro used to spill userspace window to userspace window buffer.
@@ -41,7 +41,7 @@
  * at (TL=0).
  */
 .macro SPILL_TO_USPACE_WINDOW_BUFFER
-	stx %l0, [%g7 + L0_OFFSET]	
+	stx %l0, [%g7 + L0_OFFSET]
 	stx %l1, [%g7 + L1_OFFSET]
 	stx %l2, [%g7 + L2_OFFSET]
 	stx %l3, [%g7 + L3_OFFSET]

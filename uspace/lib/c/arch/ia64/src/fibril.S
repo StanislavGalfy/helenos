@@ -31,7 +31,7 @@
 
 .text
 
-FUNCTION_BEGIN(context_save)
+FUNCTION_BEGIN(__setjmp)
 	alloc loc0 = ar.pfs, 1, 49, 0, 0
 	mov loc1 = ar.unat ;;
 	mov loc3 = ar.rsc
@@ -43,8 +43,8 @@ FUNCTION_BEGIN(context_save)
 	 * After this ar.bsp and ar.bspstore are equal.
 	 */
 	flushrs
-	mov loc4 = ar.bsp	
-	
+	mov loc4 = ar.bsp
+
 	/*
 	 * Put RSE to enforced lazy mode.
 	 * So that ar.rnat can be read.
@@ -116,7 +116,7 @@ FUNCTION_BEGIN(context_save)
 	st8.spill [loc21] = r13 ;;	/* save tp */
 
 	mov loc2 = ar.unat
-	
+
 	/*
 	 * Save application registers
 	 */
@@ -176,13 +176,13 @@ FUNCTION_BEGIN(context_save)
 	stf.spill [loc48] = f31
 
 	mov ar.unat = loc1
-	
-	add r8 = r0, r0, 1 	/* context_save returns 1 */
-	br.ret.sptk.many b0
-FUNCTION_END(context_save)
 
-FUNCTION_BEGIN(context_restore)
-	alloc loc0 = ar.pfs, 1, 50, 0, 0	;;
+	mov r8 = 0 	/* __setjmp returns 0 */
+	br.ret.sptk.many b0
+FUNCTION_END(__setjmp)
+
+FUNCTION_BEGIN(__longjmp)
+	alloc loc0 = ar.pfs, 2, 50, 0, 0 ;;
 
 	add loc9 = CONTEXT_OFFSET_AR_PFS, in0
 	add loc10 = CONTEXT_OFFSET_AR_UNAT_CALLER, in0
@@ -238,8 +238,8 @@ FUNCTION_BEGIN(context_restore)
 	ld8 loc4 = [loc13]	/* load ar.bsp */
 	ld8 loc5 = [loc14]	/* load ar.rnat */
 	ld8 loc6 = [loc15]	/* load ar.lc */
-	
-	.auto	
+
+	.auto
 
 	/*
 	 * Invalidate the ALAT
@@ -273,7 +273,7 @@ FUNCTION_BEGIN(context_restore)
 
 	mov ar.unat = loc2 ;;
 	mov ar.lc = loc6
-	
+
 	/*
 	 * Restore general registers including NaT bits
 	 */
@@ -285,7 +285,7 @@ FUNCTION_BEGIN(context_restore)
 	ld8.fill r12 = [loc21] ;;	/* restore sp */
 	ld8.fill r13 = [loc22] ;;
 
-	/* 
+	/*
 	 * Restore branch registers
 	 */
 	ld8 loc2 = [loc23]		/* restore pc */
@@ -331,9 +331,9 @@ FUNCTION_BEGIN(context_restore)
 	ldf.fill f29 = [loc47]
 	ldf.fill f30 = [loc48]
 	ldf.fill f31 = [loc49]
-	
+
 	mov ar.unat = loc1
-	
-	mov r8 = r0			/* context_restore returns 0 */
+
+	mov r8 = in1			/* __longjmp returns second argument */
 	br.ret.sptk.many b0
-FUNCTION_END(context_restore)
+FUNCTION_END(__longjmp)

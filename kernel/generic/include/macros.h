@@ -35,7 +35,7 @@
 #ifndef KERN_MACROS_H_
 #define KERN_MACROS_H_
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 
 #include <stdint.h>
 #include <trace.h>
@@ -61,6 +61,7 @@ NO_TRACE static inline int overlaps(uint64_t s1, uint64_t sz1, uint64_t s2,
 	/* one size is non-zero */
 	if (sz2)
 		return ((s1 >= s2) && (s1 <= e2));
+
 	if (sz1)
 		return ((s2 >= s1) && (s2 <= e1));
 
@@ -85,18 +86,20 @@ NO_TRACE static inline int iswithin(uint64_t s1, uint64_t sz1, uint64_t s2,
 	/* Handle the two corner cases when either sz1 or sz2 are zero. */
 	if (sz1 == 0)
 		return (s1 == s2) && (sz2 == 0);
-	e1 = s1 + sz1 - 1;	
+
+	e1 = s1 + sz1 - 1;
 	if (sz2 == 0)
 		return (s1 <= s2) && (s2 <= e1);
+
 	e2 = s2 + sz2 - 1;
 
 	/* e1 and e2 are end addresses, the sum is imune to overflow */
 	return ((s1 <= s2) && (e1 >= e2));
 }
 
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
-#define ispwr2(x)	(((x) & ((x) - 1)) == 0)
+#define ispwr2(x)  (((x) & ((x) - 1)) == 0)
 
 #define isdigit(d)     (((d) >= '0') && ((d) <= '9'))
 #define islower(c)     (((c) >= 'a') && ((c) <= 'z'))
@@ -141,7 +144,7 @@ NO_TRACE static inline int iswithin(uint64_t s1, uint64_t sz1, uint64_t s2,
 	((a) + (b) < (a))
 
 /* Test for sum overflow into positive numbers. */
-#define overflows_into_positive(a, b)	\
+#define overflows_into_positive(a, b) \
 	(overflows((a), (b)) && ((a) + (b) > 0))
 
 /** Pseudorandom generator
@@ -156,12 +159,9 @@ NO_TRACE static inline int iswithin(uint64_t s1, uint64_t sz1, uint64_t s2,
 		(seed); \
 	})
 
-
-#ifndef member_to_inst
 #define member_to_inst(ptr_member, type, member_identif) \
-	((type*) (((void*)(ptr_member)) - ((void*)&(((type*)0)->member_identif))))
-#endif
-
+	((type *) (((void *) (ptr_member)) - \
+	    ((void *) &(((type *) 0)->member_identif))))
 
 #endif
 

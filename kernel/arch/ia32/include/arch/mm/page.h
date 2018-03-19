@@ -49,17 +49,17 @@
 #define PDE_RW		(1 << 1)
 #define PDE_4M		(1 << 7)
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 
 #define KA2PA(x)  (((uintptr_t) (x)) - UINT32_C(0x80000000))
 #define PA2KA(x)  (((uintptr_t) (x)) + UINT32_C(0x80000000))
 
-#else /* __ASM__ */
+#else /* __ASSEMBLER__ */
 
 #define KA2PA(x)  ((x) - 0x80000000)
 #define PA2KA(x)  ((x) + 0x80000000)
 
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
 /*
  * Implementation of generic 4-level page table interface.
@@ -141,7 +141,7 @@
 	((p)->writeable != 0)
 #define PTE_EXECUTABLE_ARCH(p)  1
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 
 #include <mm/mm.h>
 #include <arch/interrupt.h>
@@ -160,7 +160,7 @@
 /** When bit on this position is 1, the page fault was caused in user mode. */
 #define PFERR_CODE_US		(1 << 2)
 
-/** When bit on this position is 1, a reserved bit was set in page directory. */ 
+/** When bit on this position is 1, a reserved bit was set in page directory. */
 #define PFERR_CODE_RSVD		(1 << 3)
 
 /** Page Table Entry. */
@@ -182,7 +182,7 @@ typedef struct {
 NO_TRACE static inline unsigned int get_pt_flags(pte_t *pt, size_t i)
 {
 	pte_t *p = &pt[i];
-	
+
 	return ((!p->page_cache_disable) << PAGE_CACHEABLE_SHIFT |
 	    (!p->present) << PAGE_PRESENT_SHIFT |
 	    p->uaccessible << PAGE_USER_SHIFT |
@@ -195,13 +195,13 @@ NO_TRACE static inline unsigned int get_pt_flags(pte_t *pt, size_t i)
 NO_TRACE static inline void set_pt_flags(pte_t *pt, size_t i, int flags)
 {
 	pte_t *p = &pt[i];
-	
+
 	p->page_cache_disable = !(flags & PAGE_CACHEABLE);
 	p->present = !(flags & PAGE_NOT_PRESENT);
 	p->uaccessible = (flags & PAGE_USER) != 0;
 	p->writeable = (flags & PAGE_WRITE) != 0;
 	p->global = (flags & PAGE_GLOBAL) != 0;
-	
+
 	/*
 	 * Ensure that there is at least one bit set even if the present bit is
 	 * cleared.
@@ -219,7 +219,7 @@ NO_TRACE static inline void set_pt_present(pte_t *pt, size_t i)
 extern void page_arch_init(void);
 extern void page_fault(unsigned int, istate_t *);
 
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
 #endif
 

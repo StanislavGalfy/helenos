@@ -75,13 +75,13 @@ def get_host_native_width():
 
 def pc_options(guest_width):
 	opts = ''
-	
+
 	# Do not enable KVM if running 64 bits HelenOS
 	# on 32 bits host
 	host_width = get_host_native_width()
 	if guest_width <= host_width and not is_override('nokvm'):
 		opts = opts + ' -enable-kvm'
-	
+
 	# Remove the leading space
 	return opts[1:]
 
@@ -131,9 +131,9 @@ def hdisk_mk():
 def qemu_bd_options():
 	if is_override('nohdd'):
 		return ''
-	
+
 	hdisk_mk()
-	
+
 	return ' -drive file=hdisk.img,index=0,media=disk,format=raw'
 
 def qemu_nic_ne2k_options():
@@ -168,6 +168,16 @@ def qemu_usb_options():
 		return ''
 	return ' -usb'
 
+def qemu_xhci_options():
+	if is_override('noxhci'):
+		return ''
+	return ' -device nec-usb-xhci,id=xhci'
+
+def qemu_tablet_options():
+	if is_override('notablet') or (is_override('nousb') and is_override('noxhci')):
+		return ''
+	return ' -device usb-tablet'
+
 def qemu_audio_options():
 	if is_override('nosnd'):
 		return ''
@@ -179,6 +189,9 @@ def qemu_run(platform, machine, processor):
 	cmd = 'qemu-' + suffix
 
 	cmdline = cmd
+	if 'qemu_path' in overrides.keys():
+		cmdline = overrides['qemu_path'] + cmd
+
 	if options != '':
 		cmdline += ' ' + options
 
@@ -188,9 +201,13 @@ def qemu_run(platform, machine, processor):
 		cmdline += qemu_net_options()
 	if (not 'usb' in cfg.keys()) or cfg['usb']:
 		cmdline += qemu_usb_options()
+	if (not 'xhci' in cfg.keys()) or cfg['xhci']:
+		cmdline += qemu_xhci_options()
+	if (not 'tablet' in cfg.keys()) or cfg['tablet']:
+		cmdline += qemu_tablet_options()
 	if (not 'audio' in cfg.keys()) or cfg['audio']:
 		cmdline += qemu_audio_options()
-	
+
 	if cfg['image'] == 'image.iso':
 		cmdline += ' -boot d -cdrom image.iso'
 	elif cfg['image'] == 'image.boot':
@@ -232,7 +249,9 @@ emulators = {
 			'run' : qemu_run,
 			'image' : 'image.boot',
 			'net' : False,
-			'audio' : False
+			'audio' : False,
+			'xhci' : False,
+			'tablet' : False
 		}
 	},
 	'ia32' : {
@@ -275,8 +294,10 @@ emulators = {
 				'image' : 'image.iso',
 				'audio' : False,
 				'console' : False,
-                                'net' : False,
-                                'usb' : False
+				'net' : False,
+				'usb' : False,
+				'xhci' : False,
+				'tablet' : False
 			},
 			'sun4v' : {
 				'run' : qemu_run,
@@ -285,6 +306,8 @@ emulators = {
 				'console' : False,
 				'net' : False,
 				'usb' : False,
+				'xhci' : False,
+				'tablet' : False,
 				'expect' : {
 					'src' : 'ok ',
 					'dst' : 'boot\n'
@@ -296,7 +319,7 @@ emulators = {
 
 def usage():
 	print("%s - emulator wrapper for running HelenOS\n" % os.path.basename(sys.argv[0]))
-	print("%s [-d] [-h] [-net e1k|rtl8139|ne2k] [-nohdd] [-nokvm] [-nonet] [-nosnd] [-nousb]\n" %
+	print("%s [-d] [-h] [-net e1k|rtl8139|ne2k] [-nohdd] [-nokvm] [-nonet] [-nosnd] [-nousb] [-noxhci] [-notablet]\n" %
 	    os.path.basename(sys.argv[0]))
 	print("-d\tDry run: do not run the emulation, just print the command line.")
 	print("-h\tPrint the usage information and exit.")
@@ -305,13 +328,16 @@ def usage():
 	print("-nonet\tDisable networking support, if applicable.")
 	print("-nosnd\tDisable sound, if applicable.")
 	print("-nousb\tDisable USB support, if applicable.")
+	print("-noxhci\tDisable XHCI support, if applicable.")
+	print("-notablet\tDisable USB tablet (use only relative-position PS/2 mouse instead), if applicable.")
 
 def fail(platform, machine):
 	print("Cannot start emulation for the chosen configuration. (%s/%s)" % (platform, machine))
-	
+
 
 def run():
 	expect_nic = False
+	expect_qemu = False
 
 	for i in range(1, len(sys.argv)):
 
@@ -328,6 +354,10 @@ def run():
 			else:
 				usage()
 				exit()
+
+		if expect_qemu:
+			expect_qemu = False
+			overrides['qemu_path'] = sys.argv[i]
 
 		elif sys.argv[i] == '-h':
 			usage()
@@ -346,6 +376,12 @@ def run():
 			overrides['nosnd'] = True
 		elif sys.argv[i] == '-nousb':
 			overrides['nousb'] = True
+		elif sys.argv[i] == '-noxhci':
+			overrides['noxhci'] = True
+		elif sys.argv[i] == '-notablet':
+			overrides['notablet'] = True
+		elif sys.argv[i] == '-qemu_path' and i < len(sys.argv) - 1:
+			expect_qemu = True
 		else:
 			usage()
 			exit()

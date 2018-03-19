@@ -47,6 +47,7 @@
 #include <align.h>
 #include <macros.h>
 #include <clipboard.h>
+#include <types/common.h>
 
 #include "sheet.h"
 #include "search.h"
@@ -82,12 +83,12 @@ typedef struct {
 	/** Active keyboard modifiers */
 	keymod_t keymod;
 
-	/** 
+	/**
 	 * Ideal column where the caret should try to get. This is used
 	 * for maintaining the same column during vertical movement.
 	 */
 	int ideal_column;
-	
+
 	char *previous_search;
 	bool previous_search_reverse;
 } pane_t;
@@ -130,10 +131,10 @@ static void key_handle_movement(unsigned int key, bool shift);
 
 static void pos_handle(pos_event_t *ev);
 
-static int file_save(char const *fname);
+static errno_t file_save(char const *fname);
 static void file_save_as(void);
-static int file_insert(char *fname);
-static int file_save_range(char const *fname, spt_t const *spos,
+static errno_t file_insert(char *fname);
+static errno_t file_save_range(char const *fname, spt_t const *spos,
     spt_t const *epos);
 static char *range_get_str(spt_t const *spos, spt_t const *epos);
 
@@ -531,10 +532,10 @@ static void caret_move(spt_t new_caret_pt, bool select, bool update_ideal_column
 		/* Redraw because text was unselected. */
 		pane.rflags |= REDRAW_TEXT;
 	}
-	
+
 	if (update_ideal_column)
 		pane.ideal_column = c_new.column;
-	
+
 	caret_update();
 }
 
@@ -576,7 +577,7 @@ static void key_handle_movement(unsigned int key, bool select)
 }
 
 /** Save the document. */
-static int file_save(char const *fname)
+static errno_t file_save(char const *fname)
 {
 	spt_t sp, ep;
 	errno_t rc;
@@ -607,7 +608,7 @@ static void file_save_as(void)
 {
 	const char *old_fname = (doc.file_name != NULL) ? doc.file_name : "";
 	char *fname;
-	
+
 	fname = prompt("Save As", old_fname);
 	if (fname == NULL) {
 		status_display("Save cancelled.");
@@ -653,10 +654,7 @@ static char *prompt(char const *prompt, char const *init_value)
 			kev = &ev.ev.key;
 
 			/* Handle key press. */
-			if (((kev->mods & KM_ALT) == 0) &&
-			     (kev->mods & KM_CTRL) != 0) {
-				;
-			} else if ((kev->mods & (KM_CTRL | KM_ALT)) == 0) {
+			if ((kev->mods & (KM_CTRL | KM_ALT)) == 0) {
 				switch (kev->key) {
 				case KC_ESCAPE:
 					return NULL;
@@ -695,7 +693,7 @@ static char *prompt(char const *prompt, char const *init_value)
  * Reads in the contents of a file and inserts them at the current position
  * of the caret.
  */
-static int file_insert(char *fname)
+static errno_t file_insert(char *fname)
 {
 	FILE *f;
 	wchar_t c;
@@ -733,7 +731,7 @@ static int file_insert(char *fname)
 }
 
 /** Save a range of text into a file. */
-static int file_save_range(char const *fname, spt_t const *spos,
+static errno_t file_save_range(char const *fname, spt_t const *spos,
     spt_t const *epos)
 {
 	FILE *f;
@@ -759,7 +757,7 @@ static int file_save_range(char const *fname, spt_t const *spos,
 		sp = bep;
 	} while (!spt_equal(&bep, epos));
 
-	if (fclose(f) != EOK)
+	if (fclose(f) < 0)
 		return EIO;
 
 	return EOK;
@@ -814,7 +812,7 @@ static void pane_text_display(void)
 	pane_row_range_display(0, rows);
 
 	/* Clear the remaining rows if file is short. */
-	
+
 	int i;
 	sysarg_t j;
 	for (i = rows; i < pane.rows; ++i) {
@@ -904,13 +902,13 @@ static void pane_row_range_display(int r0, int r1)
 				console_set_style(con, STYLE_SELECTED);
 				console_flush(con);
 			}
-	
+
 			if ((csel_end.row == rbc.row) && (csel_end.column == s_column)) {
 				console_flush(con);
 				console_set_style(con, STYLE_NORMAL);
 				console_flush(con);
 			}
-	
+
 			c = str_decode(row_buf, &pos, size);
 			if (c != '\t') {
 				printf("%lc", (wint_t) c);
@@ -953,20 +951,86 @@ static void pane_status_display(void)
 	spt_t caret_pt;
 	coord_t coord;
 	int last_row;
+	char *fname;
+	char *p;
+	char *text;
+	size_t n;
+	int pos;
+	size_t nextra;
+	size_t fnw;
 
 	tag_get_pt(&pane.caret_pos, &caret_pt);
 	spt_get_coord(&caret_pt, &coord);
 
 	sheet_get_num_rows(doc.sh, &last_row);
 
-	const char *fname = (doc.file_name != NULL) ? doc.file_name : "<unnamed>";
+	if (doc.file_name != NULL) {
+		/* Remove directory component */
+		p = str_rchr(doc.file_name, '/');
+		if (p != NULL)
+			fname = str_dup(p + 1);
+		else
+			fname = str_dup(doc.file_name);
+	} else {
+		fname = str_dup("<unnamed>");
+	}
+
+	if (fname == NULL)
+		return;
 
 	console_set_pos(con, 0, scr_rows - 1);
 	console_set_style(con, STYLE_INVERTED);
-	int n = printf(" %d, %d (%d): File '%s'. Ctrl-Q Quit  Ctrl-S Save  "
-	    "Ctrl-E Save As", coord.row, coord.column, last_row, fname);
-	
-	int pos = scr_columns - 1 - n;
+
+	/*
+	 * Make sure the status fits on the screen. This loop should
+	 * be executed at most twice.
+	 */
+	while (true) {
+		int rc = asprintf(&text, " %d, %d (%d): File '%s'. Ctrl-Q Quit  Ctrl-S Save  "
+		    "Ctrl-E Save As", coord.row, coord.column, last_row, fname);
+		if (rc < 0) {
+			n = 0;
+			goto finish;
+		}
+
+		/* If it already fits, we're done */
+		n = str_width(text);
+		if (n <= scr_columns - 2)
+			break;
+
+		/* Compute number of excess characters */
+		nextra = n - (scr_columns - 2);
+		/** With of the file name part */
+		fnw = str_width(fname);
+
+		/*
+		 * If reducing file name to two characters '..' won't help,
+		 * just give up and print a blank status.
+		 */
+		if (nextra > fnw - 2)
+			goto finish;
+
+		/* Compute position where we overwrite with '..\0' */
+		if (fnw >= nextra + 2) {
+			p = fname + str_lsize(fname, fnw - nextra - 2);
+		} else {
+			p = fname;
+		}
+
+		/* Shorten the string */
+		p[0] = p[1] = '.';
+		p[2] = '\0';
+
+		/* Need to format the string once more. */
+		free(text);
+	}
+
+	printf("%s", text);
+	free(text);
+	free(fname);
+finish:
+	/* Fill the rest of the line */
+	pos = scr_columns - 1 - n;
 	printf("%*s", pos, "");
 	console_flush(con);
 	console_set_style(con, STYLE_NORMAL);
@@ -1150,15 +1214,15 @@ static void caret_move_absolute(int row, int column, enum dir_spec align_dir,
 	coord_t coord;
 	coord.row = row;
 	coord.column = column;
-	
+
 	spt_t pt;
 	sheet_get_cell_pt(doc.sh, &coord, align_dir, &pt);
-	
+
 	caret_move(pt, select, true);
 }
 
 /** Find beginning of a word to the left of spt */
-static spt_t pt_find_word_left(spt_t spt) 
+static spt_t pt_find_word_left(spt_t spt)
 {
 	do {
 		spt_prev_char(spt, &spt);
@@ -1167,7 +1231,7 @@ static spt_t pt_find_word_left(spt_t spt)
 }
 
 /** Find beginning of a word to the right of spt */
-static spt_t pt_find_word_right(spt_t spt) 
+static spt_t pt_find_word_right(spt_t spt)
 {
 	do {
 		spt_next_char(spt, &spt);
@@ -1175,7 +1239,7 @@ static spt_t pt_find_word_right(spt_t spt)
 	return spt;
 }
 
-static void caret_move_word_left(bool select) 
+static void caret_move_word_left(bool select)
 {
 	spt_t pt;
 	tag_get_pt(&pane.caret_pos, &pt);
@@ -1183,7 +1247,7 @@ static void caret_move_word_left(bool select)
 	caret_move(word_left, select, true);
 }
 
-static void caret_move_word_right(bool select) 
+static void caret_move_word_right(bool select)
 {
 	spt_t pt;
 	tag_get_pt(&pane.caret_pos, &pt);
@@ -1195,13 +1259,13 @@ static void caret_move_word_right(bool select)
 static void caret_go_to_line_ask(void)
 {
 	char *sline;
-	
+
 	sline = prompt("Go to line", "");
 	if (sline == NULL) {
 		status_display("Go to line cancelled.");
 		return;
 	}
-	
+
 	char *endptr;
 	int line = strtol(sline, &endptr, 10);
 	if (*endptr != '\0') {
@@ -1210,12 +1274,12 @@ static void caret_go_to_line_ask(void)
 		return;
 	}
 	free(sline);
-	
+
 	caret_move_absolute(line, pane.ideal_column, dir_before, false);
 }
 
 /* Search operations */
-static int search_spt_producer(void *data, wchar_t *ret)
+static errno_t search_spt_producer(void *data, wchar_t *ret)
 {
 	assert(data != NULL);
 	assert(ret != NULL);
@@ -1224,7 +1288,7 @@ static int search_spt_producer(void *data, wchar_t *ret)
 	return EOK;
 }
 
-static int search_spt_reverse_producer(void *data, wchar_t *ret)
+static errno_t search_spt_reverse_producer(void *data, wchar_t *ret)
 {
 	assert(data != NULL);
 	assert(ret != NULL);
@@ -1233,7 +1297,7 @@ static int search_spt_reverse_producer(void *data, wchar_t *ret)
 	return EOK;
 }
 
-static int search_spt_mark(void *data, void **mark)
+static errno_t search_spt_mark(void *data, void **mark)
 {
 	assert(data != NULL);
 	assert(mark != NULL);
@@ -1269,26 +1333,26 @@ static search_ops_t search_spt_reverse_ops = {
 static void search_prompt(bool reverse)
 {
 	char *pattern;
-	
+
 	const char *prompt_text = "Find next";
 	if (reverse)
 		prompt_text = "Find previous";
-	
+
 	const char *default_value = "";
 	if (pane.previous_search)
 		default_value = pane.previous_search;
-	
+
 	pattern = prompt(prompt_text, default_value);
 	if (pattern == NULL) {
 		status_display("Search cancelled.");
 		return;
 	}
-	
+
 	if (pane.previous_search)
 		free(pane.previous_search);
 	pane.previous_search = pattern;
 	pane.previous_search_reverse = reverse;
-	
+
 	search(pattern, reverse);
 }
 
@@ -1298,17 +1362,17 @@ static void search_repeat(void)
 		status_display("No previous search to repeat.");
 		return;
 	}
-	
+
 	search(pane.previous_search, pane.previous_search_reverse);
 }
 
 static void search(char *pattern, bool reverse)
 {
 	status_display("Searching...");
-	
+
 	spt_t sp, producer_pos;
 	tag_get_pt(&pane.caret_pos, &sp);
-	
+
 	/* Start searching on the position before/after caret */
 	if (!reverse) {
 		spt_next_char(sp, &sp);
@@ -1317,24 +1381,24 @@ static void search(char *pattern, bool reverse)
 		spt_prev_char(sp, &sp);
 	}
 	producer_pos = sp;
-	
+
 	search_ops_t ops = search_spt_ops;
 	if (reverse)
 		ops = search_spt_reverse_ops;
-	
+
 	search_t *search = search_init(pattern, &producer_pos, ops, reverse);
 	if (search == NULL) {
 		status_display("Failed initializing search.");
 		return;
 	}
-	
+
 	match_t match;
 	errno_t rc = search_next_match(search, &match);
 	if (rc != EOK) {
 		status_display("Failed searching.");
 		search_fini(search);
 	}
-	
+
 	if (match.end) {
 		status_display("Match found.");
 		assert(match.end != NULL);
@@ -1355,7 +1419,7 @@ static void search(char *pattern, bool reverse)
 	else {
 		status_display("Not found.");
 	}
-	
+
 	search_fini(search);
 }
 
@@ -1648,7 +1712,7 @@ static void status_display(char const *str)
 {
 	console_set_pos(con, 0, scr_rows - 1);
 	console_set_style(con, STYLE_INVERTED);
-	
+
 	int pos = -(scr_columns - 3);
 	printf(" %*s ", pos, str);
 	console_flush(con);

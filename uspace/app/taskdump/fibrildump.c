@@ -46,7 +46,7 @@ static errno_t fibrildump_read_uintptr(void *, uintptr_t, uintptr_t *);
 
 static stacktrace_ops_t fibrildump_st_ops = {
 	.read_uintptr = fibrildump_read_uintptr
-}; 
+};
 
 static errno_t fibrildump_read_uintptr(void *arg, uintptr_t addr, uintptr_t *data)
 {
@@ -80,7 +80,7 @@ errno_t fibrils_dump(symtab_t *symtab, async_sess_t *sess)
 	uintptr_t pc, fp;
 	errno_t rc;
 
-	/* 
+	/*
 	 * If we for whatever reason could not obtain symbols table from the binary,
 	 * we cannot dump fibrils.
 	 */
@@ -109,7 +109,7 @@ errno_t fibrils_dump(symtab_t *symtab, async_sess_t *sess)
 		if (rc != EOK)
 			return EIO;
 
-		pc = fibril.ctx.pc;
+		pc = context_get_pc(&fibril.ctx);
 		fp = context_get_fp(&fibril.ctx);
 		if (0) stacktrace_print_generic(&fibrildump_st_ops, sess,
 		    fp, pc);

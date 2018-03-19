@@ -77,13 +77,13 @@
 #define UWB_SIZE	((NWINDOWS - 1) * STACK_WINDOW_SAVE_AREA_SIZE)
 #define UWB_ALIGNMENT	1024
 
-#ifdef __ASM__
+#ifdef __ASSEMBLER__
 
 /*
  * Macro used by the nucleus and the primary context 0 during normal and other spills.
  */
 .macro SPILL_NORMAL_HANDLER_KERNEL
-	stx %l0, [%sp + STACK_BIAS + L0_OFFSET]	
+	stx %l0, [%sp + STACK_BIAS + L0_OFFSET]
 	stx %l1, [%sp + STACK_BIAS + L1_OFFSET]
 	stx %l2, [%sp + STACK_BIAS + L2_OFFSET]
 	stx %l3, [%sp + STACK_BIAS + L3_OFFSET]
@@ -201,7 +201,7 @@
 #endif
 	retry
 .endm
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
 #if defined(SUN4U)
 #include <arch/trap/sun4u/regwin.h>

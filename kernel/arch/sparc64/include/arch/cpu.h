@@ -51,7 +51,7 @@
 
 #define IMPL_SPARC64V		0x5
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 
 #include <arch/register.h>
 #include <arch/regdef.h>
@@ -64,7 +64,7 @@
 #endif
 
 
-#endif	
+#endif
 
 #endif
 

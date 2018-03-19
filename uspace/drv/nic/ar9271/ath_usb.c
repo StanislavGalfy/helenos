@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2015 Jan Kolarik
+ * Copyright (c) 2018 Ondrej Hlavaty
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,7 +59,7 @@ static ath_ops_t ath_usb_ops = {
  * @return EOK if succeed, error code otherwise.
  *
  */
-errno_t ath_usb_init(ath_t *ath, usb_device_t *usb_device)
+errno_t ath_usb_init(ath_t *ath, usb_device_t *usb_device, const usb_endpoint_description_t **endpoints)
 {
 	ath_usb_t *ath_usb = malloc(sizeof(ath_usb_t));
 	if (!ath_usb) {
@@ -66,22 +67,38 @@ errno_t ath_usb_init(ath_t *ath, usb_device_t *usb_device)
 		    "structure.\n");
 		return ENOMEM;
 	}
-	
+
 	ath_usb->usb_device = usb_device;
-	
-	/* TODO: Assign by iterating over pipes. */
-	ath_usb->output_data_pipe_number = 0;
-	ath_usb->input_data_pipe_number = 1;
-	ath_usb->input_ctrl_pipe_number = 2;
-	ath_usb->output_ctrl_pipe_number = 3;
-	
+
+	int rc;
+
+#define _MAP_EP(target, ep_no) do {\
+	usb_endpoint_mapping_t *epm = usb_device_get_mapped_ep_desc(usb_device, endpoints[ep_no]);\
+	if (!epm || !epm->present) {\
+		usb_log_error("Failed to map endpoint: " #ep_no ".");\
+		rc = ENOENT;\
+		goto err_ath_usb;\
+	}\
+	target = &epm->pipe;\
+	} while (0);
+
+	_MAP_EP(ath_usb->output_data_pipe, 0);
+	_MAP_EP(ath_usb->input_data_pipe, 1);
+	_MAP_EP(ath_usb->input_ctrl_pipe, 2);
+	_MAP_EP(ath_usb->output_ctrl_pipe, 3);
+
+#undef _MAP_EP
+
 	ath->ctrl_response_length = 64;
 	ath->data_response_length = 512;
-	
+
 	ath->specific_data = ath_usb;
 	ath->ops = &ath_usb_ops;
-	
+
 	return EOK;
+err_ath_usb:
+	free(ath_usb);
+	return rc;
 }
 
 /** Send control message.
@@ -97,10 +114,7 @@ static errno_t ath_usb_send_ctrl_message(ath_t *ath, void *buffer,
     size_t buffer_size)
 {
 	ath_usb_t *ath_usb = (ath_usb_t *) ath->specific_data;
-	usb_pipe_t *pipe = &usb_device_get_mapped_ep(
-	    ath_usb->usb_device, ath_usb->output_ctrl_pipe_number)->pipe;
-	
-	return usb_pipe_write(pipe, buffer, buffer_size);
+	return usb_pipe_write(ath_usb->output_ctrl_pipe, buffer, buffer_size);
 }
 
 /** Read control message.
@@ -117,15 +131,12 @@ static errno_t ath_usb_read_ctrl_message(ath_t *ath, void *buffer,
     size_t buffer_size, size_t *transferred_size)
 {
 	ath_usb_t *ath_usb = (ath_usb_t *) ath->specific_data;
-	usb_pipe_t *pipe = &usb_device_get_mapped_ep(
-	    ath_usb->usb_device, ath_usb->input_ctrl_pipe_number)->pipe;
-	
-	return usb_pipe_read(pipe, buffer, buffer_size, transferred_size);
+	return usb_pipe_read(ath_usb->input_ctrl_pipe, buffer, buffer_size, transferred_size);
 }
 
 /** Send data message.
  *
- * @param ath         Generic Atheros WiFi device structure. 
+ * @param ath         Generic Atheros WiFi device structure.
  * @param buffer      Buffer with data to send.
  * @param buffer_size Buffer size.
  *
@@ -140,21 +151,18 @@ static errno_t ath_usb_send_data_message(ath_t *ath, void *buffer,
 	void *complete_buffer = malloc(complete_buffer_size);
 	memcpy(complete_buffer + sizeof(ath_usb_data_header_t),
 	    buffer, buffer_size);
-	
+
 	ath_usb_data_header_t *data_header =
 	    (ath_usb_data_header_t *) complete_buffer;
 	data_header->length = host2uint16_t_le(buffer_size);
 	data_header->tag = host2uint16_t_le(TX_TAG);
-	
+
 	ath_usb_t *ath_usb = (ath_usb_t *) ath->specific_data;
-	usb_pipe_t *pipe = &usb_device_get_mapped_ep(
-	    ath_usb->usb_device, ath_usb->output_data_pipe_number)->pipe;
-	
-	errno_t ret_val = usb_pipe_write(pipe, complete_buffer,
-	    complete_buffer_size);
-	
+	const errno_t ret_val = usb_pipe_write(ath_usb->output_data_pipe,
+	    complete_buffer, complete_buffer_size);
+
 	free(complete_buffer);
-	
+
 	return ret_val;
 }
 
@@ -172,8 +180,5 @@ static errno_t ath_usb_read_data_message(ath_t *ath, void *buffer,
     size_t buffer_size, size_t *transferred_size)
 {
 	ath_usb_t *ath_usb = (ath_usb_t *) ath->specific_data;
-	usb_pipe_t *pipe = &usb_device_get_mapped_ep(
-	    ath_usb->usb_device, ath_usb->input_data_pipe_number)->pipe;
-	
-	return usb_pipe_read(pipe, buffer, buffer_size, transferred_size);
+	return usb_pipe_read(ath_usb->input_data_pipe, buffer, buffer_size, transferred_size);
 }

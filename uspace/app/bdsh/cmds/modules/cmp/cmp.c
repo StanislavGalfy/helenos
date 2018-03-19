@@ -119,10 +119,15 @@ int cmd_cmp(char **argv)
 	errno_t rc;
 	unsigned int argc;
 	int c, opt_ind;
-	
+
 	argc = cli_count_args(argv);
 
-	for (c = 0, optreset = 1, optind = 0, opt_ind = 0; c != -1;) {
+	c = 0;
+	optreset = 1;
+	optind = 0;
+	opt_ind = 0;
+
+	while (c != -1) {
 		c = getopt_long(argc, argv, "hv", long_options, &opt_ind);
 		switch (c) {
 		case 'h':

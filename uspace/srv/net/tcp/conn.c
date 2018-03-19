@@ -209,7 +209,6 @@ error:
  *
  * @param conn		Connection
  */
-/*
 static void tcp_conn_free(tcp_conn_t *conn)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "%s: tcp_conn_free(%p)", conn->name, conn);
@@ -228,7 +227,7 @@ static void tcp_conn_free(tcp_conn_t *conn)
 	if (conn->tw_timer != NULL)
 		fibril_timer_destroy(conn->tw_timer);
 	free(conn);
-}*/
+}
 
 /** Add reference to connection.
  *

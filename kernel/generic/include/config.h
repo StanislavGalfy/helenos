@@ -49,7 +49,7 @@
 #define CONFIG_TASK_NAME_BUFLEN  32
 #define CONFIG_TASK_ARGUMENTS_BUFLEN 64
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 
 #include <stdbool.h>
 #include <typedefs.h>
@@ -81,24 +81,24 @@ typedef struct {
 	unsigned int cpu_count;
 	/** Number of processors that are up and running. */
 	volatile size_t cpu_active;
-	
+
 	uintptr_t base;
 	/** Size of memory in bytes taken by kernel and stack. */
 	size_t kernel_size;
-	
+
 	/** Base adddress of initial stack. */
 	uintptr_t stack_base;
 	/** Size of initial stack. */
 	size_t stack_size;
-	
+
 	bool identity_configured;
 	/** Base address of the kernel identity mapped memory. */
 	uintptr_t identity_base;
 	/** Size of the kernel identity mapped memory. */
 	size_t identity_size;
-	
+
 	bool non_identity_configured;
-	
+
 	/** End of physical memory. */
 	uint64_t physmem_end;
 } config_t;
@@ -108,7 +108,7 @@ extern char bargs[];
 extern init_t init;
 extern ballocs_t ballocs;
 
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
 #endif
 

@@ -35,7 +35,7 @@
 /*
  * This stack tracing code is based on the suggested algorithm described on page
  * 3-27 and 3-28 of:
- * 
+ *
  * SYSTEM V
  * APPLICATION BINARY INTERFACE
  *
@@ -87,13 +87,13 @@
 #define HINT_MASK	(0x1f << HINT_SHIFT)
 #define BASE_MASK	RS_MASK
 #define IMM_MASK	(0xffff << IMM_SHIFT)
-#define OFFSET_MASK	IMM_MASK	
+#define OFFSET_MASK	IMM_MASK
 
 #define RS_GET(inst)		(((inst) & RS_MASK) >> RS_SHIFT)
 #define RD_GET(inst)		(((inst) & RD_MASK) >> RD_SHIFT)
 #define IMM_GET(inst)		(int16_t)(((inst) & IMM_MASK) >> IMM_SHIFT)
 #define BASE_GET(inst)		RS_GET(inst)
-#define OFFSET_GET(inst)	IMM_GET(inst)	
+#define OFFSET_GET(inst)	IMM_GET(inst)
 
 #define ADDU_R_SP_R0_TEMPL \
 	((0x0 << OP_SHIFT) | (SP << RS_SHIFT) | (R0 << RT_SHIFT) | 0x21)
@@ -156,10 +156,12 @@ scan(stack_trace_context_t *ctx, uintptr_t *prev_fp, uintptr_t *prev_ra)
 			/*
 			 * We have a candidate for frame pointer.
 			 */
-			
+
 			/* Seek to the end of this function. */
-			for (cur = inst + 1; !IS_JR_RA(*cur); cur++)
-				;
+			cur = inst + 1;
+			while (!IS_JR_RA(*cur))
+				cur++;
+
 			/* Scan the last basic block */
 			for (cur--; !is_jump(*(cur - 1)); cur--) {
 				if (IS_ADDU_SP_R_R0(*cur) &&
@@ -169,7 +171,7 @@ scan(stack_trace_context_t *ctx, uintptr_t *prev_fp, uintptr_t *prev_ra)
 			}
 			continue;
 		}
-		
+
 		if (IS_JR_RA(*inst)) {
 			if (!ctx->istate)
 				return false;
@@ -188,7 +190,7 @@ scan(stack_trace_context_t *ctx, uintptr_t *prev_fp, uintptr_t *prev_ra)
 
 	} while ((!IS_ADDIU_SP_SP_IMM(*inst) && !IS_ADDI_SP_SP_IMM(*inst)) ||
 	    (IMM_GET(*inst) >= 0));
-	
+
 	/*
 	 * We are at the instruction which allocates the space for the current
 	 * stack frame.
@@ -209,7 +211,7 @@ scan(stack_trace_context_t *ctx, uintptr_t *prev_fp, uintptr_t *prev_ra)
 
 			if (base == SP || (has_fp && base == fp)) {
 				uint32_t *addr = (void *) (ctx->fp + offset);
-				
+
 				if (offset % 4 != 0)
 					return false;
 				/* cannot store below current stack pointer */

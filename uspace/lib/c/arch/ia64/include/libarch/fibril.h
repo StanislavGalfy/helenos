@@ -42,7 +42,7 @@
 #include <libarch/fibril_context.h>
 
 /*
- * context_save() and context_restore() are both leaf procedures.
+ * __setjmp() and __longjmp() are both leaf procedures.
  * No need to allocate scratch area.
  */
 #define SP_DELTA  (0 + ALIGN_UP(STACK_ITEM_SIZE, STACK_ALIGNMENT))
@@ -64,7 +64,7 @@
 		(c)->tp = (uint64_t) tls; \
 	} while (0)
 
-static inline uintptr_t context_get_fp(context_t *ctx)
+static inline uintptr_t _context_get_fp(context_t *ctx)
 {
 	return 0;	/* FIXME */
 }

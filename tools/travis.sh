@@ -118,7 +118,7 @@ if [ "$1" = "help" ]; then
 
 elif [ "$1" = "install" ]; then
     set -x
-    
+
     # Install dependencies
     sudo apt-get -qq update || exit 1
     sudo apt-get install -y genisoimage || exit 1
@@ -132,7 +132,7 @@ elif [ "$1" = "install" ]; then
 
 elif [ "$1" = "run" ]; then
     set -x
-    
+
     # Expected output filename (bootable image)
     H_OUTPUT_FILENAME=`h_get_arch_config $H_ARCH_CONFIG_OUTPUT_FILENAME`
     if [ -z "$H_OUTPUT_FILENAME" ]; then
@@ -149,11 +149,11 @@ elif [ "$1" = "run" ]; then
         H_HARBOUR_LIST="$H_DEFAULT_HARBOURS_LIST"
     fi
 
-	
+
     # Build it
     make "PROFILE=$H_ARCH" HANDS_OFF=y || exit 1
     test -s "$H_OUTPUT_FILENAME" || exit 1
-    
+
     echo
     echo "HelenOS for $H_ARCH built okay."
     echo
@@ -164,7 +164,7 @@ elif [ "$1" = "run" ]; then
         echo "Will try to build ported software for $H_ARCH."
         echo "Repository used is $H_HARBOURS_REPOSITORY."
         echo
-        
+
         H_HELENOS_HOME=`pwd`
         cd "$HOME" || exit 1
         git clone --depth 10 "$H_HARBOURS_REPOSITORY" helenos-harbours || exit 1
@@ -180,14 +180,24 @@ elif [ "$1" = "run" ]; then
                 echo "arch =" `echo "$H_ARCH" | cut -d/ -f 1`
                 echo "machine =" `echo "$H_ARCH" | cut -d/ -f 2`
             ) >hsct.conf || exit 1
-            
+
             # "$HOME/helenos-harbours/hsct.sh" init "$H_HELENOS_HOME" "$H_ARCH" build >/dev/null 2>/dev/null || exit 1
-            
+
             "$HOME/helenos-harbours/hsct.sh" update || exit 1
 
-            FAILED_HARBOURS=""    
+            # We cannot flood the output as Travis has limit of maximum output size
+            # (reason is to prevent endless stacktraces going forever). But also Travis
+            # kills a job that does not print anything for a while.
+            #
+            # So we store the full output into a file but print every 100th line.
+            # As pipe tends to hide errors we check the success by checking that archive
+            # exists.
+            #
+            FAILED_HARBOURS=""
             for HARBOUR in $H_HARBOUR_LIST; do
-                "$HOME/helenos-harbours/hsct.sh" archive --no-deps "$HARBOUR" >"run-$HARBOUR.log" 2>&1
+                "$HOME/helenos-harbours/hsct.sh" archive --no-deps "$HARBOUR" 2>&1 | tee "run-$HARBOUR.log" | awk '!(NR%100)'
+                
+                test -s "archives/$HARBOUR.tar.xz"
                 if [ $? -eq 0 ]; then
                     tail -n 10 "run-$HARBOUR.log"
                 else
@@ -195,9 +205,9 @@ elif [ "$1" = "run" ]; then
                     cat build/$HARBOUR/*/config.log
                     tail -n 100 "run-$HARBOUR.log"
                 fi
-                
+
             done
-            
+
             if [ -n "$FAILED_HARBOURS" ]; then
                 echo
                 echo "ERROR: following packages were not built:$FAILED_HARBOURS."

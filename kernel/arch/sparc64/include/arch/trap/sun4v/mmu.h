@@ -60,7 +60,7 @@
 
 #define FAST_MMU_HANDLER_SIZE			128
 
-#ifdef __ASM__
+#ifdef __ASSEMBLER__
 
 /* MMU fault status area data fault offset */
 #define FSA_DFA_OFFSET				0x48
@@ -74,7 +74,7 @@
 .macro FAST_INSTRUCTION_ACCESS_MMU_MISS_HANDLER
 	mov TT_FAST_INSTRUCTION_ACCESS_MMU_MISS, %g2
 	clr %g5		! XXX
-	PREEMPTIBLE_HANDLER exc_dispatch 
+	PREEMPTIBLE_HANDLER exc_dispatch
 .endm
 
 /*
@@ -178,9 +178,9 @@
 	/* the same as for FAST_DATA_ACCESS_MMU_MISS_HANDLER */
 	or %g1, %g3, %g5
 
-	PREEMPTIBLE_HANDLER exc_dispatch 
+	PREEMPTIBLE_HANDLER exc_dispatch
 .endm
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
 #endif
 

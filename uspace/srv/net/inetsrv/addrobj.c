@@ -57,16 +57,16 @@ static sysarg_t addr_id = 0;
 
 static inet_addrobj_t *inet_addrobj_find_deleted(inet_addrobj_t *inet_addrobj)
 {
-	list_foreach(del_addr_list, addr_list, inet_addrobj_t, 
+	list_foreach(del_addr_list, addr_list, inet_addrobj_t,
             del_inet_addrobj) {
-                if (del_inet_addrobj->ilink->svc_id != 
+                if (del_inet_addrobj->ilink->svc_id !=
                     inet_addrobj->ilink->svc_id)
                         continue;
-                
+
                 if (!inet_naddrs_compare(&inet_addrobj->naddr,
                     &del_inet_addrobj->naddr))
                         continue;
-        
+
                 return del_inet_addrobj;
         }
 	return NULL;
@@ -100,7 +100,7 @@ void inet_addrobj_delete(inet_addrobj_t *addr)
 errno_t inet_addrobj_add(inet_addrobj_t *addr)
 {
 	inet_addrobj_t *aobj;
-        
+
 	fibril_mutex_lock(&addr_list_lock);
 	aobj = inet_addrobj_find_by_name_locked(addr->name, addr->ilink);
 	if (aobj != NULL) {
@@ -114,7 +114,7 @@ errno_t inet_addrobj_add(inet_addrobj_t *addr)
             list_remove(&aobj->addr_list);
             inet_addrobj_delete(aobj);
         }
-        
+
 	list_append(&addr->addr_list, &addr_list);
 	fibril_mutex_unlock(&addr_list_lock);
 
@@ -141,8 +141,6 @@ void inet_addrobj_remove(inet_addrobj_t *addr)
 inet_addrobj_t *inet_addrobj_find(inet_addr_t *addr, inet_addrobj_find_t find)
 {
 	fibril_mutex_lock(&addr_list_lock);
-        log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_addrobj_find: looking for %x",
-                    addr->addr);
 	list_foreach(addr_list, addr_list, inet_addrobj_t, naddr) {
                 log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_addrobj_find: looking at %x",
                         naddr->naddr.addr);
@@ -167,10 +165,10 @@ inet_addrobj_t *inet_addrobj_find(inet_addr_t *addr, inet_addrobj_find_t find)
 			break;
 		}
 	}
-	
+
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_addrobj_find: Not found");
 	fibril_mutex_unlock(&addr_list_lock);
-	
+
 	return NULL;
 }
 
@@ -225,7 +223,7 @@ inet_addrobj_t *inet_addrobj_find_by_name(const char *name, inet_link_t *ilink)
  * @param id	Address object ID
  * @return	Address object
  */
-inet_addrobj_t *inet_addrobj_get_by_id(sysarg_t id, 
+inet_addrobj_t *inet_addrobj_get_by_id(sysarg_t id,
         inet_addr_status_t inet_addr_status)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_addrobj_get_by_id(%zu)", (size_t)id);
@@ -299,12 +297,12 @@ errno_t inet_addrobj_send_dgram(inet_addrobj_t *addr, inet_addr_t *ldest,
 }
 
 /** Get IDs of all address objects. */
-errno_t inet_addrobj_get_id_list(sysarg_t **rid_list, size_t *rcount, 
+errno_t inet_addrobj_get_id_list(sysarg_t **rid_list, size_t *rcount,
         inet_addr_status_t inet_addr_status)
 {
 	sysarg_t *id_list;
 	size_t count, i;
-        
+
 	fibril_mutex_lock(&addr_list_lock);
         list_t *list;
         switch(inet_addr_status) {
@@ -317,7 +315,7 @@ errno_t inet_addrobj_get_id_list(sysarg_t **rid_list, size_t *rcount,
             default:
                 return EINVAL;
         }
-        
+
 	count = list_count(list);
 
 	id_list = calloc(count, sizeof(sysarg_t));

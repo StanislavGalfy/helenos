@@ -41,29 +41,6 @@
 
 #include "format.h"
 
-#define uint8_t_le2host(x) (x)
-#define host2uint8_t_le(x) (x)
-#define uint8_t_be2host(x) (x)
-#define host2uint8_t_be(x) (x)
-
-#define int8_t_le2host(x) (x)
-#define host2int8_t_le(x) (x)
-
-#define int16_t_le2host(x) uint16_t_le2host(x)
-#define host2int16_t_le(x) host2uint16_t_le(x)
-
-#define int32_t_le2host(x) uint32_t_le2host(x)
-#define host2int32_t_le(x) host2uint32_t_le(x)
-
-#define int8_t_be2host(x) (x)
-#define host2int8_t_be(x) (x)
-
-#define int16_t_be2host(x) uint16_t_be2host(x)
-#define host2int16_t_be(x) host2uint16_t_be(x)
-
-#define int32_t_be2host(x) uint32_t_be2host(x)
-#define host2int32_t_be(x) host2uint32_t_be(x)
-
 // TODO float endian?
 #define float_le2host(x) (x)
 #define float_be2host(x) (x)
@@ -156,7 +133,8 @@ do { \
 	case PCM_SAMPLE_UINT24_BE:
 	case PCM_SAMPLE_SINT24_BE:
 	case PCM_SAMPLE_FLOAT32:
-	default: ;
+	default:
+		break;
 	}
 #undef SET_NULL
 }
@@ -325,7 +303,8 @@ do { \
 	case PCM_SAMPLE_UINT24_BE:
 	case PCM_SAMPLE_SINT24_BE:
 	case PCM_SAMPLE_FLOAT32:
-	default: ;
+	default:
+		break;
 	}
 	return 0;
 #undef GET

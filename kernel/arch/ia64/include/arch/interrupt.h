@@ -35,7 +35,7 @@
 #ifndef KERN_ia64_INTERRUPT_H_
 #define KERN_ia64_INTERRUPT_H_
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 #include <arch/istate.h>
 #include <stdint.h>
 #endif
@@ -57,7 +57,7 @@
 /** ia64 has 256 INRs. */
 #define INR_COUNT  256
 
-#define IVT_ITEMS  128 
+#define IVT_ITEMS  128
 #define IVT_FIRST  0
 
 /** External Interrupt vectors. */
@@ -82,7 +82,7 @@
 
 #define EOI  0  /**< The actual value doesn't matter. */
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 extern void *ivt;
 
 extern void general_exception(unsigned int, istate_t *);

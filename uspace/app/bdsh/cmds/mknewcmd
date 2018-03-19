@@ -33,7 +33,7 @@
 # lacking on some legacy systems.
 
 # If your shell does not support eval, shift (x) or
-# here-now documents, sorry :) 
+# here-now documents, sorry :)
 
 usage()
 {
@@ -89,8 +89,8 @@ toupper()
 # for a new command according to arguments passed.
 generate_code()
 {
-	echo "Creating ${OUTDIR}/${CMDNAME}_def.h ..."
-	cat << EOF > ${OUTDIR}/${CMDNAME}_def.h
+	echo "Creating ${OUTDIR}/${CMDNAME}_def.inc ..."
+	cat << EOF > ${OUTDIR}/${CMDNAME}_def.inc
 {
 	"${CMDNAME}",
 	"${CMDDESC}",
@@ -99,7 +99,7 @@ generate_code()
 },
 
 EOF
-	[ -n "${CMDALIAS}" ] && cat << EOF >> ${OUTDIR}/${CMDNAME}_def.h
+	[ -n "${CMDALIAS}" ] && cat << EOF >> ${OUTDIR}/${CMDNAME}_def.inc
 {
 	"${CMDALIAS}",
 	NULL,

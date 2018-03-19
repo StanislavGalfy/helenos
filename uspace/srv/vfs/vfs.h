@@ -59,30 +59,22 @@ typedef struct {
 	async_sess_t *sess;
 } fs_info_t;
 
-/**
- * VFS_PAIR uniquely represents a file system instance.
- */
-#define VFS_PAIR \
-	fs_handle_t fs_handle; \
+/** Uniquely represents a file system instance. */
+typedef struct {
+	fs_handle_t fs_handle;
 	service_id_t service_id;
+} vfs_pair_t;
 
-/**
- * VFS_TRIPLET uniquely identifies a file system node (e.g. directory, file) but
- * doesn't contain any state. For a stateful structure, see vfs_node_t.
+/** Uniquely identifies a file system node (e.g. directory, file)
+ * but doesn't contain any state. For a stateful structure, see vfs_node_t.
  *
  * @note	fs_handle, service_id and index are meant to be returned in one
  *		IPC reply.
  */
-#define VFS_TRIPLET \
-	VFS_PAIR; \
+typedef struct {
+	fs_handle_t fs_handle;
+	service_id_t service_id;
 	fs_index_t index;
-
-typedef struct {
-	VFS_PAIR;
-} vfs_pair_t;
-
-typedef struct {
-	VFS_TRIPLET;
 } vfs_triplet_t;
 
 typedef enum vfs_node_type {
@@ -102,14 +94,20 @@ typedef struct {
  * which may be associated with it.
  */
 typedef struct _vfs_node {
-	VFS_TRIPLET;		/**< Identity of the node. */
+	/*
+	 * Identity of the node
+	 */
+
+	fs_handle_t fs_handle;
+	service_id_t service_id;
+	fs_index_t index;
 
 	/**
 	 * Usage counter.  This includes, but is not limited to, all vfs_file_t
 	 * structures that reference this node.
 	 */
 	unsigned refcnt;
-	
+
 	ht_link_t nh_link;		/**< Node hash-table link. */
 
 	vfs_node_type_t type;	/**< Partial info about the node type. */
@@ -120,7 +118,7 @@ typedef struct _vfs_node {
 	 * Holding this rwlock prevents modifications of the node's contents.
 	 */
 	fibril_rwlock_t contents_rwlock;
-	
+
 	struct _vfs_node *mount;
 } vfs_node_t;
 
@@ -133,7 +131,7 @@ typedef struct {
 	fibril_mutex_t _lock;
 
 	vfs_node_t *node;
-	
+
 	/** Number of file handles referencing this file. */
 	unsigned refcnt;
 
@@ -167,7 +165,7 @@ extern fibril_mutex_t plb_mutex;/**< Mutex protecting plb and plb_entries. */
 extern uint8_t *plb;		/**< Path Lookup Buffer */
 extern list_t plb_entries;	/**< List of active PLB entries. */
 
-/** Holding this rwlock prevents changes in file system namespace. */ 
+/** Holding this rwlock prevents changes in file system namespace. */
 extern fibril_rwlock_t namespace_rwlock;
 
 extern async_exch_t *vfs_exchange_grab(fs_handle_t);

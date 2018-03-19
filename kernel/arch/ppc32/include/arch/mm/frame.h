@@ -40,7 +40,7 @@
 
 #define FRAME_LOWPRIO  0
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 
 #include <stdint.h>
 #include <trace.h>
@@ -48,12 +48,12 @@
 NO_TRACE static inline uint32_t physmem_top(void)
 {
 	uint32_t physmem;
-	
+
 	asm volatile (
 		"mfsprg3 %[physmem]\n"
 		: [physmem] "=r" (physmem)
 	);
-	
+
 	return physmem;
 }
 
@@ -61,7 +61,7 @@ extern void frame_low_arch_init(void);
 extern void frame_high_arch_init(void);
 extern void physmem_print(void);
 
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
 #endif
 

@@ -33,7 +33,7 @@
 #ifndef KERN_sparc64_sun4v_REGWIN_H_
 #define KERN_sparc64_sun4v_REGWIN_H_
 
-#ifdef __ASM__
+#ifdef __ASSEMBLER__
 
 /*
  * Saves the contents of the current window to the userspace window buffer.
@@ -47,7 +47,7 @@
 .macro SAVE_TO_USPACE_WBUF tmpreg1, tmpreg2
 	set SCRATCHPAD_WBUF, \tmpreg2
 	ldxa [\tmpreg2] ASI_SCRATCHPAD, \tmpreg1
-	stx %l0, [\tmpreg1 + L0_OFFSET]	
+	stx %l0, [\tmpreg1 + L0_OFFSET]
 	stx %l1, [\tmpreg1 + L1_OFFSET]
 	stx %l2, [\tmpreg1 + L2_OFFSET]
 	stx %l3, [\tmpreg1 + L3_OFFSET]

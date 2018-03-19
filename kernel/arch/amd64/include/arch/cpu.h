@@ -78,7 +78,7 @@
 #define AMD_MSR_GS		0xc0000101
 #define AMD_MSR_GS_KERNEL	0xc0000102
 
-#ifndef __ASM__
+#ifndef __ASSEMBLER__
 
 #include <arch/pm.h>
 
@@ -88,9 +88,9 @@ typedef struct {
 	int model;
 	int stepping;
 	tss_t *tss;
-	
+
 	unsigned int id; /** CPU's local, ie physical, APIC ID. */
-	
+
 	size_t iomapver_copy;  /** Copy of TASK's I/O Permission bitmap generation count. */
 } cpu_arch_t;
 
@@ -102,7 +102,7 @@ struct lstar_msr {
 
 void cpu_setup_fpu(void);
 
-#endif /* __ASM__ */
+#endif /* __ASSEMBLER__ */
 
 #endif
 

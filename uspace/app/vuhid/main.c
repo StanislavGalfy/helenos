@@ -226,7 +226,7 @@ int main(int argc, char * argv[])
 	}
 
 	for (int i = 0; i < (int) hid_dev.descriptors->configuration->extra_count; i++) {
-		usb_log_debug("Found extra descriptor: %s.\n",
+		usb_log_debug("Found extra descriptor: %s.",
 		    usb_debug_str_buffer(
 		        hid_dev.descriptors->configuration->extra[i].data,
 		        hid_dev.descriptors->configuration->extra[i].length,
@@ -239,13 +239,13 @@ int main(int argc, char * argv[])
 		    controller, str_error(rc));
 		return rc;
 	}
-	
+
 	printf("Connected to VHCD `%s'...\n", controller);
 
 	wait_for_interfaces_death(&hid_dev);
-	
+
 	printf("Terminating...\n");
-	
+
 	usbvirt_device_unplug(&hid_dev);
 
 	return 0;

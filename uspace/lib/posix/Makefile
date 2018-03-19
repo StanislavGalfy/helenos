@@ -141,7 +141,7 @@ export: $(EXPORT_DIR)/config.mk $(EXPORT_DIR)/config.rc
 $(EXPORT_DIR)/config.mk: export-libs export-includes
 	echo '# Generated file, do not modify.' >> $@.new
 	echo '# Do not forget to set HELENOS_EXPORT_ROOT.' >> $@.new
-	echo 'HELENOS_CROSS_PATH="$(shell dirname $(CC))"' >> $@.new
+	echo 'HELENOS_CROSS_PATH="$(shell dirname "$(CC)")"' >> $@.new
 	echo 'HELENOS_ARCH="$(firstword $(subst -, ,$(TARGET)))"' >> $@.new
 	echo 'HELENOS_TARGET="$(TARGET)"' >> $@.new
 	echo 'HELENOS_CPPFLAGS="$(EXPORT_CPPFLAGS)"' >> $@.new
@@ -167,7 +167,7 @@ export-includes: $(INCLUDE_LIBC) $(shell find ./include ../c/arch/$(UARCH)/inclu
 	cp -r -L $(ROOT_PATH)/abi/include/* $(EXPORT_DIR)/include.new
 	mkdir -p $(EXPORT_DIR)/include.new/libclui
 	cp -L ../clui/tinput.h $(EXPORT_DIR)/include.new/libclui
-	
+
 	find "$(EXPORT_DIR)/include.new/libc" "$(EXPORT_DIR)/include.new/libclui" -name '*.h' -exec sed \
 		-e 's:#include <:#include <libc/:' \
 		-e 's:#include <libc/abi/:#include <abi/:' \
@@ -178,7 +178,7 @@ export-includes: $(INCLUDE_LIBC) $(shell find ./include ../c/arch/$(UARCH)/inclu
 		-e 's:#include "posix/:#include ":' \
 		-e 's:#include <posix/:#include <:' \
 		-i {} \;
-	
+
 	rm -rf $(EXPORT_DIR)/include
 	mv $(EXPORT_DIR)/include.new $(EXPORT_DIR)/include
 

@@ -149,12 +149,12 @@ errno_t amdm37x_dispc_init(amdm37x_dispc_t *instance, visualizer_t *vis)
 	list_append(&instance->modes[0].link, &vis->modes);
 
 	return EOK;
-};
+}
 
 errno_t amdm37x_dispc_fini(amdm37x_dispc_t *instance)
 {
 	return EOK;
-};
+}
 
 static errno_t amdm37x_dispc_setup_fb(amdm37x_dispc_regs_t *regs,
     unsigned x, unsigned y, unsigned bpp, uint32_t pa)
@@ -283,7 +283,7 @@ static errno_t change_mode(visualizer_t *vis, vslmode_t mode)
 	}
 	if (dispc->fb_data)
 		dmamem_unmap_anonymous(dispc->fb_data);
-	
+
 	dispc->fb_data = buffer;
 	amdm37x_dispc_setup_fb(dispc->regs, x, y, bpp *8, (uint32_t)pa);
 	dispc->active_fb.idx = mode.index;
