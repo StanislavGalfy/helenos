@@ -32,11 +32,6 @@
 /** @file Synchronous I/O multiplexing.
  */
 
-/*
- * Not implemented, except for FD_ISSET. Defined in order to make compilation of
- * BIRD from coastline possible. 
- */
-
 #ifndef SELECT_POSIX_H_
 #define SELECT_POSIX_H_
 

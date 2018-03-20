@@ -64,17 +64,17 @@
  is created, shared between all functions */
 static async_sess_t* sess;
 
-/** Sockets are initialized once when first socket is created by application 
+/** Sockets are initialized once when first socket is created by application
  * using this library. Indicates if initialization already happened */
 static bool sockets_initialized = false;
 
 /**
  * Creates asynchronous session with socket service.
- * 
+ *
  * @return EOK on success, EIO if the session was not created.
  */
-static int socket_init() 
-{    
+static int socket_init()
+{
         if (!sockets_initialized) {
                 service_id_t socket_svcid;
                 int rc = loc_service_get_id(SERVICE_NAME_SOCKET, &socket_svcid,
@@ -95,19 +95,19 @@ static int socket_init()
         return EOK;
 }
 
-/** Creates new socket. 
- * 
- * Socket structure  is created on service side. It can be accessed through 
- * returned file descriptor. If the function fails, error code is stored in 
+/** Creates new socket.
+ *
+ * Socket structure  is created on service side. It can be accessed through
+ * returned file descriptor. If the function fails, error code is stored in
  * errno.
- * 
+ *
  * @param domain - socket domain
  * @param type - socket type
  * @param protocol -socket protocol
  * @return - socket file descriptor on success, SOCK_ERR on failure.
  */
-int socket(int domain, int type, int protocol) 
-{    
+int socket(int domain, int type, int protocol)
+{
         int rc = socket_init();
         if (rc != EOK) {
                 errno = rc;
@@ -131,10 +131,10 @@ int socket(int domain, int type, int protocol)
 }
 
 /** Sets option on socket.
- * 
+ *
  * Option is set on socket structure on service side looked up by given socket
  * file descriptor. If the function fails, error code is stored in errno.
- * 
+ *
  * @param sockfd - sockets file descriptor
  * @param level - level at which the option reside
  * @param optname - name of the option
@@ -143,8 +143,8 @@ int socket(int domain, int type, int protocol)
  * @return - EOK on success, SOCK_ERR on failure
  */
 int setsockopt(int sockfd, int level, int optname, const void *optval,
-        socklen_t optlen) 
-{   
+        socklen_t optlen)
+{
         async_exch_t *exch = async_exchange_begin(sess);
 
         ipc_call_t answer;
@@ -165,17 +165,17 @@ int setsockopt(int sockfd, int level, int optname, const void *optval,
         return retval;
 }
 
-/** Binds socket to given address. 
- * 
- * Bound is socket structure looked up by sockfd on service side. If the 
+/** Binds socket to given address.
+ *
+ * Bound is socket structure looked up by sockfd on service side. If the
  * function fails, error code is stored in errno.
- * 
+ *
  * @param sockfd - sockets file descriptor
  * @param addr - address to which the socket will be bound
  * @param addrlen - length of addr
  * @return - EOK on success, SOCK_ERR on failure
  */
-int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) 
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
         async_exch_t *exch = async_exchange_begin(sess);
 
@@ -191,17 +191,17 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 
         int retval;
         async_wait_for(req, &retval);
-        CHECK_RETVAL();   
+        CHECK_RETVAL();
 
         return retval;
 }
 
 /** Sends message through socket.
- * 
- * How the message will be send is decided according to socket structe given by 
- * @a sockfd. The structure is looked up on service side. If the function 
+ *
+ * How the message will be send is decided according to socket structe given by
+ * @a sockfd. The structure is looked up on service side. If the function
  * fails, error code is stored in errno.
- * 
+ *
  * @param sockfd - sockets file descriptor
  * @param msg - pointer to message that will be sent
  * @param flags - flags to further configure sending - currently not unsupported
@@ -212,7 +212,7 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)
         async_exch_t *exch = async_exchange_begin(sess);
 
         ipc_call_t answer;
-        // Send parameters that can be sent as sysarg_t (sockfd, msg->msg_iovlen 
+        // Send parameters that can be sent as sysarg_t (sockfd, msg->msg_iovlen
         // - number of input/output vectors the message contains, flags)
         aid_t req = async_send_3(exch, SOCKET_SENDMSG, sockfd, msg->msg_iovlen,
             flags, &answer);
@@ -223,7 +223,7 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)
 
         // Send input/output vectors contents
         for (size_t i = 0; i < msg->msg_iovlen; i++) {
-                rc = async_data_write_start(exch, msg->msg_iov[i].iov_base, 
+                rc = async_data_write_start(exch, msg->msg_iov[i].iov_base,
                     msg->msg_iov[i].iov_len);
                 CHECK_RC();
         }
@@ -243,25 +243,25 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)
 }
 
 /** Receives message from a socket.
- * 
+ *
  * Message that will be received is determined by socket structure looked up by
- * @a sockfd. The structure is looked up on service side. If the function 
+ * @a sockfd. The structure is looked up on service side. If the function
  * fails, error code is stored in errno.
- * 
+ *
  * @param sockfd - sockets file descriptor
  * @param msg - pointer, where the received message will be stored
  * @param flags - flags to further configure receiving - currently not supported
  * @return - number recived bytes on sucess, SOCK_ERR on failure
  */
-ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags) 
-{    
+ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
+{
         async_exch_t *exch = async_exchange_begin(sess);
 
         ipc_call_t answer;
         // Send parameters that can be sent as sysarg_t (sockfd,
-        // msg->msg_namelen - size of structure where will be stored source 
-        // address of the message, msg->msg_iovlen - number of input/output 
-        // vectors the message contains, msg->msg_controllen - size of 
+        // msg->msg_namelen - size of structure where will be stored source
+        // address of the message, msg->msg_iovlen - number of input/output
+        // vectors the message contains, msg->msg_controllen - size of
         // structure where will be store additional info, flags)
         aid_t req = async_send_5(exch, SOCKET_RECVMSG, sockfd, msg->msg_namelen,
             msg->msg_iovlen, msg->msg_controllen, flags, &answer);
@@ -300,13 +300,13 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
         return nrecv;
 }
 
-ssize_t sockwrite(int sockfd, const void *buf, size_t count) 
+ssize_t sockwrite(int sockfd, const void *buf, size_t count)
 {
         async_exch_t *exch = async_exchange_begin(sess);
-        
+
         ipc_call_t answer;
         aid_t req = async_send_1(exch, SOCKET_WRITE, sockfd, &answer);
-        
+
         int rc = async_data_write_start(exch, buf, count);
         CHECK_RC();
 
@@ -319,34 +319,34 @@ ssize_t sockwrite(int sockfd, const void *buf, size_t count)
         return nsent;
 }
 
-ssize_t sockread(int sockfd, void *buf, size_t count) 
-{   
+ssize_t sockread(int sockfd, void *buf, size_t count)
+{
         async_exch_t *exch = async_exchange_begin(sess);
-        
+
         ipc_call_t answer;
         aid_t req = async_send_2(exch, SOCKET_READ, sockfd, count, &answer);
 
         int rc = async_data_read_start(exch, buf, count);
         CHECK_RC();
-        
+
         async_exchange_end(exch);
         int retval;
         async_wait_for(req, &retval);
         CHECK_RETVAL();
-        
+
         ssize_t nrecv = IPC_GET_ARG1(answer);
         return nrecv;
 }
 
 /** NOT IMPLEMENTED
- * 
+ *
  * @param sockfd
  * @param backlog
  * @return
  */
 int listen(int sockfd, int backlog) {
         async_sleep(1);
-        
+
         async_exch_t *exch = async_exchange_begin(sess);
 
         ipc_call_t answer;
@@ -357,12 +357,12 @@ int listen(int sockfd, int backlog) {
         int retval;
         async_wait_for(req, &retval);
         CHECK_RETVAL();
-        
-        return retval;   
+
+        return retval;
 }
 
 /** NOT IMPLEMENTED
- * 
+ *
  * @param sockfd
  * @param buf
  * @param len
@@ -372,52 +372,52 @@ int listen(int sockfd, int backlog) {
  * @return
  */
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
-    const struct sockaddr *dest_addr, socklen_t addrlen) 
-{ 
+    const struct sockaddr *dest_addr, socklen_t addrlen)
+{
         return 0;
 }
 
 /** Connects socket.
- * 
+ *
  * Current service implementation only returns -1 for AF_UNIX sockets (Behavior
- * required for BIRD port). If the function fails, error code is stored in 
+ * required for BIRD port). If the function fails, error code is stored in
  * errno.
- * 
+ *
  * @param sockfd - sockets file descriptor
  * @param addr - address to which socket should be connected
  * @param addrlen - length of addr
  * @return - - EOK on success, SOCK_ERR on failure
  */
 int connect(int sockfd, const struct sockaddr *addr,
-    socklen_t addrlen) 
-{   
+    socklen_t addrlen)
+{
         async_exch_t *exch = async_exchange_begin(sess);
-        
+
         ipc_call_t answer;
         // Send parameters that can be sent as sysarg_t (sockfd)
         aid_t req = async_send_1(exch, SOCKET_CONNECT, sockfd, &answer);
-        
+
         // Send socket address
         int rc = async_data_write_start(exch, addr, addrlen);
         CHECK_RC();
-        
+
         async_exchange_end(exch);
 
         int retval;
         async_wait_for(req, &retval);
         CHECK_RETVAL();
-        
+
         return retval;
 }
 
 /** NOT IMPLEMENTED.
- * 
+ *
  * @param sockfd
  * @param addr
  * @param addrlen
  * @return
  */
-int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen) 
+int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
         async_exch_t *exch = async_exchange_begin(sess);
 
@@ -425,64 +425,64 @@ int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
         // Send parameters that can be sent as sysarg_t (sockfd)
         aid_t req = async_send_2(exch, SOCKET_GETSOCKNAME, sockfd, *addrlen,
                 &answer);
-        
+
         // Receive socket address
         int rc = async_data_read_start(exch, addr, *addrlen);
         CHECK_RC();
-        
+
         async_exchange_end(exch);
 
         int retval;
         async_wait_for(req, &retval);
         CHECK_RETVAL();
-        
+
         *addrlen = IPC_GET_ARG1(answer);
-        
+
         return retval;
 }
 
 /** NOT IMPLEMENTED.
- * 
+ *
  * @param sockfd
  * @param addr
  * @param addrlen
  * @return
  */
-int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) 
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
         async_exch_t *exch = async_exchange_begin(sess);
-        
+
         ipc_call_t answer;
         // Send parameters that can be sent as sysarg_t (sockfd)
         aid_t req = async_send_2(exch, SOCKET_ACCEPT, sockfd, *addrlen,
                 &answer);
-        
+
         // Receive socket address
         int rc = async_data_read_start(exch, addr, *addrlen);
         CHECK_RC();
-        
+
         async_exchange_end(exch);
 
         int retval;
         async_wait_for(req, &retval);
         CHECK_RETVAL();
-        
+
         int new_sockfd = IPC_GET_ARG1(answer);
         *addrlen = IPC_GET_ARG2(answer);
-        
+
         return new_sockfd;
 }
 
 /** Closes socket.
- * 
- * Socket to close is looked up by sockfd on service side. If the function 
+ *
+ * Socket to close is looked up by sockfd on service side. If the function
  * fails, error code is stored in errno.
- * 
+ *
  * @param sockfd - socket file descriptor
  * @return - EOK on success, SOCK_ERR on failure
  */
-int sockclose(int sockfd) 
-{   
+int sockclose(int sockfd)
+{
         async_exch_t *exch = async_exchange_begin(sess);
 
         ipc_call_t answer;
@@ -494,24 +494,24 @@ int sockclose(int sockfd)
         async_wait_for(req, &retval);
         CHECK_RETVAL();
 
-        return retval;   
+        return retval;
 }
 
 int sockselect(int nfds, fd_set *readfds, fd_set *writefds,
         fd_set *exceptfds, struct timeval *timeout)
 {
         async_exch_t *exch = async_exchange_begin(sess);
-        
+
         bool is_readfds = readfds != NULL;
         bool is_writefds =  writefds != NULL;
         bool is_exceptfds = exceptfds != NULL;
         bool is_timeout = timeout != NULL;
-        
+
         ipc_call_t answer;
         // Send parameters that can be sent as sysarg_t (sockfd)
-        aid_t req = async_send_5(exch, SOCKET_SELECT, nfds, is_readfds, 
+        aid_t req = async_send_5(exch, SOCKET_SELECT, nfds, is_readfds,
             is_writefds, is_exceptfds, is_timeout, &answer);
-        
+
         int rc;
         if (is_readfds) {
             rc = async_data_write_start(exch, readfds, sizeof(fd_set));
@@ -519,32 +519,33 @@ int sockselect(int nfds, fd_set *readfds, fd_set *writefds,
             rc = async_data_read_start(exch, readfds, sizeof(fd_set));
             CHECK_RC();
         }
-        
-        if (is_writefds) {        
+
+        if (is_writefds) {
             rc = async_data_write_start(exch, writefds, sizeof(fd_set));
             CHECK_RC();
             rc = async_data_read_start(exch, writefds, sizeof(fd_set));
             CHECK_RC();
         }
-        
-        if (is_exceptfds) {       
+
+        if (is_exceptfds) {
             rc = async_data_write_start(exch, exceptfds, sizeof(fd_set));
             CHECK_RC();
             rc = async_data_read_start(exch, exceptfds, sizeof(fd_set));
             CHECK_RC();
         }
-        
-        if (is_timeout) {        
+
+        if (is_timeout) {
             rc = async_data_write_start(exch, timeout, sizeof(struct timeval));
             CHECK_RC();
         }
-        
+
         async_exchange_end(exch);
         int retval;
         async_wait_for(req, &retval);
         CHECK_RETVAL();
-        
-        return retval;
+
+        return nfds;
 }
+
 /** @}
  */

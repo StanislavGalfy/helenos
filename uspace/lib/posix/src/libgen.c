@@ -34,15 +34,16 @@
 
 /*
  * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
-#ifndef POSIX_LIBGEN_H_
-#define POSIX_LIBGEN_H_
+#include "posix/libgen.h"
 
-extern char *dirname(char *path);
+#include "posix/stdio.h"
 
-#endif
+char *dirname(char *path) {
+    return NULL;
+}
 
 /** @}
  */

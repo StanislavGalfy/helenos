@@ -39,7 +39,7 @@
 #include "libc/malloc.h"
 
 /** Calls malloc from libc.
- * 
+ *
  * @param size Number of bytes to allocate.
  * @return Allocated memory or NULL.
  */

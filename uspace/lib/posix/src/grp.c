@@ -29,20 +29,31 @@
 /** @addtogroup libposix
  * @{
  */
-/** @file Definitions for pattern matching functions.
+/** @file Group structure.
  */
 
 /*
  * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
-#ifndef POSIX_LIBGEN_H_
-#define POSIX_LIBGEN_H_
+#include "posix/grp.h"
 
-extern char *dirname(char *path);
+pid_t setsid(void) {
+	return 0;
+}
 
-#endif
+int setgid(gid_t gid) {
+	return 0;
+}
+
+int chown(const char *pathname, uid_t owner, gid_t group) {
+	return 0;
+}
+
+struct group *getgrnam(const char *name) {
+	return NULL;
+}
 
 /** @}
  */

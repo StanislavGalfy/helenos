@@ -100,10 +100,12 @@ typedef struct {
 typedef struct {
 	char *name;
 	link_t link;
-        
+
 	/** Association identification (endpoint pair) */
 	inet_ep2_t ident;
         
+        /** Local address that will be assigned to packets sent through this 
+         * association */
         inet_addr_t local_out_addr;
 
 	/** True if association was reset by user */

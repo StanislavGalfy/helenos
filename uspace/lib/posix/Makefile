@@ -74,8 +74,10 @@ SOURCES = \
 	src/dlfcn.c \
 	src/fcntl.c \
 	src/fnmatch.c \
+	src/glob.c \
+	src/grp.c \
+	src/libgen.c \
 	src/locale.c \
-	src/sys/temp.c \
 	src/pthread/condvar.c \
 	src/pthread/keys.c \
 	src/pthread/mutex.c \
@@ -89,9 +91,12 @@ SOURCES = \
 	src/stdlib/strtold.c \
 	src/string.c \
 	src/strings.c \
+	src/sys/ioctl.c \
 	src/sys/mman.c \
+	src/sys/select.c \
 	src/sys/stat.c \
 	src/sys/wait.c \
+	src/termios.c \
 	src/time.c \
 	src/unistd.c
 

@@ -29,20 +29,34 @@
 /** @addtogroup libposix
  * @{
  */
-/** @file Definitions for pattern matching functions.
+/** @file Synchronous I/O multiplexing.
  */
 
-/*
- * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
- */
+#include "posix/sys/select.h"
 
-#ifndef POSIX_LIBGEN_H_
-#define POSIX_LIBGEN_H_
+void _fd_clr(int fd, fd_set *fd_set) {
+        fd_set->fds_bits[fd] = false;
+}
 
-extern char *dirname(char *path);
+bool _fd_isset(int fd, fd_set *fd_set) {
+        return fd_set->fds_bits[fd];
+}
 
-#endif
+void _fd_set(int fd, fd_set *fd_set) {
+        fd_set->fds_bits[fd] = true;
+}
+
+void _fd_zero(fd_set *fd_set) {
+        for (int i = 0; i < FD_SETSIZE; i++)
+                fd_set->fds_bits[i] = false;
+}
+
+int select(int nfds, fd_set *readfds, fd_set *writefds,
+        fd_set *exceptfds, struct timeval *timeout)
+{
+    sockselect(nfds, readfds, writefds, exceptfds, timeout);
+    return nfds;
+}
 
 /** @}
  */

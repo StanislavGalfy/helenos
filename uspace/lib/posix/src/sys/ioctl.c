@@ -29,20 +29,19 @@
 /** @addtogroup libposix
  * @{
  */
-/** @file Definitions for pattern matching functions.
+/** @file Control device.
  */
 
 /*
  * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
-#ifndef POSIX_LIBGEN_H_
-#define POSIX_LIBGEN_H_
+#include "posix/sys/ioctl.h"
 
-extern char *dirname(char *path);
-
-#endif
+int ioctl(int fd, int request, ...) {
+        return 0;
+}
 
 /** @}
  */

@@ -29,20 +29,25 @@
 /** @addtogroup libposix
  * @{
  */
-/** @file Definitions for pattern matching functions.
+/** @file Pathname pattern-matching types.
  */
 
 /*
  * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
-#ifndef POSIX_LIBGEN_H_
-#define POSIX_LIBGEN_H_
+#include "posix/glob.h"
 
-extern char *dirname(char *path);
+void globfree(glob_t *pglob) {
+}
 
-#endif
+int glob(const char *pattern, int flags,
+         int (*errfunc) (const char *epath, int eerrno),
+         glob_t *pglob) {
+
+    return 0;
+}
 
 /** @}
  */

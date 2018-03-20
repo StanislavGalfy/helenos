@@ -38,6 +38,7 @@
 #include <types/socket/socket.h>
 #include <types/socket/select.h>
 #include <time.h>
+#include <types/common.h>
 
 extern int bind(int, const struct sockaddr *, socklen_t);
 extern int socket(int, int, int);

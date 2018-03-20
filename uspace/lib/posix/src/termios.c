@@ -29,20 +29,23 @@
 /** @addtogroup libposix
  * @{
  */
-/** @file Definitions for pattern matching functions.
+/** @file Define values for termios.
  */
 
 /*
  * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
-#ifndef POSIX_LIBGEN_H_
-#define POSIX_LIBGEN_H_
+#include "posix/termios.h"
 
-extern char *dirname(char *path);
+int tcgetattr(int fd, struct termios *termios_p) {
+        return 0;
+}
 
-#endif
+int tcsetattr(int fd, int optional_actions, const struct termios *termios_p) {
+        return 0;
+}
 
 /** @}
  */

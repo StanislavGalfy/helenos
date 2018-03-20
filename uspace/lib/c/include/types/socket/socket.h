@@ -35,8 +35,8 @@
 #ifndef LIBC_TYPES_SOCKET_H_
 #define LIBC_TYPES_SOCKET_H_
 
-//#include <sys/types.h>
 #include <types/socket/uio.h>
+#include <stdint.h>
 
 /** Socket error, returned by library functions working with sockets in case of
  failure. The specific error code is stored in errno */
