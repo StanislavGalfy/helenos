@@ -77,6 +77,7 @@ SOURCES = \
 	src/glob.c \
 	src/grp.c \
 	src/libgen.c \
+	src/log.c \
 	src/locale.c \
 	src/pthread/condvar.c \
 	src/pthread/keys.c \
