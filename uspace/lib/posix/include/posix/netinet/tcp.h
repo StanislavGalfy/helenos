@@ -34,7 +34,7 @@
 
 /*
  * Not used. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
 

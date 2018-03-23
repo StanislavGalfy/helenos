@@ -39,21 +39,23 @@
 #include <types/socket/socket.h>
 #include <types/socket/in6.h>
 
-/** Socket option names */
-#define IP_TOS 1           // Type of service
-#define IP_TTL 2           // Time to live
-#define IP_PKTINFO 8       // Include packet info
-#define IP_MULTICAST_IF 32 // Multicast
+/* Type of service */
+#define IP_TOS 1
+/* Type of service */
+#define IP_TTL 2
+/* Include packet info */
+#define IP_PKTINFO 8
+/* Multicast */
+#define IP_MULTICAST_IF 32
 
 /** Enumeration of socket protocols, passed as last parameter when creating
- * socket 
- */
+ * socket */
 enum {
-    IPPROTO_TCP = 6,  /* Transmission Control Protocol  */
+        IPPROTO_TCP = 6, /* Transmission Control Protocol */
 #define IPPROTO_TCP IPPROTO_TCP
-    IPPROTO_UDP = 17, /* User Datagram Protocol socket type */  
+        IPPROTO_UDP = 17, /* User Datagram Protocol socket type */
 #define IPPROTO_UDP IPPROTO_UDP
-    IPPROTO_MAX
+        IPPROTO_MAX
 };
 
 /** Integer value of IPv4 network address */
@@ -61,35 +63,34 @@ typedef uint32_t in_addr_t;
 
 /** Structure containing integer value of IPv4 network address */
 struct in_addr {
-	in_addr_t s_addr;
+        in_addr_t s_addr;
 };
 
 /** Structure describing packet info. */
 struct in_pktinfo {
         /** Service id of iplink where the packet was received, or should be
          sent */
-	int ipi_ifindex;
+        int ipi_ifindex;
         /** Local address of the packet */
-	struct in_addr ipi_spec_dst;
+        struct in_addr ipi_spec_dst;
         /** Destination address of the packet, from the packet header */
-	struct in_addr ipi_addr;
+        struct in_addr ipi_addr;
 };
 
-/** Socket address. By convention, functions taking this structure as parameter 
- * instead of sockaddr may modify the values.
- */
+/** Socket address. By convention, functions taking this structure as parameter
+ * instead of sockaddr may modify the values. */
 struct sockaddr_in {
         /** Address family, e.g. AF_INET */
-	sa_family_t sin_family;
+        sa_family_t sin_family;
         /** Port */
-	in_port_t sin_port;
+        in_port_t sin_port;
         /** IPV4 address */
-	struct in_addr sin_addr;
+        struct in_addr sin_addr;
         /** Unused space to make the size same as size of sockaddr */
-	unsigned char sin_zero[sizeof (struct sockaddr) -
-	(sizeof (unsigned short int)) -
-	sizeof (in_port_t) -
-	sizeof (struct in_addr)];
+        unsigned char sin_zero[sizeof (struct sockaddr) -
+        (sizeof (unsigned short int)) -
+        sizeof (in_port_t) -
+        sizeof (struct in_addr)];
 };
 
 #endif

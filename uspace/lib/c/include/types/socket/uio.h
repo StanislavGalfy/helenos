@@ -39,13 +39,13 @@
 
 /** Input/Output memory vector */
 struct iovec {
-    /* Vector base */
-    void *iov_base;
-    /* Vector length */
-    size_t iov_len;
+        /* Vector base */
+        void *iov_base;
+        /* Vector length */
+        size_t iov_len;
 };
 
-#endif 
+#endif
 
 /** @}
  */

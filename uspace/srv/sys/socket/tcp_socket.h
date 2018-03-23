@@ -39,50 +39,53 @@
 
 #include "common_socket.h"
 
-/** Raw message */
+/** TCP socket connection */
 typedef struct {
-        /** Link to message queue of a particular socket */
+        /** Link to connection queue of listener socket */
         link_t conn_queue_link;
-
-        /** Datagram received from inet */
+        /** TCP connection */
         tcp_conn_t *tcp_conn;
-        
+        /** Is connection incoming */
         bool is_incoming;
-        
+        /** Condition variable to prevent destroying of TCP connection*/
         fibril_condvar_t tcp_conn_fcv;
 } tcp_sock_conn_t;
 
 /** TCP socket*/
 typedef struct {
-    /** Common socket attributes */
-    common_socket_t socket;
-    
-    bool is_listener;
-    
-    inet_ep_t ep;
-    
-    tcp_sock_conn_t *tcp_sock_conn;
-    
-    list_t tcp_conn_queue;
-    
-    tcp_listener_t *tcp_listener;
-    
+        /** Common socket attributes */
+        common_socket_t socket;
+        /** Is socket listener */
+        bool is_listener;
+        /** Local address and port of the socket */
+        inet_ep_t ep;
+        /** TCP socket connection, only used by non listener sockets */
+        tcp_sock_conn_t *tcp_sock_conn;
+        /** TCP socket connection queue, only used by listener sockets */
+        list_t tcp_conn_queue;
+        /** TCP listener, only used by listener sockets */
+        tcp_listener_t *tcp_listener;
 } tcp_socket_t;
 
-errno_t tcp_socket(int, int, int, int, int *);
-errno_t tcp_socket_setsockopt(common_socket_t *, int, int, const void *, socklen_t);
-errno_t tcp_socket_bind(common_socket_t *, const struct sockaddr *, socklen_t);
-errno_t tcp_socket_listen(common_socket_t *, int);
-errno_t tcp_socket_connect(common_socket_t *, const struct sockaddr *, socklen_t);
-errno_t tcp_socket_getsockname(common_socket_t *, const struct sockaddr *,
-        socklen_t *);
-errno_t tcp_socket_accept(common_socket_t *, const struct sockaddr *,
-        socklen_t *, int *);
-errno_t tcp_socket_read_avail(common_socket_t *, bool *);
-errno_t tcp_socket_write_avail(common_socket_t *, bool *);
-errno_t tcp_socket_write(common_socket_t *, void *, size_t, size_t *);
-errno_t tcp_socket_read(common_socket_t *, void *, size_t, size_t *);
-errno_t tcp_socket_close(common_socket_t *);
+extern errno_t tcp_socket(int, int, int, int, int *);
+extern errno_t tcp_socket_setsockopt(common_socket_t *, int, int, const void *,
+    socklen_t);
+extern errno_t tcp_socket_bind(common_socket_t *, const struct sockaddr *,
+    socklen_t);
+extern errno_t tcp_socket_listen(common_socket_t *, int);
+extern errno_t tcp_socket_connect(common_socket_t *, const struct sockaddr *,
+    socklen_t);
+extern errno_t tcp_socket_getsockname(common_socket_t *,
+    const struct sockaddr *, socklen_t *);
+extern errno_t tcp_socket_accept(common_socket_t *, const struct sockaddr *,
+    socklen_t *, int *);
+extern errno_t tcp_socket_read_avail(common_socket_t *, bool *);
+extern errno_t tcp_socket_write_avail(common_socket_t *, bool *);
+extern errno_t tcp_socket_write(common_socket_t *, void *, size_t, size_t *);
+extern errno_t tcp_socket_read(common_socket_t *, void *, size_t, size_t *);
+extern errno_t tcp_socket_close(common_socket_t *);
 
 #endif
 
+/** @}
+ */

@@ -32,8 +32,8 @@
 /** @file Unix socket
  */
 
-/** DISCLAIMER - main purpose of unix socket implementation is BIRD port. 
- * It is not fully POSIX compliant, most features are not implemented. 
+/** DISCLAIMER - main purpose of unix socket implementation is BIRD port.
+ * It is not fully POSIX compliant, most features are not implemented.
  */
 
 #include <stdlib.h>
@@ -41,69 +41,61 @@
 
 #include "unix_socket.h"
 
-/** Creates new UNIX socket
- * 
- * @param domain - socket domain
- * @param type - socket type
- * @param protocol - socket protocol
- * @param session_id - session ID
- * @return - socket ID
+/** Creates new UNIX socket.
+ *
+ * @param domain	Socket domain.
+ * @param type		Socket type.
+ * @param protocol	Socket protocol.
+ * @param session_id	Session ID.
+ * @return		Socket ID.
  */
-errno_t unix_socket(int domain, int type, int protocol, int session_id, int *fd) 
+errno_t unix_socket(int domain, int type, int protocol, int session_id, int *fd)
 {
-        unix_socket_t *unix_socket = (unix_socket_t *) calloc(1, sizeof(unix_socket_t));
-        common_socket_init(&unix_socket->socket, domain, type, protocol,
-                session_id);
-        *fd = unix_socket->socket.id;
-        return EOK;
+	unix_socket_t *unix_socket = (unix_socket_t *)calloc(1,
+	    sizeof(unix_socket_t));
+	common_socket_init(&unix_socket->socket, domain, type, protocol,
+	    session_id);
+	*fd = unix_socket->socket.id;
+	return EOK;
 }
 
-/** Returns EOK for bird compatibility
- * 
- * @param socket
- * @param addr
- * @param addrlen
- * @return 
- */
+/** Returns EOK for BIRD compatibility. */
 errno_t unix_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
-    socklen_t addrlen) 
+    socklen_t addrlen)
 {
-        return EOK;
+	return EOK;
 }
 
-errno_t unix_socket_listen(common_socket_t *socket, int backlog) 
+/** Returns EOK for BIRD compatibility. */
+errno_t unix_socket_listen(common_socket_t *socket, int backlog)
 {
-        return EOK;
+	return EOK;
 }
 
-/** Returns ECONNREFUSED for bird compatibility
- * 
- * @param socket
- * @param addr
- * @param addrlen
- * @return 
- */
+/** Returns ECONNREFUSED for BIRD compatibility. */
 errno_t unix_socket_connect(common_socket_t *socket, const struct sockaddr *addr,
-    socklen_t addrlen) 
+    socklen_t addrlen)
 {
-        return ECONNREFUSED;
-}  
+	return ECONNREFUSED;
+}
 
+/** Sets read_avail to false and returns EOK for BIRD compatibility. */
 errno_t unix_socket_read_avail(common_socket_t *socket, bool *read_avail)
 {
-        *read_avail = false;
-        return EOK;
+	*read_avail = false;
+	return EOK;
 }
 
-/** Closes UNIX socket
- * 
- * @param socket - socket to close
- * @return EOK
+/** Closes UNIX socket.
+ *
+ * @param socket	Socket to close.
+ * @return		EOK.
  */
-errno_t unix_socket_close(common_socket_t *socket) {
-    unix_socket_t *unix_socket = (unix_socket_t*)socket;
-    free(unix_socket);
-    return EOK;    
+errno_t unix_socket_close(common_socket_t *socket)
+{
+	unix_socket_t *unix_socket = (unix_socket_t*)socket;
+	free(unix_socket);
+	return EOK;
 }
 
 /** @}

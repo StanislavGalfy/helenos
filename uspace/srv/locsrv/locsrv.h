@@ -46,66 +46,66 @@
  *
  */
 typedef struct {
-	/** Link to servers_list */
-	link_t servers;
+        /** Link to servers_list */
+        link_t servers;
 
-	/** List of services supplied by this server */
-	list_t services;
+        /** List of services supplied by this server */
+        list_t services;
 
-	/** Session asociated with this server */
-	async_sess_t *sess;
+        /** Session asociated with this server */
+        async_sess_t *sess;
 
-	/** Server name */
-	char *name;
+        /** Server name */
+        char *name;
 
-	/** Fibril mutex for list of services owned by this server */
-	fibril_mutex_t services_mutex;
+        /** Fibril mutex for list of services owned by this server */
+        fibril_mutex_t services_mutex;
 } loc_server_t;
 
 /** Info about registered namespaces
  *
  */
 typedef struct {
-	/** Link to namespaces_list */
-	link_t namespaces;
+        /** Link to namespaces_list */
+        link_t namespaces;
 
-	/** Unique namespace identifier */
-	service_id_t id;
+        /** Unique namespace identifier */
+        service_id_t id;
 
-	/** Namespace name */
-	char *name;
+        /** Namespace name */
+        char *name;
 
-	/** Reference count */
-	size_t refcnt;
+        /** Reference count */
+        size_t refcnt;
 } loc_namespace_t;
 
 /** Info about registered service
  *
  */
 typedef struct {
-	/** Link to global list of services (services_list) */
-	link_t services;
+        /** Link to global list of services (services_list) */
+        link_t services;
 
-	/** Link to server list of services (loc_server_t.services) */
-	link_t server_services;
+        /** Link to server list of services (loc_server_t.services) */
+        link_t server_services;
 
-	/** Link to list of services in category (category_t.services) */
-	link_t cat_services;
+        /** Link to list of services in category (category_t.services) */
+        link_t cat_services;
 
-	/** List of category memberships (svc_categ_t) */
-	list_t cat_memb;
+        /** List of category memberships (svc_categ_t) */
+        list_t cat_memb;
 
-	/** Unique service identifier */
-	service_id_t id;
+        /** Unique service identifier */
+        service_id_t id;
 
-	/** Service namespace */
-	loc_namespace_t *namespace;
+        /** Service namespace */
+        loc_namespace_t * namespace;
 
-	/** Service name */
-	char *name;
+        /** Service name */
+        char *name;
 
-	/** Supplier of this service */
-	loc_server_t *server;
+        /** Supplier of this service */
+        loc_server_t *server;
 } loc_service_t;
 
 extern fibril_mutex_t services_list_mutex;

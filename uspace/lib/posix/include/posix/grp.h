@@ -34,7 +34,7 @@
 
 /*
  * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
 #ifndef POSIX_GRP_H_
@@ -43,10 +43,10 @@
 #include <posix/sys/types.h>
 
 struct group {
-	char *gr_name;
-	char *gr_passwd;
-	gid_t gr_gid;
-	char **gr_mem;
+        char *gr_name;
+        char *gr_passwd;
+        gid_t gr_gid;
+        char **gr_mem;
 };
 
 extern pid_t setsid(void);

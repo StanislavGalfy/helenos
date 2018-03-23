@@ -55,60 +55,60 @@ tcp_t *socket_tcp;
 
 /** Structure with callback passed when initializing inet */
 static inet_ev_ops_t inet_ev_ops = {
-        .recv = raw_socket_inet_ev_recv
+	.recv = raw_socket_inet_ev_recv
 };
 
 /** Initialize socket implementation.
- * 
- * @return EOK on success, error code on failure
+ *
+ * @return	EOK on success, error code on failure.
  */
-int sockets_init() 
-{    
-        log_msg(LOG_DEFAULT, LVL_DEBUG, "Initializing sockets");
+errno_t sockets_init()
+{
+	log_msg(LOG_DEFAULT, LVL_DEBUG, "Initializing sockets");
 
-        list_initialize(&socket_list);
+	list_initialize(&socket_list);
 
-        fibril_mutex_initialize(&socket_lock);
+	fibril_mutex_initialize(&socket_lock);
 
-        int rc = inet_init(IP_PROTO_OSPF, &inet_ev_ops);
-        if (rc != EOK) {
-               log_msg(LOG_DEFAULT, LVL_ERROR, "Error initializing inet");
-               return rc;
-        }
-        rc = udp_create(&socket_udp);
-        if (rc != EOK) {
-               log_msg(LOG_DEFAULT, LVL_ERROR, "Error initializing UDP");
-               return rc;
-        };
-        rc = tcp_create(&socket_tcp);
-        if (rc != EOK) {
-               log_msg(LOG_DEFAULT, LVL_ERROR, "Error initializing TCP");
-               return rc;
-        };
-        return rc;
+	errno_t rc = inet_init(IP_PROTO_OSPF, &inet_ev_ops);
+	if (rc != EOK) {
+		log_msg(LOG_DEFAULT, LVL_ERROR, "Error initializing inet");
+		return rc;
+	}
+	rc = udp_create(&socket_udp);
+	if (rc != EOK) {
+		log_msg(LOG_DEFAULT, LVL_ERROR, "Error initializing UDP");
+		return rc;
+	};
+	rc = tcp_create(&socket_tcp);
+	if (rc != EOK) {
+		log_msg(LOG_DEFAULT, LVL_ERROR, "Error initializing TCP");
+		return rc;
+	};
+	return rc;
 }
 
 /** Initialize common socket structure.
- * 
- * @param socket - the structure to initialize
- * @param domain - socket domain
- * @param type - socket type
- * @param protocol - socket protocol
- * @param session_id - session id
+ *
+ * @param socket	The structure to initialize.
+ * @param domain	Socket domain.
+ * @param type		Socket type.
+ * @param protocol	Socket protocol.
+ * @param session_id	Session id.
  */
 void common_socket_init(common_socket_t *socket, int domain, int type,
-    int protocol, int session_id) 
+    int protocol, int session_id)
 {
-        socket->id = generate_socket_id();
-        socket->session_id = session_id;
+	socket->id = generate_socket_id();
+	socket->session_id = session_id;
 
-        socket->domain = domain;
-        socket->type = type;
-        socket->protocol = protocol;
+	socket->domain = domain;
+	socket->type = type;
+	socket->protocol = protocol;
 
-        link_initialize(&socket->link);
+	link_initialize(&socket->link);
 
-        list_append(&socket->link, &socket_list);
+	list_append(&socket->link, &socket_list);
 }
 
 /** @}

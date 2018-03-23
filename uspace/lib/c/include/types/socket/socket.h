@@ -43,32 +43,31 @@
 #define SOCK_ERR (-1)
 
 /** Socket option layers */
-#define SOL_IP 0     /* IP layer, unused */
-#define SOL_SOCKET 1 /* Socket layer, unused */
-#define SOL_IPV6 41  /* IPv6 layer, unused */
+#define SOL_IP 0     /* IP layer */
+#define SOL_SOCKET 1 /* Socket layer */
+#define SOL_IPV6 41  /* IPv6 layer */
 
 /** Socket option names for setsockopt */
-#define SO_REUSEADDR 2     /* Reuse address, unused */
-#define SO_BROADCAST 6     /* Set up broadcast, unused */
-#define SO_PRIORITY 12     /* Priority, unused */
-#define SO_BINDTODEVICE	25 /* Bind socket to receive and send data only through
+#define SO_REUSEADDR 2     /* Reuse address */
+#define SO_BROADCAST 6     /* Set up broadcast */
+#define SO_PRIORITY 12     /* Priority */
+#define SO_BINDTODEVICE 25 /* Bind socket to receive and send data only through
                               particular interface */
 
 /** Socket domains, used when creating socket */
 #define AF_UNSPEC 0 /* Unspecified */
 #define AF_UNIX 1   /* Internal OS socket */
-#define AF_INET	2   /* IPv4 network socket */
+#define AF_INET 2   /* IPv4 network socket */
 #define AF_INET6 10 /* IPv6 netwoek socket, unused */
 
 /** Socket types, used when creating socket */
-#define SOCK_STREAM 1 /* Stream socket, unused */
+#define SOCK_STREAM 1 /* Stream socket */
 #define SOCK_DGRAM 2  /* Datagram socket */
 #define SOCK_RAW 3    /* Raw socket */
 
-
 enum {
-    MSG_TRUNC = 0x20, /* Truncated message, unused */
-#define	MSG_TRUNC MSG_TRUNC
+        MSG_TRUNC = 0x20, /* Truncated message, unused */
+#define MSG_TRUNC MSG_TRUNC
 };
 
 /** Socket address family type */
@@ -80,25 +79,25 @@ typedef unsigned int socklen_t;
 
 /** Socket address */
 struct sockaddr {
-    /** Address family, e.g. AF_INET */
-    sa_family_t sa_family;
-    /** Space for attributes particular to address family */
-    char sa_data[14];
+        /** Address family, e.g. AF_INET */
+        sa_family_t sa_family;
+        /** Space for attributes particular to address family */
+        char sa_data[14];
 };
 
 /** Socket address storage, unused */
 struct sockaddr_storage {
-	sa_family_t ss_family;
-	unsigned long int __ss_align;
-	char __ss_padding[(128 - (2 * sizeof (unsigned long int)))];
+        sa_family_t ss_family;
+        unsigned long int __ss_align;
+        char __ss_padding[(128 - (2 * sizeof (unsigned long int)))];
 };
 
 /** Control message header*/
 struct cmsghdr {
-	unsigned long cmsg_len;	     /* __cmsg_data byte count*/
-        int cmsg_level;	             /* socket layer of control message */
-        int cmsg_type;	             /* control message type */
-        unsigned char __cmsg_data[]; /* control message data particular to 
+        unsigned long cmsg_len; /* __cmsg_data byte count*/
+        int cmsg_level; /* socket layer of control message */
+        int cmsg_type; /* control message type */
+        unsigned char __cmsg_data[]; /* control message data particular to
                                       control message type */
 };
 
@@ -106,24 +105,24 @@ struct cmsghdr {
  message through socket */
 struct msghdr {
         /** Address, where the message will be sent or from where was received */
-	void *msg_name;
+        void *msg_name;
         /** Address(msg_name) length in bytes */
-	socklen_t msg_namelen;
+        socklen_t msg_namelen;
 
         /** Scatter/gather array of memory vectors, with data to send or where
          data will e received. Currently only first vector of array is used. */
-	struct iovec *msg_iov;
+        struct iovec *msg_iov;
         /** Number of memory vector is scatter/gather array */
-	size_t msg_iovlen;
+        size_t msg_iovlen;
 
-        /** Array of control messages to pass/receive additional information 
+        /** Array of control messages to pass/receive additional information
          * when sending/receiving */
-	void *msg_control;
+        void *msg_control;
         /** Number of control messages in array */
-	size_t msg_controllen;
+        size_t msg_controllen;
 
         /** Message flags, not used */
-	int msg_flags;
+        int msg_flags;
 };
 
 /** Returns first control message from message header */
@@ -136,15 +135,15 @@ struct msghdr {
 
 /** Aligns given length to higher multiple of size of size_t */
 #define CMSG_ALIGN(len) (((len) + sizeof (size_t) - 1) \
-			 & (size_t) ~(sizeof (size_t) - 1))
+                         & (size_t) ~(sizeof (size_t) - 1))
 
 /** Number of bytes control message with given length of data occupies */
 #define CMSG_SPACE(len) (CMSG_ALIGN (len) \
-			 + CMSG_ALIGN (sizeof (struct cmsghdr)))
+                         + CMSG_ALIGN (sizeof (struct cmsghdr)))
 
 /** Returns the length to store in control message cmsg_len for data with
  * given length */
-#define CMSG_LEN(len)   (CMSG_ALIGN (sizeof (struct cmsghdr)) + (len))
+#define CMSG_LEN(len) (CMSG_ALIGN (sizeof (struct cmsghdr)) + (len))
 
 /** Returns control message data */
 #define CMSG_DATA(cmsg) ((cmsg)->__cmsg_data)

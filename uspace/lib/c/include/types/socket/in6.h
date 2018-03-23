@@ -34,7 +34,7 @@
 
 /*
  * Not used. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
 #ifndef LIBC_TYPES_IN6_H_
@@ -51,7 +51,7 @@
 #define IPV6_MULTICAST_IF 17
 #define IPV6_MULTICAST_HOPS 18
 #define IPV6_MULTICAST_LOOP 19
-#define IPV6_JOIN_GROUP	20
+#define IPV6_JOIN_GROUP 20
 #define IPV6_LEAVE_GROUP 21
 #define IPV6_V6ONLY 26
 #define IPV6_PKTINFO 50
@@ -61,31 +61,32 @@
 #define IPPROTO_ICMPV6 58
 
 struct in6_addr {
-	union {
-		uint8_t __u6_addr8[16];
 
-		uint16_t __u6_addr16[8];
-		uint32_t __u6_addr32[4];
+        union {
+                uint8_t __u6_addr8[16];
 
-	} __u6_addr;
+                uint16_t __u6_addr16[8];
+                uint32_t __u6_addr32[4];
+
+        } __u6_addr;
 };
 
 struct sockaddr_in6 {
-	sa_family_t sin6_family;
-	in_port_t sin6_port;
-	uint32_t sin6_flowinfo;
-	struct in6_addr sin6_addr;
-	uint32_t sin6_scope_id;
+        sa_family_t sin6_family;
+        in_port_t sin6_port;
+        uint32_t sin6_flowinfo;
+        struct in6_addr sin6_addr;
+        uint32_t sin6_scope_id;
 };
 
 struct ipv6_mreq {
-	struct in6_addr ipv6mr_multiaddr;
-	unsigned int ipv6mr_interface;
+        struct in6_addr ipv6mr_multiaddr;
+        unsigned int ipv6mr_interface;
 };
 
 struct in6_pktinfo {
-	struct in6_addr	ipi6_addr;
-	int ipi6_ifindex;
+        struct in6_addr ipi6_addr;
+        int ipi6_ifindex;
 };
 
 #endif

@@ -35,10 +35,6 @@
 #ifndef POSIX_ALLOCA_H_
 #define POSIX_ALLOCA_H_
 
-#ifndef __POSIX_DEF__
-#define __POSIX_DEF__(x) x
-#endif
-
 #include "posix/sys/types.h"
 
 extern void *alloca(size_t);

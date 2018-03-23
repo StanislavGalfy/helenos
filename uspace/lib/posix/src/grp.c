@@ -39,19 +39,23 @@
 
 #include "posix/grp.h"
 
-pid_t setsid(void) {
+pid_t setsid(void)
+{
 	return 0;
 }
 
-int setgid(gid_t gid) {
+int setgid(gid_t gid)
+{
 	return 0;
 }
 
-int chown(const char *pathname, uid_t owner, gid_t group) {
+int chown(const char *pathname, uid_t owner, gid_t group)
+{
 	return 0;
 }
 
-struct group *getgrnam(const char *name) {
+struct group *getgrnam(const char *name)
+{
 	return NULL;
 }
 

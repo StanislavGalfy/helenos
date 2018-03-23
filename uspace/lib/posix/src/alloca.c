@@ -32,16 +32,14 @@
 /** @file
  */
 
-#define __POSIX_DEF__(x) posix_##x
-
 #include "posix/alloca.h"
 
 #include "libc/malloc.h"
 
 /** Calls malloc from libc.
  *
- * @param size Number of bytes to allocate.
- * @return Allocated memory or NULL.
+ * @param size	Number of bytes to allocate.
+ * @return	Allocated memory or NULL.
  */
 void *alloca(size_t size)
 {

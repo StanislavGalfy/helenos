@@ -84,7 +84,6 @@ SOURCES = \
 	src/pthread/mutex.c \
 	src/pthread/threads.c \
 	src/pwd.c \
-	src/setjmp.c \
 	src/signal.c \
 	src/stdio.c \
 	src/stdio/scanf.c \

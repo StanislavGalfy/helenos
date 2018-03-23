@@ -42,24 +42,25 @@
 
 /** Raw socket */
 typedef struct {
-    /** Common socket attributes */
-    common_socket_t socket;
-    /** Ip link service ID socket is bound to */
-    service_id_t iplink;
-    /** Queue of messages received by the socket */
-    list_t msg_queue; 
+        /** Common socket attributes */
+        common_socket_t socket;
+        /** Ip link service ID socket is bound to */
+        service_id_t iplink;
+        /** Queue of messages received by the socket */
+        list_t msg_queue;
 } raw_socket_t;
 
-errno_t raw_socket (int, int, int, int, int *);
-errno_t raw_socket_setsockopt(common_socket_t *, int, int, const void *,
+extern errno_t raw_socket(int, int, int, int, int *);
+extern errno_t raw_socket_setsockopt(common_socket_t *, int, int, const void *,
     socklen_t);
-errno_t raw_socket_fdisset(common_socket_t *, sysarg_t *);
-errno_t raw_socket_read_avail(common_socket_t *, bool *);
-errno_t raw_socket_sendmsg(common_socket_t *, const struct msghdr *, int,
+extern errno_t raw_socket_fdisset(common_socket_t *, sysarg_t *);
+extern errno_t raw_socket_read_avail(common_socket_t *, bool *);
+extern errno_t raw_socket_sendmsg(common_socket_t *, const struct msghdr *, int,
     size_t *);
-errno_t raw_socket_inet_ev_recv(inet_dgram_t*);
-errno_t raw_socket_recvmsg(common_socket_t *, struct msghdr *, int, size_t *);
-errno_t raw_socket_close(common_socket_t *); 
+extern errno_t raw_socket_inet_ev_recv(inet_dgram_t*);
+extern errno_t raw_socket_recvmsg(common_socket_t *, struct msghdr *, int,
+    size_t *);
+extern errno_t raw_socket_close(common_socket_t *);
 
 #endif
 

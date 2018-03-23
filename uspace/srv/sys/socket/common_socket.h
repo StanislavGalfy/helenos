@@ -43,7 +43,7 @@
 /** Structure with attributes common for all types of sockets */
 typedef struct {
         /** Link to list of all sockets */
-        link_t link;   
+        link_t link;
         /** Socket id or file descriptor, used by clients to access sockets */
         int id;
         /** Session id, same for sockets from one client*/
@@ -65,8 +65,8 @@ extern udp_t *socket_udp;
 /** TCP structure used for communication with TCP service */
 extern tcp_t *socket_tcp;
 
-int sockets_init(void);
-void common_socket_init(common_socket_t*, int, int, int, int);
+extern int sockets_init(void);
+extern void common_socket_init(common_socket_t*, int, int, int, int);
 
 #endif
 

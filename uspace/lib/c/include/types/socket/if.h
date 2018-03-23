@@ -37,9 +37,9 @@
 #define LIBC_TYPES_IF_H_
 
 /** Structure containing name of network interface. */
-struct ifreq {   
-# define IF_NAMESIZE 16          //Maximum size of interface name
-    char ifr_name[IF_NAMESIZE];  //Buffer with the name
+struct ifreq {
+#define IF_NAMESIZE 16
+        char ifr_name[IF_NAMESIZE];
 };
 
 #endif

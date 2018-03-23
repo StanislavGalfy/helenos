@@ -41,8 +41,9 @@
 
 #include "posix/stdio.h"
 
-char *dirname(char *path) {
-    return NULL;
+char *dirname(char *path)
+{
+	return NULL;
 }
 
 /** @}

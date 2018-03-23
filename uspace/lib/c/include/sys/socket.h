@@ -43,8 +43,6 @@
 extern int bind(int, const struct sockaddr *, socklen_t);
 extern int socket(int, int, int);
 extern ssize_t recvmsg(int, struct msghdr *, int);
-extern ssize_t sendto(int, const void *, size_t, int, const struct sockaddr *,
-        socklen_t);
 extern int connect(int, const struct sockaddr *, socklen_t);
 extern ssize_t sendmsg(int, const struct msghdr *, int);
 extern ssize_t sockwrite(int, const void *, size_t);

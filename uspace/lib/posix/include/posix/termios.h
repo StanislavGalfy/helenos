@@ -34,35 +34,35 @@
 
 /*
  * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
 
 #ifndef POSIX_TERMIOS_H_
 #define POSIX_TERMIOS_H_
 
-#define NCCS	12
+#define NCCS 12
 
-#define ECHO	0x00000100
-#define ICANON	0x00001000
+#define ECHO 0x00000100
+#define ICANON 0x00001000
 
-#define TCSANOW		3
+#define TCSANOW  3
 
 typedef unsigned cc_t;
 typedef unsigned speed_t;
-typedef unsigned tcflag_t;  
+typedef unsigned tcflag_t;
 
-struct termios{
+struct termios {
         tcflag_t c_iflag;
         tcflag_t c_oflag;
         tcflag_t c_cflag;
         tcflag_t c_lflag;
-        cc_t     c_cc[NCCS];
+        cc_t c_cc[NCCS];
 };
 
 extern int tcgetattr(int fd, struct termios *termios_p);
 extern int tcsetattr(int fd, int optional_actions,
-              const struct termios *termios_p);
+    const struct termios *termios_p);
 
 #endif
 

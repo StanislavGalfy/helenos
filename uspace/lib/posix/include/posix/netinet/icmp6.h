@@ -34,7 +34,7 @@
 
 /*
  * Not used. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
 
@@ -46,7 +46,7 @@
 typedef unsigned int __u32;
 
 struct icmp6_filter {
-	__u32 data[8];
+        __u32 data[8];
 };
 
 #define ICMP6_FILTER_SETPASS(val , icmp6_filter);

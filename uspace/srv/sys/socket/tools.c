@@ -47,10 +47,10 @@
 
 /** ID */
 typedef struct {
-        /** Link to list of free ids */
-        link_t link;
-        /** Value of id */
-        int value;
+	/** Link to list of free ids */
+	link_t link;
+	/** Value of id */
+	int value;
 } id_t;
 
 /** Next free socket id. Socket ID's start after file ID's from VFS module */
@@ -65,149 +65,168 @@ static list_t free_session_ids;
 
 /** Initialize tools.
  */
-void tools_init() {
-        inetcfg_init();
-        list_initialize(&free_socket_ids);
-        list_initialize(&free_session_ids);
+void tools_init()
+{
+	inetcfg_init();
+	list_initialize(&free_socket_ids);
+	list_initialize(&free_session_ids);
 }
 
 /** Generates id.
- * 
- * @param free_ids - list of free id's to look for one
- * @param next_id - next ID, in case there is no free id
- * @return - generated ID
+ *
+ * @param free_ids	List of free id's to look for one.
+ * @param next_id	Next ID, in case there is no free ID.
+ * @return		generated ID.
  */
-static int generate_id(list_t *free_ids, int *next_id) {
-        if (list_empty(free_ids)) {
-                *next_id += 1;
-                return *next_id;
-        }
+static int generate_id(list_t *free_ids, int *next_id)
+{
+	if (list_empty(free_ids)) {
+		*next_id += 1;
+		return *next_id;
+	}
 
-        id_t *id = (id_t*)list_first(free_ids);
-        list_remove(&id->link);
-        int tmp_id = id->value;
-        free(id);
-        return tmp_id;
+	id_t *id = (id_t*)list_first(free_ids);
+	list_remove(&id->link);
+	int tmp_id = id->value;
+	free(id);
+	return tmp_id;
 }
 
-/** Puts id into list of free ID's
- * 
- * @param free_ids - list of free ID's
- * @param value - value of ID
+/** Puts ID into list of free ID's.
+ *
+ * @param free_ids	List of free ID's.
+ * @param value		Value of ID.
  */
-static void free_id(list_t* free_ids, int value) {
-        id_t *id = calloc(1, sizeof(id_t));
-        link_initialize(&id->link);
-        id->value = value;
-        list_append(&id->link, free_ids);
+static void free_id(list_t* free_ids, int value)
+{
+	id_t *id = calloc(1, sizeof(id_t));
+	link_initialize(&id->link);
+	id->value = value;
+	list_append(&id->link, free_ids);
 }
 
 /** Generated socket ID.
- * 
- * @return - socket ID
+ *
+ * @return	Socket ID.
  */
-int generate_socket_id(void) {
-        return generate_id(&free_socket_ids, &next_socket_id);
+int generate_socket_id(void)
+{
+	return generate_id(&free_socket_ids, &next_socket_id);
 }
 
 /** Frees socket ID.
- * 
- * @param value - socket ID to free
+ *
+ * @param value	Socket ID to free.
  */
-void free_socket_id(int value) {
-        free_id(&free_socket_ids, value);
+void free_socket_id(int value)
+{
+	free_id(&free_socket_ids, value);
 }
 
 /** Generates session ID.
- * 
- * @return - session ID
+ *
+ * @return	Session ID.
  */
-int generate_sesssion_id(void) {
-        return generate_id(&free_session_ids, &next_session_id);
+int generate_sesssion_id(void)
+{
+	return generate_id(&free_session_ids, &next_session_id);
 }
 
 /** Frees session ID.
  *
- * @param value - session ID to free
+ * @param value	Session ID to free.
  */
-void free_session_id(int value) {
-        free_id(&free_session_ids, value);
+void free_session_id(int value)
+{
+	free_id(&free_session_ids, value);
 }
 
 /** Looks up socket by ID in socket list.
- * 
- * @param id - socket id
- * @return - pointer to socket with given ID, NULL if it does not exist
+ *
+ * @param id	Socket id.
+ * @return	Pointer to socket with given ID, NULL if it does not exist.
  */
-common_socket_t* get_socket_by_id(int id) {
-        list_foreach(socket_list, link, common_socket_t, socket) {
-                if (socket->id == id)
-                        return socket;
-        }
-        return NULL;   
+common_socket_t* get_socket_by_id(int id)
+{
+
+	list_foreach(socket_list, link, common_socket_t, socket) {
+		if (socket->id == id) {
+			return socket;
+		}
+	}
+	return NULL;
 }
 
 /** Looks up socket by ip link service ID in socket list.
- * 
- * @param id - ip link service ID
- * @return - pointer to socket with given socket link, NULL if it does not exist
+ *
+ * @param id	Ip link service ID.
+ * @return	Pointer to socket with given socket link, NULL if it does not
+ *		exist.
  */
-common_socket_t* get_socket_by_iplink(service_id_t iplink) {
-        list_foreach(socket_list, link, common_socket_t, socket) {
-                if (socket->domain == AF_INET && socket->type == SOCK_RAW) {
-                        if (((raw_socket_t*)socket)->iplink == iplink)
-                                return socket;
-                }
-        }
-        return NULL;     
+common_socket_t* get_socket_by_iplink(service_id_t iplink)
+{
+
+	list_foreach(socket_list, link, common_socket_t, socket) {
+		if (socket->domain == AF_INET && socket->type == SOCK_RAW) {
+			if (((raw_socket_t*)socket)->iplink == iplink)
+				return socket;
+		}
+	}
+	return NULL;
 }
 
 /** Returns first socket with given session ID in socket list.
- * 
- * @param id - session ID
- * @return - pointer to socket with given session ID, NULL if it does not exist
+ *
+ * @param session_id	Session ID.
+ * @return		Pointer to socket with given session ID, NULL if it does
+ *			not exist.
  */
-common_socket_t* get_socket_by_session_id(int session_id) {
-        list_foreach(socket_list, link, common_socket_t, socket) {
-                if (socket->session_id == session_id)
-                        return socket;
-        }
-        return NULL;   
+common_socket_t* get_socket_by_session_id(int session_id)
+{
+
+	list_foreach(socket_list, link, common_socket_t, socket) {
+		if (socket->session_id == session_id) {
+			return socket;
+		}
+	}
+	return NULL;
 }
 
 /** Finds first address configured for link with given service ID.
- * 
- * @param link_svcid - link service ID
- * @param raddr - pointer, where the address will be stored
- * @return - EOK on success, error code on failure
+ *
+ * @param link_svcid	Link service ID.
+ * @param raddr		Pointer, where the address will be stored.
+ * @return		EOK on success, error code on failure.
  */
-int get_link_addr(sysarg_t link_svcid, inet_addr_t *raddr) 
-{    
-        sysarg_t *addr_list;
-        inet_addr_info_t ainfo;
+int get_link_addr(sysarg_t link_svcid, inet_addr_t *raddr)
+{
+	sysarg_t *addr_list;
+	inet_addr_info_t ainfo;
 
-        size_t count;
-        size_t i;
+	size_t count;
+	size_t i;
 
-        int rc = inetcfg_get_addr_list(&addr_list, &count,
-            INET_ADDR_STATUS_ACTIVE);
-        if (rc != EOK)
-                return rc;
+	int rc = inetcfg_get_addr_list(&addr_list, &count,
+	    INET_ADDR_STATUS_ACTIVE);
+	if (rc != EOK) {
+		return rc;
+	}
 
-        for (i = 0; i < count; i++) {
-            rc = inetcfg_addr_get(addr_list[i], &ainfo,
-                INET_ADDR_STATUS_ACTIVE);
-            if (rc != EOK)
-                    continue;
+	for (i = 0; i < count; i++) {
+		rc = inetcfg_addr_get(addr_list[i], &ainfo,
+		    INET_ADDR_STATUS_ACTIVE);
+		if (rc != EOK) {
+			continue;
+		}
 
-            if (ainfo.naddr.version == ip_v4 && ainfo.ilink == link_svcid) {
-                    inet_naddr_addr(&ainfo.naddr, raddr);
-                    return EOK;
-            }
-        }
-        inet_addr_any(raddr);
-        raddr->version = ip_v4;
-        return EOK;
+		if (ainfo.naddr.version == ip_v4 && ainfo.ilink == link_svcid) {
+			inet_naddr_addr(&ainfo.naddr, raddr);
+			return EOK;
+		}
+	}
+	inet_addr_any(raddr);
+	raddr->version = ip_v4;
+	return EOK;
 }
 
 /** @}

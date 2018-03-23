@@ -43,9 +43,9 @@ typedef sa_family_t __kernel_sa_family_t;
 /** Unix socket address */
 struct sockaddr_un {
         /** OS socket address family */
-	__kernel_sa_family_t sun_family;
+        __kernel_sa_family_t sun_family;
         /** Pathname used to access socket */
-	char sun_path[UNIX_PATH_MAX];
+        char sun_path[UNIX_PATH_MAX];
 };
 
 #endif

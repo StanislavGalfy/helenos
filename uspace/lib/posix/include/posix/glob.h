@@ -34,7 +34,7 @@
 
 /*
  * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
 
@@ -48,14 +48,14 @@
 #define GLOB_NOESCAPE -3
 
 typedef struct {
-    size_t gl_pathc;
-    char   **gl_pathv;
-    size_t gl_offs;
+        size_t gl_pathc;
+        char **gl_pathv;
+        size_t gl_offs;
 } glob_t;
 
 extern int glob(const char *pattern, int flags,
-         int (*errfunc) (const char *epath, int eerrno),
-         glob_t *pglob);
+    int (*errfunc) (const char *epath, int eerrno),
+    glob_t *pglob);
 
 extern void globfree(glob_t *pglob);
 

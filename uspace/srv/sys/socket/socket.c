@@ -56,11 +56,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-        tools_init();
-        rc = sockets_init();
-        if (rc != EOK)
-                return 1;
-        
+	tools_init();
+	rc = sockets_init();
+	if (rc != EOK)
+		return 1;
+
 	rc = socket_service_init();
 	if (rc != EOK)
 		return 1;

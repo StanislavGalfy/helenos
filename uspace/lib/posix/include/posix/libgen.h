@@ -34,7 +34,7 @@
 
 /*
  * Not implemented. Defined in order to make compilation of BIRD from coastline
- * possible. 
+ * possible.
  */
 
 #ifndef POSIX_LIBGEN_H_

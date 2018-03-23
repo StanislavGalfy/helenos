@@ -38,15 +38,15 @@
 #include "common_socket.h"
 #include "raw_socket.h"
 
-void tools_init(void);
-int generate_socket_id(void);
-void free_socket_id(int);
-int generate_sesssion_id(void);
-void free_session_id(int value);
-common_socket_t* get_socket_by_id(int);
-common_socket_t* get_socket_by_iplink(service_id_t);
-common_socket_t* get_socket_by_session_id(int);
-int get_link_addr(sysarg_t, inet_addr_t *);
+extern void tools_init(void);
+extern int generate_socket_id(void);
+extern void free_socket_id(int);
+extern int generate_sesssion_id(void);
+extern void free_session_id(int value);
+extern common_socket_t* get_socket_by_id(int);
+extern common_socket_t* get_socket_by_iplink(service_id_t);
+extern common_socket_t* get_socket_by_session_id(int);
+extern int get_link_addr(sysarg_t, inet_addr_t *);
 
 #endif
 
