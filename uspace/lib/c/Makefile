@@ -149,6 +149,7 @@ GENERIC_SOURCES = \
 	generic/adt/hash_table.c \
 	generic/adt/odict.c \
 	generic/adt/prodcons.c \
+	generic/adt/trie.c \
 	generic/time.c \
 	generic/stdio.c \
 	generic/stdlib.c \

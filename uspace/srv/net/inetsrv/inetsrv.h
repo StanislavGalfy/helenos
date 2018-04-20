@@ -121,19 +121,6 @@ typedef struct {
 	char *name;
 } inet_addrobj_t;
 
-/** Static route configuration */
-typedef struct {
-	link_t sroute_list;
-	sysarg_t id;
-	/** Destination network */
-	inet_naddr_t dest;
-	/** Router via which to route packets */
-	inet_addr_t router;
-	char *name;
-        
-        unsigned char rtm_protocol;
-} inet_sroute_t;
-
 typedef enum {
 	/** Destination is on this network node */
 	dt_local,

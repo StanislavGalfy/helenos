@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Jiri Svoboda
+ * Copyright (c) 2013 Vojtech Horky
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,33 +26,20 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/** @addtogroup libc
+/** @addtogroup libposix
  * @{
  */
-/** @file Network configuration.
- */
 
-#ifndef LIBC_INET_INETCFG_H_
-#define LIBC_INET_INETCFG_H_
+#ifndef POSIX_SETJMP_H_
+#define POSIX_SETJMP_H_
 
-#include <inet/inet.h>
-#include <stddef.h>
-#include <types/inetcfg.h>
+#ifndef __POSIX_DEF__
+#define __POSIX_DEF__(x) x
+#endif
 
-extern errno_t inetcfg_init(void);
-extern errno_t inetcfg_addr_create_static(const char *, inet_naddr_t *, sysarg_t, sysarg_t *);
-extern errno_t inetcfg_addr_delete(sysarg_t);
-extern errno_t inetcfg_addr_get(sysarg_t, inet_addr_info_t *, inet_addr_status_t);
-extern errno_t inetcfg_addr_get_id(const char *, sysarg_t, sysarg_t *);
-extern errno_t inetcfg_get_addr_list(sysarg_t **, size_t *, inet_addr_status_t);
-extern errno_t inetcfg_get_link_list(sysarg_t **, size_t *);
-extern errno_t inetcfg_link_add(sysarg_t);
-extern errno_t inetcfg_link_get(sysarg_t, inet_link_info_t *);
-extern errno_t inetcfg_link_remove(sysarg_t);
-extern errno_t inetcfg_sroute_batch(inet_sroute_cmd_t *, size_t);
-extern errno_t inetcfg_sroute_create(inet_naddr_t *, inet_addr_t *, sysarg_t);
-extern errno_t inetcfg_sroute_delete(inet_naddr_t *, inet_addr_t *);
-extern errno_t inetcfg_sroute_to_array(inet_sroute_t **, size_t *);
+#include "libc/setjmp.h"
+
+extern void longjmp(jmp_buf, int);
 
 #endif
 

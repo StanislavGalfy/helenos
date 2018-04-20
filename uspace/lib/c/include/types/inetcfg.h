@@ -36,8 +36,6 @@
 #define LIBC_TYPES_INETCFG_H_
 
 #include <inet/addr.h>
-//#include <sys/types.h>
-//#include <inet/inet.h>
 #include <stddef.h>
 
 #define RTPROT_UNSPEC	0  /* Route installed by unsepcified source */
@@ -46,14 +44,19 @@
 #define RTPROT_BIRD	12 /* Route installed by BIRD */
 
 typedef enum {
-    INET_ADDR_STATUS_ACTIVE = 0, /* Active network address assigned to ineterface */
-    INET_ADDR_STATUS_DELETED     /* Network address deleted from interface */
-} inet_addr_status_t;  
+        INET_ADDR_STATUS_ACTIVE = 0, /* Active network address assigned to ineterface */
+        INET_ADDR_STATUS_DELETED /* Network address deleted from interface */
+} inet_addr_status_t;
 
 typedef enum {
-    INET_SROUTE_STATUS_ACTIVE = 0, /* Active static route */
-    INET_SROUTE_STATUS_DELETED     /* Deleted static route */
+        INET_SROUTE_STATUS_ACTIVE = 0, /* Active static route */
+        INET_SROUTE_STATUS_DELETED /* Deleted static route */
 } inet_sroute_status_t;
+
+typedef enum {
+        INET_SROUTE_CMD_CREATE = 0,
+        INET_SROUTE_CMD_DELETE
+} inet_sroute_cmd_type_t;
 
 /** Address object info */
 typedef struct {
@@ -73,9 +76,21 @@ typedef struct {
 	size_t def_mtu;
 	/** Link layer address */
 	addr48_t mac_addr;
-        
+
         sysarg_t nic_svcid;
 } inet_link_info_t;
+
+/** Static route configuration */
+typedef struct {
+	/** Destination network */
+	inet_naddr_t dest;
+	/** Router via which to route packets */
+	inet_addr_t router;
+
+        unsigned char rtm_protocol;
+
+        inet_sroute_status_t status;
+} inet_sroute_t;
 
 /** Static route info */
 typedef struct {
@@ -85,9 +100,16 @@ typedef struct {
 	inet_addr_t router;
 	/** Static route name */
 	char *name;
-        
+
         unsigned char rtm_protocol;
 } inet_sroute_info_t;
+
+typedef struct {
+        inet_naddr_t dest;
+        inet_addr_t router;
+        sysarg_t rtm_protocol;
+        inet_sroute_cmd_type_t sroute_cmd_type;
+} inet_sroute_cmd_t;
 
 #endif
 

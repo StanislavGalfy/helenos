@@ -35,6 +35,7 @@
 #include <loc.h>
 #include <stdlib.h>
 #include <str.h>
+#include <stdio.h>
 
 static async_sess_t *inetcfg_sess = NULL;
 
@@ -263,13 +264,6 @@ errno_t inetcfg_get_link_list(sysarg_t **links, size_t *count)
 	    0, links, count);
 }
 
-errno_t inetcfg_get_sroute_list(sysarg_t **sroutes, size_t *count,
-        inet_sroute_status_t inet_sroute_status)
-{
-	return inetcfg_get_ids_internal(INETCFG_GET_SROUTE_LIST,
-	    (sysarg_t)inet_sroute_status, sroutes, count);
-}
-
 errno_t inetcfg_link_add(sysarg_t link_id)
 {
 	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
@@ -329,8 +323,8 @@ errno_t inetcfg_link_remove(sysarg_t link_id)
 	return rc;
 }
 
-errno_t inetcfg_sroute_create(const char *name, inet_naddr_t *dest,
-    inet_addr_t *router, sysarg_t rtm_protocol, sysarg_t *sroute_id)
+errno_t inetcfg_sroute_create(inet_naddr_t *dest,
+    inet_addr_t *router, sysarg_t rtm_protocol)
 {
 	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
 
@@ -352,8 +346,51 @@ errno_t inetcfg_sroute_create(const char *name, inet_naddr_t *dest,
 		return rc;
 	}
 
-	rc = async_data_write_start(exch, name, str_size(name));
+	async_exchange_end(exch);
 
+	errno_t retval;
+	async_wait_for(req, &retval);
+
+	return retval;
+}
+
+errno_t inetcfg_sroute_delete(inet_naddr_t *dest, inet_addr_t *router)
+{
+	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
+
+	ipc_call_t answer;
+	aid_t req = async_send_0(exch, INETCFG_SROUTE_DELETE, &answer);
+
+	errno_t rc = async_data_write_start(exch, dest, sizeof(inet_naddr_t));
+	if (rc != EOK) {
+		async_exchange_end(exch);
+		async_forget(req);
+		return rc;
+	}
+
+	rc = async_data_write_start(exch, router, sizeof(inet_addr_t));
+	if (rc != EOK) {
+		async_exchange_end(exch);
+		async_forget(req);
+		return rc;
+	}
+
+	async_exchange_end(exch);
+
+	errno_t retval;
+	async_wait_for(req, &retval);
+
+	return retval;
+}
+
+errno_t inetcfg_sroute_batch(inet_sroute_cmd_t *inet_sroute_cmds, size_t count)
+{
+	ipc_call_t answer;
+	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
+	aid_t req = async_send_0(exch, INETCFG_SROUTE_BATCH, &answer);
+
+	errno_t rc = async_data_write_start(exch, inet_sroute_cmds,
+	    count * sizeof (inet_sroute_cmd_t));
 	async_exchange_end(exch);
 
 	if (rc != EOK) {
@@ -364,105 +401,77 @@ errno_t inetcfg_sroute_create(const char *name, inet_naddr_t *dest,
 	errno_t retval;
 	async_wait_for(req, &retval);
 
-	*sroute_id = IPC_GET_ARG1(answer);
-
 	return retval;
 }
 
-errno_t inetcfg_sroute_delete(sysarg_t sroute_id)
+errno_t inetcfg_sroute_to_array(inet_sroute_t **rsroutes, size_t *rcount)
 {
 	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
 
-	errno_t rc = async_req_1_0(exch, INETCFG_SROUTE_DELETE, sroute_id);
-	async_exchange_end(exch);
-
-	return rc;
-}
-
-errno_t inetcfg_sroute_get(sysarg_t sroute_id, inet_sroute_info_t *srinfo,
-    inet_sroute_status_t inet_sroute_status)
-{
-	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
-
+	size_t count;
 	ipc_call_t answer;
-	aid_t req = async_send_2(exch, INETCFG_SROUTE_GET, sroute_id,
-            (sysarg_t)inet_sroute_status, &answer);
+	aid_t req = async_send_0(exch, INETCFG_SROUTE_TO_ARRAY, &answer);
 
-	ipc_call_t answer_dest;
-	aid_t req_dest = async_data_read(exch, &srinfo->dest,
-	    sizeof(inet_naddr_t), &answer_dest);
-
-	errno_t retval_dest;
-	async_wait_for(req_dest, &retval_dest);
-
-	if (retval_dest != EOK) {
-		async_exchange_end(exch);
-		async_forget(req);
-		return retval_dest;
-	}
-
-	ipc_call_t answer_router;
-	aid_t req_router = async_data_read(exch, &srinfo->router,
-	    sizeof(inet_addr_t), &answer_router);
-
-	errno_t retval_router;
-	async_wait_for(req_router, &retval_router);
-
-	if (retval_router != EOK) {
-		async_exchange_end(exch);
-		async_forget(req);
-		return retval_router;
-	}
-
-	ipc_call_t answer_name;
-	char name_buf[LOC_NAME_MAXLEN + 1];
-	aid_t req_name = async_data_read(exch, name_buf, LOC_NAME_MAXLEN,
-	    &answer_name);
-
-	async_exchange_end(exch);
-
-	errno_t retval_name;
-	async_wait_for(req_name, &retval_name);
-
-	if (retval_name != EOK) {
-		async_forget(req);
-		return retval_name;
-	}
-
+	ipc_call_t answer_count;
+	aid_t req_count = async_data_read(exch, &count, sizeof(size_t),
+	    &answer_count);
 	errno_t retval;
-	async_wait_for(req, &retval);
-
-	if (retval != EOK)
-		return retval;
-
-	size_t act_size = IPC_GET_ARG2(answer_name);
-	assert(act_size <= LOC_NAME_MAXLEN);
-
-	name_buf[act_size] = '\0';
-
-	srinfo->name = str_dup(name_buf);
-        srinfo->rtm_protocol = IPC_GET_ARG1(answer);
-
-	return EOK;
-}
-
-errno_t inetcfg_sroute_get_id(const char *name, sysarg_t *sroute_id)
-{
-	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
-
-	ipc_call_t answer;
-	aid_t req = async_send_0(exch, INETCFG_SROUTE_GET_ID, &answer);
-	errno_t retval = async_data_write_start(exch, name, str_size(name));
-
-	async_exchange_end(exch);
-
+	async_wait_for(req_count, &retval);
 	if (retval != EOK) {
+		async_exchange_end(exch);
 		async_forget(req);
 		return retval;
 	}
 
+	if (count == 0) {
+		async_exchange_end(exch);
+		async_wait_for(req, &retval);
+
+		*rsroutes = NULL;
+		*rcount = 0;
+		return EOK;
+	}
+
+	inet_sroute_t *sroutes = malloc(count * sizeof(inet_sroute_t));
+	if (sroutes == NULL) {
+		async_exchange_end(exch);
+		async_forget(req);
+		return ENOMEM;
+	}
+
+	aid_t req_part;
+	ipc_call_t answer_part;
+	size_t nparts = (count * sizeof(inet_sroute_t)) / DATA_XFER_LIMIT;
+	for (size_t i = 0; i < nparts; i++) {
+		req_part = async_data_read(exch, ((void *) sroutes) +
+		    (i * DATA_XFER_LIMIT), DATA_XFER_LIMIT, &answer_part);
+		async_wait_for(req_part, &retval);
+		if (retval != EOK) {
+			async_exchange_end(exch);
+			async_forget(req);
+			free(sroutes);
+			return retval;
+		}
+	}
+	size_t last_part_size = (count * sizeof(inet_sroute_t)) %
+	    DATA_XFER_LIMIT;
+	if (last_part_size > 0) {
+		req_part = async_data_read(exch, ((void *) sroutes) +
+		    (nparts * DATA_XFER_LIMIT), last_part_size, &answer_part);
+		async_wait_for(req_part, &retval);
+		if (retval != EOK) {
+			async_exchange_end(exch);
+			async_forget(req);
+			free(sroutes);
+			return retval;
+		}
+	}
+
+	async_exchange_end(exch);
 	async_wait_for(req, &retval);
-	*sroute_id = IPC_GET_ARG1(answer);
+
+	*rsroutes = sroutes;
+	*rcount = count;
 
 	return retval;
 }

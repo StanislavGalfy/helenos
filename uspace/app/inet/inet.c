@@ -161,20 +161,18 @@ static errno_t sroute_create(int argc, char *argv[])
 {
 	char *dest_str;
 	char *router_str;
-	char *route_name;
 
 	inet_naddr_t dest;
 	inet_addr_t router;
-	sysarg_t sroute_id;
 	errno_t rc;
 
-	if (argc < 3) {
+	if (argc < 2) {
 		printf(NAME ": Missing arguments.\n");
 		print_syntax();
 		return EINVAL;
 	}
 
-	if (argc > 3) {
+	if (argc > 2) {
 		printf(NAME ": Too many arguments.\n");
 		print_syntax();
 		return EINVAL;
@@ -182,7 +180,6 @@ static errno_t sroute_create(int argc, char *argv[])
 
 	dest_str   = argv[0];
 	router_str = argv[1];
-	route_name = argv[2];
 
 	rc = inet_naddr_parse(dest_str, &dest, NULL);
 	if (rc != EOK) {
@@ -197,11 +194,10 @@ static errno_t sroute_create(int argc, char *argv[])
 		return EINVAL;
 	}
 
-	rc = inetcfg_sroute_create(route_name, &dest, &router, RTPROT_STATIC,
-                &sroute_id);
+	rc = inetcfg_sroute_create(&dest, &router, RTPROT_STATIC);
 	if (rc != EOK) {
-		printf(NAME ": Failed creating static route '%s': %s\n",
-		    route_name, str_error(rc));
+		printf(NAME ": Failed creating static route: %s\n",
+		    str_error(rc));
 		return EIO;
 	}
 
@@ -210,35 +206,45 @@ static errno_t sroute_create(int argc, char *argv[])
 
 static errno_t sroute_delete(int argc, char *argv[])
 {
-	char *route_name;
-	sysarg_t sroute_id;
+	char *dest_str;
+	char *router_str;
+
+	inet_naddr_t dest;
+	inet_addr_t router;
 	errno_t rc;
 
-	if (argc < 1) {
+	if (argc < 2) {
 		printf(NAME ": Missing arguments.\n");
 		print_syntax();
 		return EINVAL;
 	}
 
-	if (argc > 1) {
+	if (argc > 2) {
 		printf(NAME ": Too many arguments.\n");
 		print_syntax();
 		return EINVAL;
 	}
 
-	route_name = argv[0];
+	dest_str   = argv[0];
+	router_str = argv[1];
 
-	rc = inetcfg_sroute_get_id(route_name, &sroute_id);
+	rc = inet_naddr_parse(dest_str, &dest, NULL);
 	if (rc != EOK) {
-		printf(NAME ": Static route '%s' not found: %s.\n",
-		    route_name, str_error(rc));
-		return ENOENT;
+		printf(NAME ": Invalid network address format '%s'.\n",
+		    dest_str);
+		return EINVAL;
 	}
 
-	rc = inetcfg_sroute_delete(sroute_id);
+	rc = inet_addr_parse(router_str, &router, NULL);
 	if (rc != EOK) {
-		printf(NAME ": Failed deleting static route '%s': %s\n",
-		    route_name, str_error(rc));
+		printf(NAME ": Invalid address format '%s'.\n", router_str);
+		return EINVAL;
+	}
+
+	rc = inetcfg_sroute_delete(&dest, &router);
+	if (rc != EOK) {
+		printf(NAME ": Failed deleting static route: %s\n",
+		    str_error(rc));
 		return EIO;
 	}
 
@@ -398,8 +404,7 @@ out:
 
 static errno_t sroute_list(void)
 {
-	sysarg_t *sroute_list = NULL;
-	inet_sroute_info_t srinfo;
+	inet_sroute_t *sroute_array = NULL;
 	table_t *table = NULL;
 
 	size_t count;
@@ -408,10 +413,7 @@ static errno_t sroute_list(void)
 	char *dest_str = NULL;
 	char *router_str = NULL;
 
-	srinfo.name = NULL;
-
-	rc = inetcfg_get_sroute_list(&sroute_list, &count,
-            INET_SROUTE_STATUS_ACTIVE);
+	rc = inetcfg_sroute_to_array(&sroute_array, &count);
 	if (rc != EOK) {
 		printf(NAME ": Failed getting address list.\n");
 		return rc;
@@ -424,45 +426,37 @@ static errno_t sroute_list(void)
 	}
 
 	table_header_row(table);
-	table_printf(table, "Dest/Width\t" "Router-Addr\t" "Route-Name\n");
+	table_printf(table, "Dest/Width\t" "Router-Addr\n");
 
+	size_t act_count = 0;
 	for (i = 0; i < count; i++) {
-		rc = inetcfg_sroute_get(sroute_list[i], &srinfo,
-                    INET_SROUTE_STATUS_ACTIVE);
-		if (rc != EOK) {
-			printf("Failed getting properties of static route %zu.\n",
-			    (size_t)sroute_list[i]);
-			srinfo.name = NULL;
+		if (sroute_array[i].status == INET_SROUTE_STATUS_DELETED) {
 			continue;
 		}
 
-		rc = inet_naddr_format(&srinfo.dest, &dest_str);
+		rc = inet_naddr_format(&sroute_array[i].dest, &dest_str);
 		if (rc != EOK) {
-			printf("Memory allocation failed.\n");
 			dest_str = NULL;
 			goto out;
 		}
 
-		rc = inet_addr_format(&srinfo.router, &router_str);
+		rc = inet_addr_format(&sroute_array[i].router, &router_str);
 		if (rc != EOK) {
-			printf("Memory allocation failed.\n");
 			router_str = NULL;
 			goto out;
 		}
 
-		table_printf(table, "%s\t" "%s\t" "%s\n", dest_str, router_str,
-		    srinfo.name);
+		table_printf(table, "%s\t" "%s\n", dest_str, router_str);
+		act_count++;
 
-		free(srinfo.name);
 		free(dest_str);
 		free(router_str);
 
 		router_str = NULL;
-		srinfo.name = NULL;
 		dest_str = NULL;
 	}
 
-	if (count != 0) {
+	if (act_count != 0) {
 		rc = table_print_out(table, stdout);
 		if (rc != EOK) {
 			printf("Error printing table.\n");
@@ -473,22 +467,19 @@ static errno_t sroute_list(void)
 	rc = EOK;
 out:
 	table_destroy(table);
-	if (srinfo.name != NULL)
-		free(srinfo.name);
 	if (dest_str != NULL)
 		free(dest_str);
 	if (router_str != NULL)
 		free(router_str);
 
-	free(sroute_list);
+	free(sroute_array);
 
 	return rc;
 }
 
 static errno_t sroute_log(void)
 {
-	sysarg_t *sroute_list = NULL;
-	inet_sroute_info_t srinfo;
+	inet_sroute_t *sroute_array = NULL;
 
 	size_t count;
 	size_t i;
@@ -496,64 +487,53 @@ static errno_t sroute_log(void)
 	char *dest_str = NULL;
 	char *router_str = NULL;
 
-	srinfo.name = NULL;
 
-	rc = inetcfg_get_sroute_list(&sroute_list, &count,
-            INET_SROUTE_STATUS_ACTIVE);
+	rc = inetcfg_sroute_to_array(&sroute_array, &count);
 	if (rc != EOK) {
 		printf(NAME ": Failed getting address list.\n");
 		return rc;
 	}
-        printf ("route count: %d\n", count);
 
         FILE *file = fopen("routes.log", "w");
 
+	size_t act_count = 0;
 	for (i = 0; i < count; i++) {
-		rc = inetcfg_sroute_get(sroute_list[i], &srinfo,
-                    INET_SROUTE_STATUS_ACTIVE);
-		if (rc != EOK) {
-			printf("Failed getting properties of static route %zu.\n",
-			    (size_t)sroute_list[i]);
-			srinfo.name = NULL;
+		if (sroute_array[i].status == INET_SROUTE_STATUS_DELETED) {
 			continue;
 		}
 
-		rc = inet_naddr_format(&srinfo.dest, &dest_str);
+		rc = inet_naddr_format(&sroute_array[i].dest, &dest_str);
 		if (rc != EOK) {
 			printf("Memory allocation failed.\n");
 			dest_str = NULL;
 			goto out;
 		}
 
-		rc = inet_addr_format(&srinfo.router, &router_str);
+		rc = inet_addr_format(&sroute_array[i].router, &router_str);
 		if (rc != EOK) {
 			printf("Memory allocation failed.\n");
 			router_str = NULL;
 			goto out;
 		}
 
-		fprintf(file, "%s %s %s\n", dest_str, router_str,
-		    srinfo.name);
+		fprintf(file, "%s %s\n", dest_str, router_str);
 
-		free(srinfo.name);
 		free(dest_str);
 		free(router_str);
 
 		router_str = NULL;
-		srinfo.name = NULL;
 		dest_str = NULL;
+		act_count++;
 	}
 
 out:
         fclose(file);
-	if (srinfo.name != NULL)
-		free(srinfo.name);
 	if (dest_str != NULL)
 		free(dest_str);
 	if (router_str != NULL)
 		free(router_str);
 
-	free(sroute_list);
+        printf ("route count: %d\n", act_count);
 
 	return EOK;
 }

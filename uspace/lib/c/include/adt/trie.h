@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2012 Jiri Svoboda
+ * Copyright (c) 2018 Stanislav Galfy
+ *
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,30 +30,36 @@
 /** @addtogroup libc
  * @{
  */
-/** @file Network configuration.
+/** @file
  */
 
-#ifndef LIBC_INET_INETCFG_H_
-#define LIBC_INET_INETCFG_H_
+#ifndef LIBC_TRIE_H_
+#define LIBC_TRIE_H_
 
-#include <inet/inet.h>
+#include <stdbool.h>
 #include <stddef.h>
-#include <types/inetcfg.h>
+#include <errno.h>
 
-extern errno_t inetcfg_init(void);
-extern errno_t inetcfg_addr_create_static(const char *, inet_naddr_t *, sysarg_t, sysarg_t *);
-extern errno_t inetcfg_addr_delete(sysarg_t);
-extern errno_t inetcfg_addr_get(sysarg_t, inet_addr_info_t *, inet_addr_status_t);
-extern errno_t inetcfg_addr_get_id(const char *, sysarg_t, sysarg_t *);
-extern errno_t inetcfg_get_addr_list(sysarg_t **, size_t *, inet_addr_status_t);
-extern errno_t inetcfg_get_link_list(sysarg_t **, size_t *);
-extern errno_t inetcfg_link_add(sysarg_t);
-extern errno_t inetcfg_link_get(sysarg_t, inet_link_info_t *);
-extern errno_t inetcfg_link_remove(sysarg_t);
-extern errno_t inetcfg_sroute_batch(inet_sroute_cmd_t *, size_t);
-extern errno_t inetcfg_sroute_create(inet_naddr_t *, inet_addr_t *, sysarg_t);
-extern errno_t inetcfg_sroute_delete(inet_naddr_t *, inet_addr_t *);
-extern errno_t inetcfg_sroute_to_array(inet_sroute_t **, size_t *);
+typedef struct trie_node {
+        struct trie_node *parent;
+        struct trie_node *left;
+        struct trie_node *right;
+        bool data_node;
+        void *data;
+} trie_node_t;
+
+typedef struct {
+        trie_node_t *root;
+        size_t count;
+} trie_t;
+
+extern errno_t trie_create(trie_t **);
+extern void trie_destroy(trie_t *);
+extern errno_t trie_insert(trie_t *, void *, size_t, void *);
+extern void *trie_find_longest_match(trie_t *, void *, size_t);
+extern void *trie_find_exact(trie_t *, void *, size_t);
+extern void *trie_remove(trie_t *, void *, size_t);
+extern errno_t trie_to_array(trie_t *, size_t, void **);
 
 #endif
 

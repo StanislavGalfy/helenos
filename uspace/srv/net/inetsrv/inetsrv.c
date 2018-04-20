@@ -35,6 +35,7 @@
  */
 
 #include <adt/list.h>
+#include <adt/trie.h>
 #include <async.h>
 #include <errno.h>
 #include <str_error.h>
@@ -126,6 +127,12 @@ static errno_t inet_init(void)
 		return EEXIST;
 	}
 
+	rc = trie_create(&sroute_table);
+	if (rc != EOK) {
+		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed creating routing table: %s.", str_error(rc));
+		return rc;
+	}
+
 	return EOK;
 }
 
@@ -158,7 +165,7 @@ static errno_t inet_find_dir(inet_addr_t *src, inet_addr_t *dest, uint8_t tos,
 		dir->dtype = dt_direct;
 	} else {
 		/* No direct path, try using a static route */
-		sr = inet_sroute_find(dest);
+		sr = inet_sroute_find_longest_match(dest);
 		if (sr != NULL) {
 			dir->aobj = inet_addrobj_find(&sr->router, iaf_net);
 			dir->ldest = sr->router;
@@ -537,14 +544,12 @@ errno_t inet_recv_dgram(inet_dgram_t *dgram, uint8_t proto, uint8_t ttl, bool df
 	/* Try to forward the datagram */
 
         if (ttl == 1) {
-                log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_recv_dgram refused ...");
                 return EREFUSED;
         }
-        log_msg(LOG_DEFAULT, LVL_DEBUG, "Routing ...");
+        log_msg(LOG_DEFAULT, LVL_FATAL, "Routing ...");
         dgram->iplink = 0;
-        return inet_route_packet(dgram, proto, ttl - 1, df);
-
-	return ENOENT;
+	return EOK;
+        //return inet_route_packet(dgram, proto, ttl - 1, df);
 }
 
 int inet_recv_packet(inet_packet_t *packet)

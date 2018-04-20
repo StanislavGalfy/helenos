@@ -78,7 +78,7 @@ errno_t raw_socket(int domain, int type, int protocol, int session_id, int *fd)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "    - Creating raw socket");
 
-	raw_socket_t *raw_socket = (raw_socket_t *)calloc(1, sizeof(
+	raw_socket_t *raw_socket = (raw_socket_t *) calloc(1, sizeof(
 	    raw_socket_t));
 	common_socket_init(&raw_socket->socket, AF_INET, SOCK_RAW, protocol,
 	    session_id);
@@ -101,7 +101,7 @@ errno_t raw_socket_setsockopt(common_socket_t *socket, int level, int optname,
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - raw_socket_setsockopt()");
 
-	raw_socket_t *raw_socket = (raw_socket_t*)socket;
+	raw_socket_t *raw_socket = (raw_socket_t*) socket;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * socket id: %d", socket->id);
 
@@ -121,7 +121,7 @@ errno_t raw_socket_setsockopt(common_socket_t *socket, int level, int optname,
 
 		service_id_t sid;
 
-		char *iface_name = ((struct ifreq*)optval)->ifr_name;
+		char *iface_name = ((struct ifreq*) optval)->ifr_name;
 		retval = loc_service_get_id(iface_name, &sid, 0);
 		if (retval != EOK)
 			break;
@@ -178,7 +178,7 @@ errno_t raw_socket_setsockopt(common_socket_t *socket, int level, int optname,
  */
 errno_t raw_socket_read_avail(common_socket_t *socket, bool *read_avail)
 {
-	raw_socket_t *raw_socket = (raw_socket_t*)socket;
+	raw_socket_t *raw_socket = (raw_socket_t*) socket;
 	*read_avail = !list_empty(&raw_socket->msg_queue);
 	return EOK;
 }
@@ -200,8 +200,8 @@ errno_t raw_socket_sendmsg(common_socket_t *socket, const struct msghdr *msg,
 	if (msg->msg_iovlen < 1)
 		return EINVAL;
 
-	raw_socket_t *raw_socket = (raw_socket_t*)socket;
-	struct sockaddr_in *sa = (struct sockaddr_in*)msg->msg_name;
+	raw_socket_t *raw_socket = (raw_socket_t*) socket;
+	struct sockaddr_in *sa = (struct sockaddr_in*) msg->msg_name;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket link: %d",
@@ -256,7 +256,7 @@ errno_t raw_socket_inet_ev_recv(inet_dgram_t *dgram)
 			continue;
 		}
 
-		raw_socket_t *raw_socket = (raw_socket_t*)socket;
+		raw_socket_t *raw_socket = (raw_socket_t*) socket;
 		if (raw_socket->iplink != dgram->iplink) {
 			continue;
 		}
@@ -307,9 +307,9 @@ errno_t raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - raw_socket_recvmsg()");
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket link: %d",
-	    ((raw_socket_t*)socket)->iplink);
+	    ((raw_socket_t*) socket)->iplink);
 
-	raw_socket_t *raw_socket = (raw_socket_t*)socket;
+	raw_socket_t *raw_socket = (raw_socket_t*) socket;
 
 	if (msg->msg_namelen < sizeof(struct sockaddr_in))
 		return EINVAL;
@@ -319,7 +319,7 @@ errno_t raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
 		return EINVAL;
 
 	/* Get first message from the queue */
-	raw_msg_t *raw_msg = (raw_msg_t*)list_first(&raw_socket->msg_queue);
+	raw_msg_t *raw_msg = (raw_msg_t*) list_first(&raw_socket->msg_queue);
 	if (raw_msg == NULL) {
 		log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * empty socket message"
 		    " queue ");
@@ -327,7 +327,7 @@ errno_t raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
 	}
 
 	/* Fill info about source, where the message was received from */
-	struct sockaddr_in *sa = (struct sockaddr_in*)msg->msg_name;
+	struct sockaddr_in *sa = (struct sockaddr_in*) msg->msg_name;
 	sa->sin_addr.s_addr = htonl(raw_msg->dgram.src.addr);
 	sa->sin_port = 0;
 	sa->sin_family = AF_INET;
@@ -337,7 +337,7 @@ errno_t raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
 	 * (IPv4) and ip header length (20) */
 	struct iovec *iov = &msg->msg_iov[0];
 	if (iov->iov_len >= 1) {
-		((unsigned char*)iov->iov_base)[0] =
+		((unsigned char*) iov->iov_base)[0] =
 		    (IP_HEADER_IPV4_VERSION << 4) | IP_HEADER_DWORD_LENGTH;
 	}
 	/* Put actual data after 20 bytes long header. */
@@ -350,10 +350,10 @@ errno_t raw_socket_recvmsg(common_socket_t* socket, struct msghdr *msg,
 	    IP_HEADER_BYTE_LENGTH);
 
 	/* Fill additional info about received data */
-	struct cmsghdr *msg_control = (struct cmsghdr*)msg->msg_control;
+	struct cmsghdr *msg_control = (struct cmsghdr*) msg->msg_control;
 	msg_control->cmsg_level = SOL_IP;
 	msg_control->cmsg_type = IP_PKTINFO;
-	struct in_pktinfo *pi = (struct in_pktinfo*)CMSG_DATA(msg_control);
+	struct in_pktinfo *pi = (struct in_pktinfo*) CMSG_DATA(msg_control);
 	/* Local address datagram was destined to */
 	pi->ipi_addr.s_addr = htonl(raw_msg->dgram.dest.addr);
 	/* Service id of link datagram was received through, set as interface
@@ -381,12 +381,12 @@ errno_t raw_socket_close(common_socket_t* socket)
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - raw_socket_close()");
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
 
-	raw_socket_t *raw_socket = (raw_socket_t*)socket;
+	raw_socket_t *raw_socket = (raw_socket_t*) socket;
 	list_remove(&raw_socket->socket.link);
 	free_socket_id(raw_socket->socket.id);
 
 	while (!list_empty(&raw_socket->msg_queue)) {
-		raw_msg_t *raw_msg = (raw_msg_t*)list_first(
+		raw_msg_t *raw_msg = (raw_msg_t*) list_first(
 		    &raw_socket->msg_queue);
 		list_remove(&raw_msg->msg_queue_link);
 		if (raw_msg->dgram.data != NULL)

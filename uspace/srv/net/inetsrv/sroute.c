@@ -41,6 +41,7 @@
 #include <ipc/loc.h>
 #include <stdlib.h>
 #include <str.h>
+#include <byteorder.h>
 #include "sroute.h"
 #include "inetsrv.h"
 #include "inet_link.h"
@@ -49,211 +50,122 @@
 static FIBRIL_MUTEX_INITIALIZE(sroute_list_lock);
 static LIST_INITIALIZE(sroute_list);
 static LIST_INITIALIZE(del_sroute_list);
-static sysarg_t sroute_id = 0;
 
-static inet_sroute_t *inet_sroute_find_deleted(inet_sroute_t *sroute) {
-        list_foreach(del_sroute_list, sroute_list, inet_sroute_t, del_sroute) {
-                if (!inet_naddrs_compare(&sroute->dest, &del_sroute->dest))
-                        continue;
-                if (!inet_addr_compare(&sroute->router, &del_sroute->router))
-                        continue;
-                if (sroute->rtm_protocol != del_sroute->rtm_protocol)
-                        continue;
-                return del_sroute;
-        }
-        return NULL;    
-}
+trie_t *sroute_table;
 
-inet_sroute_t *inet_sroute_new(void)
+errno_t inet_sroute_batch(void *arg)
 {
-	inet_sroute_t *sroute = calloc(1, sizeof(inet_sroute_t));
+	/*
+	fibril_mutex_lock(&sroute_list_lock);
+	inet_sroute_cmds_t *inet_sroute_cmds = (inet_sroute_cmds_t*) arg;
+	log_msg(LOG_DEFAULT, LVL_FATAL, "Processing %d routes ...",
+	    inet_sroute_cmds->count);
+	inet_sroute_t *sroute = NULL;
+	for (size_t i = 0; i < inet_sroute_cmds->count; i++) {
+		inet_sroute_cmd_t cmd = inet_sroute_cmds->cmds[i];
+		switch (cmd.sroute_cmd_type) {
+		case INET_SROUTE_CMD_CREATE:
+			sroute = calloc(1, sizeof(inet_sroute_t));
+			if (sroute == NULL) {
+				return ENOMEM;
+			}
+			link_initialize(&sroute->sroute_list);
+			sroute->id = ++sroute_id;
+			list_append(&sroute->sroute_list, &sroute_list);
+			break;
+		case INET_SROUTE_CMD_DELETE:
+			sroute = inet_sroute_find_exact(&cmd.dest, &cmd.router,
+			    cmd.rtm_protocol, INET_ADDR_STATUS_ACTIVE);
 
-	if (sroute == NULL) {
-		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed allocating static route object. "
-		    "Out of memory.");
-		return NULL;
+			if (sroute != NULL) {
+				list_remove(&sroute->sroute_list);
+				if (sroute->name != NULL)
+					free(sroute->name);
+				free(sroute);
+			}
+			break;
+		}
 	}
-
-	link_initialize(&sroute->sroute_list);
-	fibril_mutex_lock(&sroute_list_lock);
-	sroute->id = ++sroute_id;
+	log_msg(LOG_DEFAULT, LVL_FATAL, "... done");
 	fibril_mutex_unlock(&sroute_list_lock);
-
-	return sroute;
+	*/
+	return EOK;
 }
 
-void inet_sroute_delete(inet_sroute_t *sroute)
-{
-	if (sroute->name != NULL)
-		free(sroute->name);
-	free(sroute);
-}
-
-void inet_sroute_add(inet_sroute_t *sroute)
+errno_t inet_sroute_add(inet_sroute_t *sroute)
 {
 	fibril_mutex_lock(&sroute_list_lock);
-	list_append(&sroute->sroute_list, &sroute_list);
-        inet_sroute_t *del_sroute = inet_sroute_find_deleted(sroute);
-        if (del_sroute != NULL) {
-                list_remove(&del_sroute->sroute_list);
-                inet_sroute_delete(del_sroute);
-        }
-	fibril_mutex_unlock(&sroute_list_lock);
-}
 
-void inet_sroute_remove(inet_sroute_t *sroute)
-{
-	fibril_mutex_lock(&sroute_list_lock);
-	list_remove(&sroute->sroute_list);
-        list_append(&sroute->sroute_list, &del_sroute_list);
+	addr32_t dest = htonl(sroute->dest.addr);
+
+	inet_sroute_t *old_sroute = (inet_sroute_t *) trie_find_exact(
+	    sroute_table, &dest, sroute->dest.prefix);
+	if (old_sroute != NULL) {
+		if (old_sroute->status == INET_SROUTE_STATUS_DELETED) {
+			old_sroute->rtm_protocol = sroute->rtm_protocol;
+			old_sroute->router = sroute->router;
+			old_sroute->dest = sroute->dest;
+			old_sroute->status = INET_SROUTE_STATUS_ACTIVE;
+			fibril_mutex_unlock(&sroute_list_lock);
+			return EOK;
+		}
+		fibril_mutex_unlock(&sroute_list_lock);
+		return EEXIST;
+	}
+	errno_t rc = trie_insert(sroute_table, &dest, sroute->dest.prefix,
+	    sroute);
+
 	fibril_mutex_unlock(&sroute_list_lock);
+
+	return rc;
 }
 
 /** Find static route object matching address @a addr.
  *
  * @param addr	Address
  */
-inet_sroute_t *inet_sroute_find(inet_addr_t *addr)
+inet_sroute_t *inet_sroute_find_longest_match(inet_addr_t *addr)
 {
-	ip_ver_t addr_ver = inet_addr_get(addr, NULL, NULL);
-
-	inet_sroute_t *best = NULL;
-	uint8_t best_bits = 0;
-
 	fibril_mutex_lock(&sroute_list_lock);
 
-	list_foreach(sroute_list, sroute_list, inet_sroute_t, sroute) {
-		uint8_t dest_bits;
-		ip_ver_t dest_ver = inet_naddr_get(&sroute->dest, NULL, NULL,
-		    &dest_bits);
-
-		/* Skip comparison with different address family */
-		if (addr_ver != dest_ver)
-			continue;
-
-		/* Look for the most specific route */
-		if ((best != NULL) && (best_bits >= dest_bits))
-			continue;
-
-		if (inet_naddr_compare_mask(&sroute->dest, addr)) {
-			log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_sroute_find: found candidate %p",
-			    sroute);
-
-			best = sroute;
-			best_bits = dest_bits;
-		}
-	}
-
-	if (best == NULL)
-		log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_sroute_find: Not found");
+	addr->addr = htonl(addr->addr);
+	inet_sroute_t *sroute = (inet_sroute_t *) trie_find_longest_match(
+	    sroute_table, &addr->addr, 32);
 
 	fibril_mutex_unlock(&sroute_list_lock);
 
-	return best;
+	return sroute;
 }
 
-/** Find static route with a specific name.
+
+/** Find static route object matching address @a addr.
  *
- * @param name	Address object name
- * @return	Address object
+ * @param addr	Address
  */
-inet_sroute_t *inet_sroute_find_by_name(const char *name)
+inet_sroute_t *inet_sroute_find_exact(inet_naddr_t *naddr)
 {
-	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_sroute_find_by_name('%s')",
-	    name);
-
 	fibril_mutex_lock(&sroute_list_lock);
 
-	list_foreach(sroute_list, sroute_list, inet_sroute_t, sroute) {
-		if (str_cmp(sroute->name, name) == 0) {
-			fibril_mutex_unlock(&sroute_list_lock);
-			log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_sroute_find_by_name: found %p",
-			    sroute);
-			return sroute;
-		}
-	}
+	naddr->addr = htonl(naddr->addr);
+	inet_sroute_t *sroute = (inet_sroute_t *) trie_find_exact(
+	    sroute_table, &naddr->addr, naddr->prefix);
 
-	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_sroute_find_by_name: Not found");
 	fibril_mutex_unlock(&sroute_list_lock);
 
-	return NULL;
+	return sroute;
 }
 
-/** Find static route with the given ID.
- *
- * @param id	Address object ID
- * @return	Address object
- */
-inet_sroute_t *inet_sroute_get_by_id(sysarg_t id,
-    inet_sroute_status_t inet_sroute_status)
+errno_t inet_sroute_to_array(inet_sroute_t **rsroutes, size_t *rcount)
 {
-	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_sroute_get_by_id(%zu)", (size_t)id);
-
 	fibril_mutex_lock(&sroute_list_lock);
-        
-        list_t *list;
-        switch(inet_sroute_status) {
-            case INET_ADDR_STATUS_ACTIVE:
-                list = &sroute_list;
-                break;
-            case INET_ADDR_STATUS_DELETED:
-                list = &del_sroute_list;
-                break;
-            default:
-                return NULL;
-        }
 
-	list_foreach(*list, sroute_list, inet_sroute_t, sroute) {
-		if (sroute->id == id) {
-			fibril_mutex_unlock(&sroute_list_lock);
-			return sroute;
-		}
-	}
+	errno_t rc = trie_to_array(sroute_table, sizeof(inet_sroute_t),
+	    (void **) rsroutes);
+	*rcount = sroute_table->count;
 
 	fibril_mutex_unlock(&sroute_list_lock);
 
-	return NULL;
-}
-
-/** Get IDs of all static routes. */
-errno_t inet_sroute_get_id_list(sysarg_t **rid_list, size_t *rcount,
-    inet_sroute_status_t inet_sroute_status)
-{
-	sysarg_t *id_list;
-	size_t count, i;
-
-	fibril_mutex_lock(&sroute_list_lock);
-        list_t *list;
-        switch(inet_sroute_status) {
-            case INET_ADDR_STATUS_ACTIVE:
-                list = &sroute_list;
-                break;
-            case INET_ADDR_STATUS_DELETED:
-                list = &del_sroute_list;
-                break;
-            default:
-                return EINVAL;
-        }
-        
-	count = list_count(list);
-
-	id_list = calloc(count, sizeof(sysarg_t));
-	if (id_list == NULL) {
-		fibril_mutex_unlock(&sroute_list_lock);
-		return ENOMEM;
-	}
-
-	i = 0;
-	list_foreach(*list, sroute_list, inet_sroute_t, sroute) {
-		id_list[i++] = sroute->id;
-	}
-
-	fibril_mutex_unlock(&sroute_list_lock);
-
-	*rid_list = id_list;
-	*rcount = count;
-
-	return EOK;
+	return rc;
 }
 
 /** @}

@@ -84,7 +84,7 @@ static udp_cb_t udp_socket_cb = {
  */
 errno_t udp_socket(int domain, int type, int protocol, int session_id, int *fd)
 {
-	udp_socket_t *udp_socket = (udp_socket_t *)calloc(1,
+	udp_socket_t *udp_socket = (udp_socket_t *) calloc(1,
 	    sizeof(udp_socket_t));
 	common_socket_init(&udp_socket->socket, domain, type, protocol,
 	    session_id);
@@ -107,7 +107,7 @@ errno_t udp_socket_setsockopt(common_socket_t *socket, int level, int optname,
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - udp_socket_setsockopt()");
 
-	udp_socket_t *udp_socket = (udp_socket_t*)socket;
+	udp_socket_t *udp_socket = (udp_socket_t*) socket;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * socket id: %d", socket->id);
 
@@ -127,7 +127,7 @@ errno_t udp_socket_setsockopt(common_socket_t *socket, int level, int optname,
 
 		service_id_t sid;
 
-		char *iface_name = ((struct ifreq*)optval)->ifr_name;
+		char *iface_name = ((struct ifreq*) optval)->ifr_name;
 		retval = loc_service_get_id(iface_name, &sid, 0);
 		if (retval != EOK)
 			break;
@@ -198,16 +198,16 @@ errno_t udp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - Binding UDP socket");
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * port: %d",
-	    ((struct sockaddr_in*)addr)->sin_port);
+	    ((struct sockaddr_in*) addr)->sin_port);
 
-	udp_socket_t* udp_socket = (udp_socket_t*)socket;
+	udp_socket_t* udp_socket = (udp_socket_t*) socket;
 
 	inet_ep2_t epp;
 	inet_ep2_init(&epp);
 
 	epp.local_link = udp_socket->iplink;
 	epp.local.addr.version = ip_v4;
-	epp.local.port = ntohs(((struct sockaddr_in*)addr)->sin_port);
+	epp.local.port = ntohs(((struct sockaddr_in*) addr)->sin_port);
 
 	int rc = udp_assoc_create(socket_udp, &epp, &udp_socket_cb, socket,
 	    &udp_socket->udp_assoc);
@@ -223,7 +223,7 @@ errno_t udp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
  */
 errno_t udp_socket_read_avail(common_socket_t *socket, bool *read_avail)
 {
-	udp_socket_t *udp_socket = (udp_socket_t*)socket;
+	udp_socket_t *udp_socket = (udp_socket_t*) socket;
 	*read_avail = !list_empty(&udp_socket->msg_queue);
 	return EOK;
 }
@@ -243,8 +243,8 @@ errno_t udp_socket_sendmsg(common_socket_t *socket, const struct msghdr *msg,
 	if (msg->msg_iovlen < 1)
 		return EINVAL;
 
-	udp_socket_t *udp_socket = (udp_socket_t*)socket;
-	struct sockaddr_in *sa = (struct sockaddr_in*)msg->msg_name;
+	udp_socket_t *udp_socket = (udp_socket_t*) socket;
+	struct sockaddr_in *sa = (struct sockaddr_in*) msg->msg_name;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - Sending message through UDP "
 	    "socket");
@@ -280,7 +280,7 @@ errno_t udp_socket_sendmsg(common_socket_t *socket, const struct msghdr *msg,
  */
 static void udp_socket_ev_recv(udp_assoc_t *assoc, udp_rmsg_t *rmsg)
 {
-	udp_socket_t *udp_socket = (udp_socket_t*)assoc->cb_arg;
+	udp_socket_t *udp_socket = (udp_socket_t*) assoc->cb_arg;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " ");
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "udp_socket_ev_recv()");
@@ -344,9 +344,9 @@ errno_t udp_socket_recvmsg(common_socket_t *socket, struct msghdr *msg,
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - udp_socket_recvmsg()");
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket link: %d",
-	    ((udp_socket_t*)socket)->iplink);
+	    ((udp_socket_t*) socket)->iplink);
 
-	udp_socket_t *udp_socket = (udp_socket_t*)socket;
+	udp_socket_t *udp_socket = (udp_socket_t*) socket;
 
 	if (msg->msg_namelen < sizeof(struct sockaddr_in)) {
 		return EINVAL;
@@ -355,7 +355,7 @@ errno_t udp_socket_recvmsg(common_socket_t *socket, struct msghdr *msg,
 		return EINVAL;
 	}
 
-	udp_msg_t *udp_msg = (udp_msg_t*)list_first(&udp_socket->msg_queue);
+	udp_msg_t *udp_msg = (udp_msg_t*) list_first(&udp_socket->msg_queue);
 	if (udp_msg == NULL) {
 		log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * empty socket message"
 		    " queue");
@@ -365,7 +365,7 @@ errno_t udp_socket_recvmsg(common_socket_t *socket, struct msghdr *msg,
 	size_t data_size = min(msg->msg_iov[0].iov_len, udp_msg->data_size);
 	memcpy(msg->msg_iov[0].iov_base, udp_msg->data, data_size);
 
-	struct sockaddr_in *sa = (struct sockaddr_in*)msg->msg_name;
+	struct sockaddr_in *sa = (struct sockaddr_in*) msg->msg_name;
 	sa->sin_addr.s_addr = htonl(udp_msg->remote_ep.addr.addr);
 	sa->sin_port = htons(udp_msg->remote_ep.port);
 	sa->sin_family = AF_INET;
@@ -390,12 +390,12 @@ errno_t udp_socket_close(common_socket_t* socket)
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - udp_socket_close()");
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
 
-	udp_socket_t *udp_socket = (udp_socket_t*)socket;
+	udp_socket_t *udp_socket = (udp_socket_t*) socket;
 	list_remove(&udp_socket->socket.link);
 	free_socket_id(udp_socket->socket.id);
 
 	while (!list_empty(&udp_socket->msg_queue)) {
-		udp_msg_t *udp_msg = (udp_msg_t*)list_first(
+		udp_msg_t *udp_msg = (udp_msg_t*) list_first(
 		    &udp_socket->msg_queue);
 		list_remove(&udp_msg->msg_queue_link);
 		if (udp_msg->data != NULL) {

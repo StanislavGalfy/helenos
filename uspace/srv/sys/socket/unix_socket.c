@@ -51,7 +51,7 @@
  */
 errno_t unix_socket(int domain, int type, int protocol, int session_id, int *fd)
 {
-	unix_socket_t *unix_socket = (unix_socket_t *)calloc(1,
+	unix_socket_t *unix_socket = (unix_socket_t *) calloc(1,
 	    sizeof(unix_socket_t));
 	common_socket_init(&unix_socket->socket, domain, type, protocol,
 	    session_id);
@@ -93,7 +93,7 @@ errno_t unix_socket_read_avail(common_socket_t *socket, bool *read_avail)
  */
 errno_t unix_socket_close(common_socket_t *socket)
 {
-	unix_socket_t *unix_socket = (unix_socket_t*)socket;
+	unix_socket_t *unix_socket = (unix_socket_t*) socket;
 	free(unix_socket);
 	return EOK;
 }

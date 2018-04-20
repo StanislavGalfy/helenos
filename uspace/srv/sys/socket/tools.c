@@ -85,7 +85,7 @@ static int generate_id(list_t *free_ids, int *next_id)
 		return *next_id;
 	}
 
-	id_t *id = (id_t*)list_first(free_ids);
+	id_t *id = (id_t*) list_first(free_ids);
 	list_remove(&id->link);
 	int tmp_id = id->value;
 	free(id);
@@ -168,7 +168,7 @@ common_socket_t* get_socket_by_iplink(service_id_t iplink)
 
 	list_foreach(socket_list, link, common_socket_t, socket) {
 		if (socket->domain == AF_INET && socket->type == SOCK_RAW) {
-			if (((raw_socket_t*)socket)->iplink == iplink)
+			if (((raw_socket_t*) socket)->iplink == iplink)
 				return socket;
 		}
 	}

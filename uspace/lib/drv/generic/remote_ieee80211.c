@@ -209,9 +209,9 @@ errno_t ieee80211_disconnect(async_sess_t *dev_sess)
 
 	inet_link_info_t link_info;
 	inet_addr_info_t addr_info;
-	inet_sroute_info_t route_info;
+	//inet_sroute_info_t route_info;
 	sysarg_t *addr_list;
-	sysarg_t *route_list;
+	//sysarg_t *route_list;
 	size_t count;
 
 	/* Remove previous DHCP address. */
@@ -246,6 +246,7 @@ errno_t ieee80211_disconnect(async_sess_t *dev_sess)
 	 * dropped.
 	 */
 	/* Remove previous DHCP static route. */
+	/*
 	rc = inetcfg_get_sroute_list(&route_list, &count,
             INET_SROUTE_STATUS_ACTIVE);
 	if (rc != EOK)
@@ -265,7 +266,7 @@ errno_t ieee80211_disconnect(async_sess_t *dev_sess)
 			break;
 		}
 	}
-
+	 */
 	return rc;
 }
 

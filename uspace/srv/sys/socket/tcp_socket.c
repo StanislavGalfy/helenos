@@ -71,7 +71,7 @@ errno_t tcp_socket(int domain, int type, int protocol, int session_id, int *fd)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "    - Creating TCP socket");
 
-	tcp_socket_t *tcp_socket = (tcp_socket_t *)calloc(1, sizeof(
+	tcp_socket_t *tcp_socket = (tcp_socket_t *) calloc(1, sizeof(
 	    tcp_socket_t));
 	common_socket_init(&tcp_socket->socket, domain, type, protocol,
 	    session_id);
@@ -153,19 +153,19 @@ errno_t tcp_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - Binding TCP socket");
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * address: %d",
-	    ((struct sockaddr_in*)addr)->sin_addr.s_addr);
+	    ((struct sockaddr_in*) addr)->sin_addr.s_addr);
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * port: %d",
-	    ((struct sockaddr_in*)addr)->sin_port);
+	    ((struct sockaddr_in*) addr)->sin_port);
 
 	if (addrlen < sizeof(struct sockaddr_in))
 		return EINVAL;
 
-	tcp_socket_t* tcp_socket = (tcp_socket_t*)socket;
+	tcp_socket_t* tcp_socket = (tcp_socket_t*) socket;
 
 	tcp_socket->ep.addr.version = ip_v4;
 	tcp_socket->ep.addr.addr =
-	    ntohl(((struct sockaddr_in*)addr)->sin_addr.s_addr);
-	tcp_socket->ep.port = ntohs(((struct sockaddr_in*)addr)->sin_port);
+	    ntohl(((struct sockaddr_in*) addr)->sin_addr.s_addr);
+	tcp_socket->ep.port = ntohs(((struct sockaddr_in*) addr)->sin_port);
 
 	return EOK;
 }
@@ -190,7 +190,7 @@ static void tcp_socket_new_conn(tcp_listener_t *lst, tcp_conn_t *conn)
 
 	fibril_mutex_lock(&socket_lock);
 
-	tcp_socket_t *tcp_listener_socket = (tcp_socket_t*)lst->lcb_arg;
+	tcp_socket_t *tcp_listener_socket = (tcp_socket_t*) lst->lcb_arg;
 
 	/* Put connection into queue */
 	tcp_sock_conn_t *tcp_sock_conn = calloc(1, sizeof(tcp_sock_conn_t));
@@ -224,7 +224,7 @@ errno_t tcp_socket_listen(common_socket_t *socket, int backlog)
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - tcp_socket_listen()");
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * socket id: %d", socket->id);
 
-	tcp_socket_t *tcp_socket = (tcp_socket_t*)socket;
+	tcp_socket_t *tcp_socket = (tcp_socket_t*) socket;
 
 	tcp_socket->is_listener = true;
 	errno_t rc = tcp_listener_create(socket_tcp, &tcp_socket->ep,
@@ -251,7 +251,7 @@ errno_t tcp_socket_connect(common_socket_t *socket, const struct sockaddr *addr,
 	if (addrlen < sizeof(struct sockaddr_in))
 		return EINVAL;
 
-	tcp_socket_t *tcp_socket = (tcp_socket_t*)socket;
+	tcp_socket_t *tcp_socket = (tcp_socket_t*) socket;
 	if (tcp_socket->tcp_sock_conn != NULL) {
 		if (tcp_socket->tcp_sock_conn->tcp_conn != NULL) {
 			if (tcp_socket->tcp_sock_conn->tcp_conn->connected) {
@@ -266,8 +266,8 @@ errno_t tcp_socket_connect(common_socket_t *socket, const struct sockaddr *addr,
 	memcpy(&epp.local, &tcp_socket->ep, sizeof(inet_ep_t));
 	epp.remote.addr.version = ip_v4;
 	epp.remote.addr.addr = htonl(
-	    ((struct sockaddr_in*)addr)->sin_addr.s_addr);
-	epp.remote.port = htons(((struct sockaddr_in*)addr)->sin_port);
+	    ((struct sockaddr_in*) addr)->sin_addr.s_addr);
+	epp.remote.port = htons(((struct sockaddr_in*) addr)->sin_port);
 
 	tcp_socket->tcp_sock_conn = calloc(1, sizeof(tcp_sock_conn_t));
 	if (tcp_socket->tcp_sock_conn == NULL) {
@@ -302,7 +302,7 @@ errno_t tcp_socket_accept(common_socket_t *socket, const struct sockaddr *addr,
 		return EINVAL;
 	}
 
-	tcp_socket_t *tcp_listener_socket = (tcp_socket_t*)socket;
+	tcp_socket_t *tcp_listener_socket = (tcp_socket_t*) socket;
 
 	if (list_empty(&tcp_listener_socket->tcp_conn_queue)) {
 		log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * empty connection queue");
@@ -310,7 +310,7 @@ errno_t tcp_socket_accept(common_socket_t *socket, const struct sockaddr *addr,
 	}
 
 	/* Create new socket */
-	tcp_socket_t *tcp_socket = (tcp_socket_t *)calloc(1,
+	tcp_socket_t *tcp_socket = (tcp_socket_t *) calloc(1,
 	    sizeof(tcp_socket_t));
 	if (tcp_socket == NULL) {
 		return ENOMEM;
@@ -326,7 +326,7 @@ errno_t tcp_socket_accept(common_socket_t *socket, const struct sockaddr *addr,
 	memcpy(&tcp_socket->ep, &tcp_listener_socket->ep, sizeof(inet_ep_t));
 
 	/* Assign first connection from queue to newly created socket */
-	tcp_sock_conn_t *tcp_sock_conn = (tcp_sock_conn_t *)list_first(
+	tcp_sock_conn_t *tcp_sock_conn = (tcp_sock_conn_t *) list_first(
 	    &tcp_listener_socket->tcp_conn_queue);
 
 	tcp_socket->tcp_sock_conn = tcp_sock_conn;
@@ -334,7 +334,7 @@ errno_t tcp_socket_accept(common_socket_t *socket, const struct sockaddr *addr,
 
 	*fd = tcp_socket->socket.id;
 
-	struct sockaddr_in *sa = (struct sockaddr_in*)addr;
+	struct sockaddr_in *sa = (struct sockaddr_in*) addr;
 	sa->sin_addr.s_addr = htonl(
 	    tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.addr.addr);
 	sa->sin_port = htons(
@@ -369,8 +369,8 @@ errno_t tcp_socket_getsockname(common_socket_t * socket,
 		return EINVAL;
 	}
 
-	tcp_socket_t *tcp_socket = (tcp_socket_t*)socket;
-	struct sockaddr_in *sa = (struct sockaddr_in*)addr;
+	tcp_socket_t *tcp_socket = (tcp_socket_t*) socket;
+	struct sockaddr_in *sa = (struct sockaddr_in*) addr;
 	sa->sin_addr.s_addr = htonl(
 	    tcp_socket->tcp_sock_conn->tcp_conn->ident.local.addr.addr);
 	sa->sin_port = htons(
@@ -395,7 +395,7 @@ errno_t tcp_socket_getsockname(common_socket_t * socket,
  */
 errno_t tcp_socket_read_avail(common_socket_t *socket, bool *read_avail)
 {
-	tcp_socket_t* tcp_socket = (tcp_socket_t*)socket;
+	tcp_socket_t* tcp_socket = (tcp_socket_t*) socket;
 	if (tcp_socket->is_listener) {
 		*read_avail = !list_empty(&tcp_socket->tcp_conn_queue);
 		return EOK;
@@ -418,7 +418,7 @@ errno_t tcp_socket_read_avail(common_socket_t *socket, bool *read_avail)
  */
 errno_t tcp_socket_write_avail(common_socket_t *socket, bool *write_avail)
 {
-	tcp_socket_t* tcp_socket = (tcp_socket_t*)socket;
+	tcp_socket_t* tcp_socket = (tcp_socket_t*) socket;
 	if (tcp_socket->tcp_sock_conn != NULL &&
 	    tcp_socket->tcp_sock_conn->tcp_conn != NULL) {
 		*write_avail = tcp_socket->tcp_sock_conn->tcp_conn->connected;
@@ -444,7 +444,7 @@ errno_t tcp_socket_write(common_socket_t *socket, void *buf, size_t count,
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * socket id: %d", socket->id);
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * data count to send: %d", count);
 
-	tcp_socket_t* tcp_socket = (tcp_socket_t*)socket;
+	tcp_socket_t* tcp_socket = (tcp_socket_t*) socket;
 
 	errno_t rc = EOK;
 	if (count > 0) {
@@ -473,7 +473,7 @@ errno_t tcp_socket_read(common_socket_t *socket, void *buf, size_t count,
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * data count to receive: %d",
 	    count);
 
-	tcp_socket_t* tcp_socket = (tcp_socket_t*)socket;
+	tcp_socket_t* tcp_socket = (tcp_socket_t*) socket;
 
 	errno_t rc = tcp_conn_recv(tcp_socket->tcp_sock_conn->tcp_conn, buf, count,
 	    nrecv);
@@ -494,7 +494,7 @@ errno_t tcp_socket_close(common_socket_t *socket)
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, " - tcp_socket_close()");
 	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * socket id: %d", socket->id);
 
-	tcp_socket_t *tcp_socket = (tcp_socket_t*)socket;
+	tcp_socket_t *tcp_socket = (tcp_socket_t*) socket;
 	list_remove(&tcp_socket->socket.link);
 	free_socket_id(tcp_socket->socket.id);
 

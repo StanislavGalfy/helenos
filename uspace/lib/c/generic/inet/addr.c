@@ -303,8 +303,8 @@ int inet_naddr_compare_mask(const inet_naddr_t *naddr, const inet_addr_t *addr)
 	}
 }
 
-int inet_naddrs_compare (const inet_naddr_t *naddr_a, const inet_naddr_t *naddr_b) 
-{              
+int inet_naddrs_compare (const inet_naddr_t *naddr_a, const inet_naddr_t *naddr_b)
+{
         if (naddr_a->prefix != naddr_b->prefix)
                 return 0;
 
