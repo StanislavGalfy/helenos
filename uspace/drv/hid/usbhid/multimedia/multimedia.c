@@ -79,12 +79,13 @@ typedef struct usb_multimedia_t {
  * assumes the caller is the console and thus it stores IPC session to it for
  * later use by the driver to notify about key events.
  *
- * @param fun Device function handling the call.
- * @param icallid Call id.
- * @param icall Call data.
+ * @param fun           Device function handling the call.
+ * @param icall_handle  Call handle.
+ * @param icall         Call data.
  */
-static void default_connection_handler(ddf_fun_t *fun,
-    ipc_callid_t icallid, ipc_call_t *icall)
+static void
+default_connection_handler(ddf_fun_t *fun, cap_call_handle_t icall_handle,
+    ipc_call_t *icall)
 {
 	usb_log_debug(NAME " default_connection_handler()");
 
@@ -97,11 +98,11 @@ static void default_connection_handler(ddf_fun_t *fun,
 			multim_dev->console_sess = sess;
 			usb_log_debug(NAME " Saved session to console: %p",
 			    sess);
-			async_answer_0(icallid, EOK);
+			async_answer_0(icall_handle, EOK);
 		} else
-			async_answer_0(icallid, ELIMIT);
+			async_answer_0(icall_handle, ELIMIT);
 	} else
-		async_answer_0(icallid, EINVAL);
+		async_answer_0(icall_handle, EINVAL);
 }
 
 static ddf_dev_ops_t multimedia_ops = {
@@ -258,8 +259,8 @@ bool usb_multimedia_polling_callback(struct usb_hid_dev *hid_dev, void *data)
 	usb_hid_report_path_set_report_id(path, hid_dev->report_id);
 
 	usb_hid_report_field_t *field = usb_hid_report_get_sibling(
-	    &hid_dev->report, NULL, path, USB_HID_PATH_COMPARE_END
-	    | USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
+	    &hid_dev->report, NULL, path, USB_HID_PATH_COMPARE_END |
+	    USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
 	    USB_HID_REPORT_TYPE_INPUT);
 
 	//FIXME Is this iterating OK if done multiple times?
@@ -277,8 +278,8 @@ bool usb_multimedia_polling_callback(struct usb_hid_dev *hid_dev, void *data)
 		}
 
 		field = usb_hid_report_get_sibling(
-		    &hid_dev->report, field, path, USB_HID_PATH_COMPARE_END
-		    | USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
+		    &hid_dev->report, field, path, USB_HID_PATH_COMPARE_END |
+		    USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
 		    USB_HID_REPORT_TYPE_INPUT);
 	}
 

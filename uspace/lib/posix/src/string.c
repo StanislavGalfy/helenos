@@ -197,8 +197,8 @@ void *memccpy(void *restrict dest, const void *restrict src, int c, size_t n)
 	assert(dest != NULL);
 	assert(src != NULL);
 
-	unsigned char* bdest = dest;
-	const unsigned char* bsrc = src;
+	unsigned char *bdest = dest;
+	const unsigned char *bsrc = src;
 
 	for (size_t i = 0; i < n; ++i) {
 		bdest[i] = bsrc[i];
@@ -448,19 +448,18 @@ char *strstr(const char *haystack, const char *needle)
 	size_t nlen = strlen(needle);
 	size_t prefix_table[nlen + 1];
 
-	{
-		size_t i = 0;
-		ssize_t j = -1;
+	size_t i = 0;
+	ssize_t j = -1;
 
-		prefix_table[i] = j;
+	prefix_table[i] = j;
 
-		while (i < nlen) {
-			while (j >= 0 && needle[i] != needle[j]) {
-				j = prefix_table[j];
-			}
-			i++; j++;
-			prefix_table[i] = j;
+	while (i < nlen) {
+		while (j >= 0 && needle[i] != needle[j]) {
+			j = prefix_table[j];
 		}
+		i++;
+		j++;
+		prefix_table[i] = j;
 	}
 
 	/* Search needle using the precomputed table. */
@@ -519,11 +518,13 @@ char *strtok_r(char *s, const char *delim, char **next)
 		s = *next;
 
 	/* Skip over leading delimiters. */
-	while (*s && (strchr(delim, *s) != NULL)) ++s;
+	while (*s && (strchr(delim, *s) != NULL))
+		++s;
 	start = s;
 
 	/* Skip over token characters. */
-	while (*s && (strchr(delim, *s) == NULL)) ++s;
+	while (*s && (strchr(delim, *s) == NULL))
+		++s;
 	end = s;
 	*next = (*s ? s + 1 : s);
 

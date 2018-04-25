@@ -2,34 +2,24 @@ STARTUP(LIBC_PATH/arch/UARCH/src/entry.o)
 ENTRY(__entry)
 
 PHDRS {
-#ifdef LOADER
-	interp PT_INTERP;
 	text PT_LOAD FILEHDR PHDRS FLAGS(5);
-#else
-	text PT_LOAD FLAGS(5);
-#endif
 	data PT_LOAD FLAGS(6);
+	tls PT_TLS;
 	debug PT_NOTE;
 }
 
 SECTIONS {
-#ifdef LOADER
-	. = 0x70001000 + SIZEOF_HEADERS;
-#else
-	. = 0x1000 + SIZEOF_HEADERS;
+	. = SEGMENT_START("text-segment", 0x400000);
+#ifndef SHLIB
+	PROVIDE (__executable_start = .);
 #endif
+	. = . + SIZEOF_HEADERS;
 
 	.text : {
 		*(.text .text.*);
 		*(.rodata .rodata.*);
 		*(.srodata .srodata.*);
 	} :text
-
-#ifdef LOADER
-	.interp : {
-		*(.interp);
-	} :interp :text
-#endif
 
 	. = . + 0x1000;
 
@@ -40,26 +30,25 @@ SECTIONS {
 	} :data
 
 	.tdata : {
-		_tdata_start = .;
 		*(.tdata);
-		*(.gnu.linkonce.tb.*);
-		_tdata_end = .;
-		_tbss_start = .;
+		*(.tdata.*);
+		*(.gnu.linkonce.td.*);
+	} :data :tls
+
+	.tbss : {
 		*(.tbss);
-		_tbss_end = .;
-	} :data
-
-	_tls_alignment = ALIGNOF(.tdata);
-
-	.sbss : {
-		*(.scommon);
-		*(.sbss);
-	}
+		*(.tbss.*);
+		*(.gnu.linkonce.tb.*);
+	} :data :tls
 
 	.bss : {
+		*(.scommon);
+		*(.sbss);
 		*(COMMON);
 		*(.bss);
 	} :data
+
+	_end = .;
 
 #ifdef CONFIG_LINE_DEBUG
 	.comment 0 : { *(.comment); } :debug

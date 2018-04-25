@@ -45,7 +45,7 @@
 /** Clock control PRM register map
  */
 typedef struct {
-	PADD32[16];
+	PADD32(16);
 	ioport32_t clksel;
 #define CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_MASK   (0x7)
 #define CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_12M   (0x0)
@@ -55,7 +55,7 @@ typedef struct {
 #define CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_38_4M   (0x4)
 #define CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_16_8M   (0x5)
 
-	PADD32[12];
+	PADD32(12);
 	ioport32_t clkout_ctrl;
 #define CLOCK_CONTROL_PRM_CLKOUT_CTRL_CLKOUOUT_EN_FLAG   (1 << 7)
 
@@ -63,14 +63,19 @@ typedef struct {
 
 static inline unsigned sys_clk_freq_kHz(unsigned reg_val)
 {
-	switch(reg_val)
-	{
-	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_12M: return 12000;
-	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_13M: return 13000;
-	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_19_2M: return 19200;
-	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_26M: return 26000;
-	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_38_4M: return 38400;
-	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_16_8M: return 16800;
+	switch (reg_val) {
+	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_12M:
+		return 12000;
+	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_13M:
+		return 13000;
+	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_19_2M:
+		return 19200;
+	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_26M:
+		return 26000;
+	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_38_4M:
+		return 38400;
+	case CLOCK_CONTROL_PRM_CLKSEL_SYS_CLKIN_16_8M:
+		return 16800;
 	}
 	return 0;
 }

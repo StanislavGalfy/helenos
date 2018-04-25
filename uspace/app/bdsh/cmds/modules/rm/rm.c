@@ -173,7 +173,12 @@ static unsigned int rm_recursive_not_empty_dirs(const char *path)
 
 	memset(buff, 0, sizeof(buff));
 	while ((dp = readdir(dirp))) {
-		snprintf(buff, PATH_MAX - 1, "%s/%s", path, dp->d_name);
+		int len = snprintf(buff, PATH_MAX - 1, "%s/%s", path, dp->d_name);
+		if (len > PATH_MAX - 1) {
+			// TODO: Do not enforce arbitrary static limits.
+			cli_error(CL_EFAIL, "Path too long for %s/%s", path, dp->d_name);
+			continue;
+		}
 		scope = rm_scope(buff);
 		switch (scope) {
 		case RM_BOGUS:
@@ -223,15 +228,15 @@ void help_cmd_rm(unsigned int level)
 	} else {
 		help_cmd_rm(HELP_SHORT);
 		printf(
-		"Usage:  %s [options] <path>\n"
-		"Options:\n"
-		"  -h, --help       A short option summary\n"
-		"  -v, --version    Print version information and exit\n"
-		"  -r, --recursive  Recursively remove sub directories\n"
-		"  -f, --force      Do not prompt prior to removing files\n"
-		"  -s, --safe       Stop if directories change during removal\n\n"
-		"Currently, %s is under development, some options don't work.\n",
-		cmdname, cmdname);
+		    "Usage:  %s [options] <path>\n"
+		    "Options:\n"
+		    "  -h, --help       A short option summary\n"
+		    "  -v, --version    Print version information and exit\n"
+		    "  -r, --recursive  Recursively remove sub directories\n"
+		    "  -f, --force      Do not prompt prior to removing files\n"
+		    "  -s, --safe       Stop if directories change during removal\n\n"
+		    "Currently, %s is under development, some options don't work.\n",
+		    cmdname, cmdname);
 	}
 	return;
 }
@@ -249,7 +254,7 @@ int cmd_rm(char **argv)
 
 	if (argc < 2) {
 		cli_error(CL_EFAIL,
-			"%s: insufficient arguments. Try %s --help", cmdname, cmdname);
+		    "%s: insufficient arguments. Try %s --help", cmdname, cmdname);
 		return CMD_FAILURE;
 	}
 
@@ -287,7 +292,7 @@ int cmd_rm(char **argv)
 
 	if ((unsigned) optind == argc) {
 		cli_error(CL_EFAIL,
-			"%s: insufficient arguments. Try %s --help", cmdname, cmdname);
+		    "%s: insufficient arguments. Try %s --help", cmdname, cmdname);
 		rm_end(&rm);
 		return CMD_FAILURE;
 	}
@@ -311,9 +316,9 @@ int cmd_rm(char **argv)
 			ret += rm_single(buff);
 			break;
 		case RM_DIR:
-			if (! rm.recursive) {
+			if (!rm.recursive) {
 				printf("%s is a directory, use -r to remove it.\n", buff);
-				ret ++;
+				ret++;
 			} else {
 				ret += rm_recursive(buff);
 			}

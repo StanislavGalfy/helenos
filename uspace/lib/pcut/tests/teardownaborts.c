@@ -30,15 +30,17 @@
 #include <pcut/pcut.h>
 #include <stdlib.h>
 
-PCUT_INIT
+PCUT_INIT;
 
-PCUT_TEST_AFTER {
+PCUT_TEST_AFTER
+{
 	abort();
 }
 
-PCUT_TEST(print_and_fail) {
+PCUT_TEST(print_and_fail)
+{
 	printf("Tear-down will cause null pointer access...\n");
 	PCUT_ASSERT_NOT_NULL(NULL);
 }
 
-PCUT_MAIN()
+PCUT_MAIN();

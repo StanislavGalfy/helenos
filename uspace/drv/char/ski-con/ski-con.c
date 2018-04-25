@@ -49,7 +49,7 @@
 
 static errno_t ski_con_fibril(void *arg);
 static int32_t ski_con_getchar(void);
-static void ski_con_connection(ipc_callid_t, ipc_call_t *, void *);
+static void ski_con_connection(cap_call_handle_t, ipc_call_t *, void *);
 
 static errno_t ski_con_read(chardev_srv_t *, void *, size_t, size_t *);
 static errno_t ski_con_write(chardev_srv_t *, const void *, size_t, size_t *);
@@ -133,8 +133,8 @@ static errno_t ski_con_fibril(void *arg)
 	ski_con_t *con = (ski_con_t *) arg;
 	errno_t rc;
 
-	while (1) {
-		while (1) {
+	while (true) {
+		while (true) {
 			c = ski_con_getchar();
 			if (c == 0)
 				break;
@@ -168,13 +168,13 @@ static int32_t ski_con_getchar(void)
 
 #ifdef UARCH_ia64
 	asm volatile (
-		"mov r15 = %1\n"
-		"break 0x80000;;\n"	/* modifies r8 */
-		"mov %0 = r8;;\n"
+	    "mov r15 = %1\n"
+	    "break 0x80000;;\n"	/* modifies r8 */
+	    "mov %0 = r8;;\n"
 
-		: "=r" (ch)
-		: "i" (SKI_GETCHAR)
-		: "r15", "r8"
+	    : "=r" (ch)
+	    : "i" (SKI_GETCHAR)
+	    : "r15", "r8"
 	);
 #else
 	ch = 0;
@@ -198,12 +198,12 @@ static void ski_con_putchar(ski_con_t *con, char ch)
 
 #ifdef UARCH_ia64
 	asm volatile (
-		"mov r15 = %0\n"
-		"mov r32 = %1\n"   /* r32 is in0 */
-		"break 0x80000\n"  /* modifies r8 */
-		:
-		: "i" (SKI_PUTCHAR), "r" (ch)
-		: "r15", "in0", "r8"
+	    "mov r15 = %0\n"
+	    "mov r32 = %1\n"   /* r32 is in0 */
+	    "break 0x80000\n"  /* modifies r8 */
+	    :
+	    : "i" (SKI_PUTCHAR), "r" (ch)
+	    : "r15", "in0", "r8"
 	);
 #else
 	(void) ch;
@@ -254,13 +254,13 @@ static errno_t ski_con_write(chardev_srv_t *srv, const void *data, size_t size,
 }
 
 /** Character device connection handler. */
-static void ski_con_connection(ipc_callid_t iid, ipc_call_t *icall,
+static void ski_con_connection(cap_call_handle_t icall_handle, ipc_call_t *icall,
     void *arg)
 {
 	ski_con_t *con = (ski_con_t *) ddf_dev_data_get(
 	    ddf_fun_get_dev((ddf_fun_t *) arg));
 
-	chardev_conn(iid, icall, &con->cds);
+	chardev_conn(icall_handle, icall, &con->cds);
 }
 
 /** @}

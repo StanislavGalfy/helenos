@@ -35,19 +35,18 @@
 
 #include <macros.h>
 #include <stdlib.h>
-#include <str.h>
 
 #include "audio_data.h"
 #include "log.h"
 
 /**
  * Create reference counted buffer out of ordinary data buffer.
- * @param data audio buffer
+ * @param data audio buffer. The memory passed will be freed eventually.
  * @param size Size of the @p data buffer.
- * @param fomart audio data format.
+ * @param format audio data format.
  * @return pointer to valid audio data structure, NULL on failure.
  */
-audio_data_t *audio_data_create(const void *data, size_t size,
+audio_data_t *audio_data_create(void *data, size_t size,
     pcm_format_t format)
 {
 	audio_data_t *adata = malloc(sizeof(audio_data_t) + size);
@@ -56,8 +55,7 @@ audio_data_t *audio_data_create(const void *data, size_t size,
 		if (overflow)
 			log_warning("Data not a multiple of frame size, "
 			    "clipping.");
-		uint8_t *d = ((uint8_t *)adata) + offsetof(audio_data_t, data);
-		memcpy(d, data, size);
+		adata->data = data;
 		adata->size = size - overflow;
 		adata->format = format;
 		atomic_set(&adata->refcount, 1);
@@ -86,6 +84,7 @@ void audio_data_unref(audio_data_t *adata)
 	assert(atomic_get(&adata->refcount) > 0);
 	atomic_count_t refc = atomic_predec(&adata->refcount);
 	if (refc == 0) {
+		free(adata->data);
 		free(adata);
 	}
 }
@@ -103,7 +102,7 @@ typedef struct {
  * @param l link
  * @return valid pointer to data link structure, NULL on failure.
  */
-static inline audio_data_link_t * audio_data_link_list_instance(link_t *l)
+static inline audio_data_link_t *audio_data_link_list_instance(link_t *l)
 {
 	return l ? list_get_instance(l, audio_data_link_t, link) : NULL;
 }
@@ -144,7 +143,7 @@ static void audio_data_link_destroy(audio_data_link_t *link)
  * @param alink audio data link
  * @return pointer to the beginning of data buffer.
  */
-static inline const void * audio_data_link_start(audio_data_link_t *alink)
+static inline const void *audio_data_link_start(audio_data_link_t *alink)
 {
 	assert(alink);
 	assert(alink->adata);

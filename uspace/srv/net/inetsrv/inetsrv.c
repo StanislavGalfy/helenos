@@ -65,7 +65,7 @@
 
 static inet_naddr_t solicited_node_mask = {
 	.version = ip_v6,
-	.addr6 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0xff, 0, 0, 0},
+	.addr6 = { 0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0xff, 0, 0, 0 },
 	.prefix = 104
 };
 
@@ -86,13 +86,13 @@ static inet_addr_t broadcast4_all_hosts = {
 
 static inet_addr_t multicast_all_nodes = {
 	.version = ip_v6,
-	.addr6 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}
+	.addr6 = { 0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01 }
 };
 
 static FIBRIL_MUTEX_INITIALIZE(client_list_lock);
 static LIST_INITIALIZE(client_list);
 
-static void inet_default_conn(ipc_callid_t, ipc_call_t *, void *);
+static void inet_default_conn(cap_call_handle_t, ipc_call_t *, void *);
 
 static errno_t inet_init(void)
 {
@@ -148,19 +148,19 @@ static errno_t inet_init(void)
 	return EOK;
 }
 
-static void inet_callback_create_srv(inet_client_t *client, ipc_callid_t callid,
+static void inet_callback_create_srv(inet_client_t *client, cap_call_handle_t chandle,
     ipc_call_t *call)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_callback_create_srv()");
 
 	async_sess_t *sess = async_callback_receive(EXCHANGE_SERIALIZE);
 	if (sess == NULL) {
-		async_answer_0(callid, ENOMEM);
+		async_answer_0(chandle, ENOMEM);
 		return;
 	}
 
 	client->sess = sess;
-	async_answer_0(callid, EOK);
+	async_answer_0(chandle, EOK);
 }
 
 static errno_t inet_find_dir(inet_addr_t *src, inet_addr_t *dest, uint8_t tos,
@@ -210,7 +210,7 @@ errno_t inet_route_packet(inet_dgram_t *dgram, uint8_t proto, uint8_t ttl,
                         return ENOENT;
 
 		if (dgram->src.version != ip_v4 ||
-			dgram->dest.version != ip_v4)
+		    dgram->dest.version != ip_v4)
 			return EINVAL;
 
 		return inet_link_send_dgram(ilink, dgram->src.addr,
@@ -259,64 +259,64 @@ errno_t inet_get_srcaddr(inet_addr_t *remote, uint8_t tos, inet_addr_t *local)
 	return EOK;
 }
 
-static void inet_get_srcaddr_srv(inet_client_t *client, ipc_callid_t iid,
+static void inet_get_srcaddr_srv(inet_client_t *client, cap_call_handle_t icall_handle,
     ipc_call_t *icall)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_get_srcaddr_srv()");
 
 	uint8_t tos = IPC_GET_ARG1(*icall);
 
-	ipc_callid_t callid;
+	cap_call_handle_t chandle;
 	size_t size;
-	if (!async_data_write_receive(&callid, &size)) {
-		async_answer_0(callid, EREFUSED);
-		async_answer_0(iid, EREFUSED);
+	if (!async_data_write_receive(&chandle, &size)) {
+		async_answer_0(chandle, EREFUSED);
+		async_answer_0(icall_handle, EREFUSED);
 		return;
 	}
 
 	if (size != sizeof(inet_addr_t)) {
-		async_answer_0(callid, EINVAL);
-		async_answer_0(iid, EINVAL);
+		async_answer_0(chandle, EINVAL);
+		async_answer_0(icall_handle, EINVAL);
 		return;
 	}
 
 	inet_addr_t remote;
-	errno_t rc = async_data_write_finalize(callid, &remote, size);
+	errno_t rc = async_data_write_finalize(chandle, &remote, size);
 	if (rc != EOK) {
-		async_answer_0(callid, rc);
-		async_answer_0(iid, rc);
+		async_answer_0(chandle, rc);
+		async_answer_0(icall_handle, rc);
 	}
 
 	inet_addr_t local;
 	rc = inet_get_srcaddr(&remote, tos, &local);
 	if (rc != EOK) {
-		async_answer_0(iid, rc);
+		async_answer_0(icall_handle, rc);
 		return;
 	}
 
-	if (!async_data_read_receive(&callid, &size)) {
-		async_answer_0(callid, EREFUSED);
-		async_answer_0(iid, EREFUSED);
+	if (!async_data_read_receive(&chandle, &size)) {
+		async_answer_0(chandle, EREFUSED);
+		async_answer_0(icall_handle, EREFUSED);
 		return;
 	}
 
 	if (size != sizeof(inet_addr_t)) {
-		async_answer_0(callid, EINVAL);
-		async_answer_0(iid, EINVAL);
+		async_answer_0(chandle, EINVAL);
+		async_answer_0(icall_handle, EINVAL);
 		return;
 	}
 
-	rc = async_data_read_finalize(callid, &local, size);
+	rc = async_data_read_finalize(chandle, &local, size);
 	if (rc != EOK) {
-		async_answer_0(callid, rc);
-		async_answer_0(iid, rc);
+		async_answer_0(chandle, rc);
+		async_answer_0(icall_handle, rc);
 		return;
 	}
 
-	async_answer_0(iid, rc);
+	async_answer_0(icall_handle, rc);
 }
 
-static void inet_send_srv(inet_client_t *client, ipc_callid_t iid,
+static void inet_send_srv(inet_client_t *client, cap_call_handle_t icall_handle,
     ipc_call_t *icall)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_send_srv()");
@@ -329,58 +329,58 @@ static void inet_send_srv(inet_client_t *client, ipc_callid_t iid,
 	uint8_t ttl = IPC_GET_ARG3(*icall);
 	int df = IPC_GET_ARG4(*icall);
 
-	ipc_callid_t callid;
+	cap_call_handle_t chandle;
 	size_t size;
-	if (!async_data_write_receive(&callid, &size)) {
-		async_answer_0(callid, EREFUSED);
-		async_answer_0(iid, EREFUSED);
+	if (!async_data_write_receive(&chandle, &size)) {
+		async_answer_0(chandle, EREFUSED);
+		async_answer_0(icall_handle, EREFUSED);
 		return;
 	}
 
 	if (size != sizeof(inet_addr_t)) {
-		async_answer_0(callid, EINVAL);
-		async_answer_0(iid, EINVAL);
+		async_answer_0(chandle, EINVAL);
+		async_answer_0(icall_handle, EINVAL);
 		return;
 	}
 
-	errno_t rc = async_data_write_finalize(callid, &dgram.src, size);
+	errno_t rc = async_data_write_finalize(chandle, &dgram.src, size);
 	if (rc != EOK) {
-		async_answer_0(callid, rc);
-		async_answer_0(iid, rc);
+		async_answer_0(chandle, rc);
+		async_answer_0(icall_handle, rc);
 	}
 
-	if (!async_data_write_receive(&callid, &size)) {
-		async_answer_0(callid, EREFUSED);
-		async_answer_0(iid, EREFUSED);
+	if (!async_data_write_receive(&chandle, &size)) {
+		async_answer_0(chandle, EREFUSED);
+		async_answer_0(icall_handle, EREFUSED);
 		return;
 	}
 
 	if (size != sizeof(inet_addr_t)) {
-		async_answer_0(callid, EINVAL);
-		async_answer_0(iid, EINVAL);
+		async_answer_0(chandle, EINVAL);
+		async_answer_0(icall_handle, EINVAL);
 		return;
 	}
 
-	rc = async_data_write_finalize(callid, &dgram.dest, size);
+	rc = async_data_write_finalize(chandle, &dgram.dest, size);
 	if (rc != EOK) {
-		async_answer_0(callid, rc);
-		async_answer_0(iid, rc);
+		async_answer_0(chandle, rc);
+		async_answer_0(icall_handle, rc);
 	}
 
 	rc = async_data_write_accept(&dgram.data, false, 0, 0, 0,
 	    &dgram.size);
 	if (rc != EOK) {
-		async_answer_0(iid, rc);
+		async_answer_0(icall_handle, rc);
 		return;
 	}
 
 	rc = inet_send(client, &dgram, client->protocol, ttl, df);
 
 	free(dgram.data);
-	async_answer_0(iid, rc);
+	async_answer_0(icall_handle, rc);
 }
 
-static void inet_set_proto_srv(inet_client_t *client, ipc_callid_t callid,
+static void inet_set_proto_srv(inet_client_t *client, cap_call_handle_t chandle,
     ipc_call_t *call)
 {
 	sysarg_t proto;
@@ -389,12 +389,12 @@ static void inet_set_proto_srv(inet_client_t *client, ipc_callid_t callid,
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_set_proto_srv(%lu)", (unsigned long) proto);
 
 	if (proto > UINT8_MAX) {
-		async_answer_0(callid, EINVAL);
+		async_answer_0(chandle, EINVAL);
 		return;
 	}
 
 	client->protocol = proto;
-	async_answer_0(callid, EOK);
+	async_answer_0(chandle, EOK);
 }
 
 static void inet_client_init(inet_client_t *client)
@@ -416,43 +416,43 @@ static void inet_client_fini(inet_client_t *client)
 	fibril_mutex_unlock(&client_list_lock);
 }
 
-static void inet_default_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
+static void inet_default_conn(cap_call_handle_t icall_handle, ipc_call_t *icall, void *arg)
 {
 	inet_client_t client;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inet_default_conn()");
 
 	/* Accept the connection */
-	async_answer_0(iid, EOK);
+	async_answer_0(icall_handle, EOK);
 
 	inet_client_init(&client);
 
 	while (true) {
 		ipc_call_t call;
-		ipc_callid_t callid = async_get_call(&call);
+		cap_call_handle_t chandle = async_get_call(&call);
 		sysarg_t method = IPC_GET_IMETHOD(call);
 
 		if (!method) {
 			/* The other side has hung up */
-			async_answer_0(callid, EOK);
+			async_answer_0(chandle, EOK);
 			return;
 		}
 
 		switch (method) {
 		case INET_CALLBACK_CREATE:
-			inet_callback_create_srv(&client, callid, &call);
+			inet_callback_create_srv(&client, chandle, &call);
 			break;
 		case INET_GET_SRCADDR:
-			inet_get_srcaddr_srv(&client, callid, &call);
+			inet_get_srcaddr_srv(&client, chandle, &call);
 			break;
 		case INET_SEND:
-			inet_send_srv(&client, callid, &call);
+			inet_send_srv(&client, chandle, &call);
 			break;
 		case INET_SET_PROTO:
-			inet_set_proto_srv(&client, callid, &call);
+			inet_set_proto_srv(&client, chandle, &call);
 			break;
 		default:
-			async_answer_0(callid, EINVAL);
+			async_answer_0(chandle, EINVAL);
 		}
 	}
 

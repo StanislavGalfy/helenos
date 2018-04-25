@@ -42,6 +42,7 @@
 #include <usb/hid/usages/core.h>
 #include <errno.h>
 #include <async.h>
+#include <stdbool.h>
 #include <str_error.h>
 #include <ipc/mouseev.h>
 #include <io/console.h>
@@ -54,7 +55,7 @@
 
 #define NAME "mouse"
 
-static void default_connection_handler(ddf_fun_t *, ipc_callid_t, ipc_call_t *);
+static void default_connection_handler(ddf_fun_t *, cap_call_handle_t, ipc_call_t *);
 
 static ddf_dev_ops_t ops = { .default_handler = default_connection_handler };
 
@@ -108,18 +109,19 @@ static const uint8_t USB_MOUSE_BOOT_REPORT_DESCRIPTOR[] = {
 
 /** Default handler for IPC methods not handled by DDF.
  *
- * @param fun Device function handling the call.
- * @param icallid Call id.
- * @param icall Call data.
+ * @param fun           Device function handling the call.
+ * @param icall_handle  Call handle.
+ * @param icall         Call data.
  */
-static void default_connection_handler(ddf_fun_t *fun,
-    ipc_callid_t icallid, ipc_call_t *icall)
+static void
+default_connection_handler(ddf_fun_t *fun, cap_call_handle_t icall_handle,
+    ipc_call_t *icall)
 {
 	usb_mouse_t *mouse_dev = ddf_fun_data_get(fun);
 
 	if (mouse_dev == NULL) {
 		usb_log_debug("%s: Missing parameters.", __FUNCTION__);
-		async_answer_0(icallid, EINVAL);
+		async_answer_0(icall_handle, EINVAL);
 		return;
 	}
 
@@ -134,16 +136,16 @@ static void default_connection_handler(ddf_fun_t *fun,
 			mouse_dev->mouse_sess = sess;
 			usb_log_debug("Console session to %s set ok (%p).",
 			    ddf_fun_get_name(fun), sess);
-			async_answer_0(icallid, EOK);
+			async_answer_0(icall_handle, EOK);
 		} else {
 			usb_log_error("Console session to %s already set.",
 			    ddf_fun_get_name(fun));
-			async_answer_0(icallid, ELIMIT);
+			async_answer_0(icall_handle, ELIMIT);
 			async_hangup(sess);
 		}
 	} else {
 		usb_log_debug("%s: Invalid function.", __FUNCTION__);
-		async_answer_0(icallid, EINVAL);
+		async_answer_0(icall_handle, EINVAL);
 	}
 }
 
@@ -181,7 +183,7 @@ static void usb_mouse_process_report(usb_hid_dev_t *hid_dev,
 	const usb_hid_report_field_t *move_y = get_mouse_axis_move_field(
 	    hid_dev->report_id, &hid_dev->report,
 	    USB_HIDUT_USAGE_GENERIC_DESKTOP_Y);
-	const usb_hid_report_field_t *wheel= get_mouse_axis_move_field(
+	const usb_hid_report_field_t *wheel = get_mouse_axis_move_field(
 	    hid_dev->report_id, &hid_dev->report,
 	    USB_HIDUT_USAGE_GENERIC_DESKTOP_WHEEL);
 
@@ -229,7 +231,7 @@ static void usb_mouse_process_report(usb_hid_dev_t *hid_dev,
 		return;
 	}
 	errno_t ret =
-	   usb_hid_report_path_append_item(path, USB_HIDUT_PAGE_BUTTON, 0);
+	    usb_hid_report_path_append_item(path, USB_HIDUT_PAGE_BUTTON, 0);
 	if (ret != EOK) {
 		usb_hid_report_path_free(path);
 		usb_log_warning("Failed to add buttons to report path.");
@@ -238,8 +240,8 @@ static void usb_mouse_process_report(usb_hid_dev_t *hid_dev,
 	usb_hid_report_path_set_report_id(path, hid_dev->report_id);
 
 	usb_hid_report_field_t *field = usb_hid_report_get_sibling(
-	    &hid_dev->report, NULL, path, USB_HID_PATH_COMPARE_END
-	    | USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY, USB_HID_REPORT_TYPE_INPUT);
+	    &hid_dev->report, NULL, path, USB_HID_PATH_COMPARE_END |
+	    USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY, USB_HID_REPORT_TYPE_INPUT);
 
 	while (field != NULL) {
 		usb_log_debug2(NAME " VALUE(%X) USAGE(%X)", field->value,
@@ -260,8 +262,8 @@ static void usb_mouse_process_report(usb_hid_dev_t *hid_dev,
 		}
 
 		field = usb_hid_report_get_sibling(
-		    &hid_dev->report, field, path, USB_HID_PATH_COMPARE_END
-		    | USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
+		    &hid_dev->report, field, path, USB_HID_PATH_COMPARE_END |
+		    USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
 		    USB_HID_REPORT_TYPE_INPUT);
 	}
 
@@ -297,7 +299,7 @@ static size_t usb_mouse_get_highest_button(usb_hid_report_t *report, uint8_t rep
 	usb_hid_report_field_t *field = NULL;
 
 	/* Break from within. */
-	while (1) {
+	while (true) {
 		field = usb_hid_report_get_sibling(
 		    report, field, path,
 		    USB_HID_PATH_COMPARE_END | USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,

@@ -76,7 +76,7 @@ static void print_deadlock(fibril_owner_info_t *oi)
 		    context_get_fp(&oi->owned_by->ctx),
 		    context_get_pc(&oi->owned_by->ctx));
 		printf("Fibril %p waits for primitive %p.\n",
-		     oi->owned_by, oi->owned_by->waits_for);
+		    oi->owned_by, oi->owned_by->waits_for);
 		oi = oi->owned_by->waits_for;
 	}
 }

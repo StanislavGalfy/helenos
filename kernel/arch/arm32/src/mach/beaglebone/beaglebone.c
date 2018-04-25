@@ -46,6 +46,7 @@
 #include <interrupt.h>
 #include <ddi/ddi.h>
 #include <mm/km.h>
+#include <stdbool.h>
 
 #define BBONE_MEMORY_START       0x80000000      /* physical */
 #define BBONE_MEMORY_SIZE        0x10000000      /* 256 MB */
@@ -136,7 +137,7 @@ static void bbone_timer_irq_start(void)
 	am335x_clock_module_enable(bbone.cm_per_addr, DMTIMER2);
 	/* Select the SYSCLK as the clock source for the dmtimer2 module */
 	am335x_clock_source_select(bbone.cm_dpll_addr, DMTIMER2,
-	   CLK_SRC_M_OSC);
+	    CLK_SRC_M_OSC);
 	/* Initialize the DMTIMER2 */
 	if (am335x_ctrl_module_clock_freq_get(bbone.ctrl_module,
 	    &sysclk_freq) != EOK) {
@@ -158,7 +159,8 @@ static void bbone_timer_irq_start(void)
 
 static void bbone_cpu_halt(void)
 {
-	while (1);
+	while (true)
+		;
 }
 
 /** Get extents of available memory.

@@ -61,9 +61,9 @@
  * Interrupt and exception dispatching.
  */
 
-void (* disable_irqs_function)(uint16_t irqmask) = NULL;
-void (* enable_irqs_function)(uint16_t irqmask) = NULL;
-void (* eoi_function)(void) = NULL;
+void (*disable_irqs_function)(uint16_t irqmask) = NULL;
+void (*enable_irqs_function)(uint16_t irqmask) = NULL;
+void (*eoi_function)(void) = NULL;
 const char *irqs_info = NULL;
 
 void istate_decode(istate_t *istate)
@@ -84,7 +84,7 @@ void istate_decode(istate_t *istate)
 	    istate->eax, istate->ebx, istate->ecx, istate->edx);
 
 	printf("esi=%0#10" PRIx32 "\tedi=%0#10" PRIx32 "\t"
-	    "ebp=%0#10" PRIx32 "\tesp=%0#10" PRIxn "\n",
+	    "ebp=%0#10" PRIx32 "\tesp=%0#10" PRIx32 "\n",
 	    istate->esi, istate->edi, istate->ebp,
 	    istate_from_uspace(istate) ? istate->esp :
 	    (uint32_t) &istate->esp);
@@ -145,8 +145,8 @@ static void simd_fp_exception(unsigned int n __attribute__((unused)), istate_t *
 {
 	uint32_t mxcsr;
 	asm volatile (
-		"stmxcsr %[mxcsr]\n"
-		: [mxcsr] "=m" (mxcsr)
+	    "stmxcsr %[mxcsr]\n"
+	    : [mxcsr] "=m" (mxcsr)
 	);
 
 	fault_if_from_uspace(istate, "SIMD FP exception(19), MXCSR=%#0" PRIx32 ".",

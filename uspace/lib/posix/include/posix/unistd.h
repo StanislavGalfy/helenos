@@ -49,7 +49,7 @@
 
 extern char *optarg;
 extern int optind, opterr, optopt;
-extern int getopt(int, char * const [], const char *);
+extern int getopt(int, char *const [], const char *);
 
 /* Environment */
 extern char **environ;

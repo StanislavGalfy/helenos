@@ -68,9 +68,9 @@ void help_cmd_printf(unsigned int level)
  * @param ch  formatted flag.
  * @param arg string with data to print.
  */
-static int print_arg(wchar_t ch, const char* arg)
+static int print_arg(wchar_t ch, const char *arg)
 {
-	switch(ch) {
+	switch (ch) {
 	case 'd':
 		printf("%d", (int)(strtol(arg, NULL, 10)));
 		break;
@@ -95,7 +95,7 @@ static int print_arg(wchar_t ch, const char* arg)
  */
 static int process_ctl(wchar_t ch)
 {
-	switch(ch) {
+	switch (ch) {
 	case 'n':
 		printf("\n");
 		break;
@@ -119,14 +119,16 @@ static int process_ctl(wchar_t ch)
 int cmd_printf(char **argv)
 {
 	unsigned int argc;
-	char* fmt;
+	char *fmt;
 	size_t pos, fmt_sz;
 	wchar_t ch;
 	bool esc_flag = false;
 	unsigned int carg;     // Current argument
 
 	/* Count the arguments */
-	for (argc = 0; argv[argc] != NULL; argc ++);
+	argc = 0;
+	while (argv[argc] != NULL)
+		argc++;
 
 	if (argc < 2) {
 		printf("Usage:  %s FORMAT [ARGS ...] \n", cmdname);
@@ -139,7 +141,7 @@ int cmd_printf(char **argv)
 	carg = 2;
 
 	while ((ch = str_decode(fmt, &pos, fmt_sz))) {
-		switch(ch) {
+		switch (ch) {
 
 		case '\\':
 			if (esc_flag)

@@ -117,7 +117,7 @@ int user_page_fault(as_area_t *area, uintptr_t upage, pf_access_t access)
 
 	as_area_pager_info_t *pager_info = &area->backend_data.pager_info;
 
-	ipc_data_t data = {};
+	ipc_data_t data = { };
 	IPC_SET_IMETHOD(data, IPC_M_PAGE_IN);
 	IPC_SET_ARG1(data, upage - area->base);
 	IPC_SET_ARG2(data, PAGE_SIZE);
@@ -130,7 +130,7 @@ int user_page_fault(as_area_t *area, uintptr_t upage, pf_access_t access)
 	if (rc != EOK) {
 		log(LF_USPACE, LVL_FATAL,
 		    "Page-in request for page %#" PRIxPTR
-		    " at pager %d failed with error %s.",
+		    " at pager %p failed with error %s.",
 		    upage, pager_info->pager, str_error_name(rc));
 		return AS_PF_FAULT;
 	}

@@ -41,7 +41,7 @@
 
 #include "sun4v-con.h"
 
-static void sun4v_con_connection(ipc_callid_t, ipc_call_t *, void *);
+static void sun4v_con_connection(cap_call_handle_t, ipc_call_t *, void *);
 
 #define POLL_INTERVAL  10000
 
@@ -59,8 +59,9 @@ static void sun4v_con_putchar(sun4v_con_t *con, uint8_t data)
 		sun4v_con_putchar(con, '\r');
 
 	while (con->output_buffer->write_ptr ==
-	    (con->output_buffer->read_ptr + OUTPUT_BUFFER_SIZE - 1)
-	    % OUTPUT_BUFFER_SIZE);
+	    (con->output_buffer->read_ptr + OUTPUT_BUFFER_SIZE - 1) %
+	    OUTPUT_BUFFER_SIZE)
+		;
 
 	con->output_buffer->data[con->output_buffer->write_ptr] = data;
 	con->output_buffer->write_ptr =
@@ -179,13 +180,13 @@ static errno_t sun4v_con_write(chardev_srv_t *srv, const void *data, size_t size
 }
 
 /** Character device connection handler. */
-static void sun4v_con_connection(ipc_callid_t iid, ipc_call_t *icall,
+static void sun4v_con_connection(cap_call_handle_t icall_handle, ipc_call_t *icall,
     void *arg)
 {
 	sun4v_con_t *con = (sun4v_con_t *) ddf_dev_data_get(
 	    ddf_fun_get_dev((ddf_fun_t *) arg));
 
-	chardev_conn(iid, icall, &con->cds);
+	chardev_conn(icall_handle, icall, &con->cds);
 }
 
 /** @}

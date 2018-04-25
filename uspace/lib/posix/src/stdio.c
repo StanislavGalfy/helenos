@@ -62,7 +62,7 @@ char *ctermid(char *s)
 	/* Currently always returns an error value (empty string). */
 	// TODO: return a real terminal path
 
-	static char dummy_path[L_ctermid] = {'\0'};
+	static char dummy_path[L_ctermid] = { '\0' };
 
 	if (s == NULL) {
 		return dummy_path;
@@ -342,7 +342,7 @@ int sprintf(char *s, const char *restrict format, ...)
  */
 int vsprintf(char *s, const char *restrict format, va_list ap)
 {
-	return vsnprintf(s, STR_NO_LIMIT, format, ap);
+	return vsnprintf(s, INT_MAX, format, ap);
 }
 
 /**

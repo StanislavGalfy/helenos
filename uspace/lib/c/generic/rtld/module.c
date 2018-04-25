@@ -34,6 +34,7 @@
  * @file
  */
 
+#include <align.h>
 #include <adt/list.h>
 #include <elf/elf_load.h>
 #include <errno.h>
@@ -41,6 +42,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <str.h>
+#include <macros.h>
 
 #include <rtld/rtld.h>
 #include <rtld/rtld_debug.h>
@@ -69,10 +71,21 @@ errno_t module_create_static_exec(rtld_t *rtld, module_t **rmodule)
 	module->exec = true;
 	module->local = true;
 
-	module->tdata = &_tdata_start;
-	module->tdata_size = &_tdata_end - &_tdata_start;
-	module->tbss_size = &_tbss_end - &_tbss_start;
-	module->tls_align = (uintptr_t)&_tls_alignment;
+	const elf_segment_header_t *tls =
+	    elf_get_phdr(__executable_start, PT_TLS);
+
+	if (tls) {
+		uintptr_t bias = elf_get_bias(__executable_start);
+		module->tdata = (void *) (tls->p_vaddr + bias);
+		module->tdata_size = tls->p_filesz;
+		module->tbss_size = tls->p_memsz - tls->p_filesz;
+		module->tls_align = tls->p_align;
+	} else {
+		module->tdata = NULL;
+		module->tdata_size = 0;
+		module->tbss_size = 0;
+		module->tls_align = 1;
+	}
 
 	list_append(&module->modules_link, &rtld->modules);
 
@@ -90,7 +103,8 @@ void module_process_relocs(module_t *m)
 	DPRINTF("module_process_relocs('%s')\n", m->dyn.soname);
 
 	/* Do not relocate twice. */
-	if (m->relocated) return;
+	if (m->relocated)
+		return;
 
 	module_process_pre_arch(m);
 
@@ -245,7 +259,8 @@ void module_load_deps(module_t *m, mlflags_t flags)
 	n = 0;
 
 	while (dp->d_tag != DT_NULL) {
-		if (dp->d_tag == DT_NEEDED) ++n;
+		if (dp->d_tag == DT_NEEDED)
+			++n;
 		++dp;
 	}
 
@@ -317,24 +332,42 @@ void modules_process_relocs(rtld_t *rtld, module_t *start)
 void modules_process_tls(rtld_t *rtld)
 {
 #ifdef CONFIG_TLS_VARIANT_1
-	list_foreach(rtld->modules, modules_link, module_t, m) {
-		m->ioffs = rtld->tls_size;
-		list_append(&m->imodules_link, &rtmd->imodules);
-		rtld->tls_size += m->tdata_size + m->tbss_size;
-	}
-#else /* CONFIG_TLS_VARIANT_2 */
-	size_t offs;
+	rtld->tls_size = sizeof(tcb_t);
+	rtld->tls_align = _Alignof(tcb_t);
 
 	list_foreach(rtld->modules, modules_link, module_t, m) {
-		rtld->tls_size += m->tdata_size + m->tbss_size;
-	}
-
-	offs = 0;
-	list_foreach(rtld->modules, modules_link, module_t, m) {
-		offs += m->tdata_size + m->tbss_size;
-		m->ioffs = rtld->tls_size - offs;
 		list_append(&m->imodules_link, &rtld->imodules);
+		rtld->tls_align = max(rtld->tls_align, m->tls_align);
+
+		rtld->tls_size = ALIGN_UP(rtld->tls_size, m->tls_align);
+		m->tpoff = rtld->tls_size;
+		rtld->tls_size += m->tdata_size + m->tbss_size;
 	}
+
+#else
+	rtld->tls_size = 0;
+	rtld->tls_align = _Alignof(tcb_t);
+
+	list_foreach(rtld->modules, modules_link, module_t, m) {
+		list_append(&m->imodules_link, &rtld->imodules);
+		rtld->tls_align = max(rtld->tls_align, m->tls_align);
+
+		/* We are allocating spans "backwards", here,
+		 * as described in U. Drepper's paper.
+		 */
+		rtld->tls_size += m->tdata_size + m->tbss_size;
+		rtld->tls_size = ALIGN_UP(rtld->tls_size, m->tls_align);
+		m->tpoff = -(ptrdiff_t) rtld->tls_size;
+	}
+
+	/* We are in negative offsets. In order for the alignments to
+	 * be correct, "zero" offset (i.e. the total size) must be aligned
+	 * to the strictest alignment present.
+	 */
+	rtld->tls_size = ALIGN_UP(rtld->tls_size, rtld->tls_align);
+
+	/* Space for the TCB. */
+	rtld->tls_size += sizeof(tcb_t);
 #endif
 }
 

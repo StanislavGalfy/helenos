@@ -103,7 +103,7 @@ do { \
 static errno_t polling_ps2(void *);
 static errno_t polling_intellimouse(void *);
 static errno_t probe_intellimouse(ps2_mouse_t *, bool);
-static void default_connection_handler(ddf_fun_t *, ipc_callid_t, ipc_call_t *);
+static void default_connection_handler(ddf_fun_t *, cap_call_handle_t, ipc_call_t *);
 
 /** ps/2 mouse driver ops. */
 static ddf_dev_ops_t mouse_ops = {
@@ -164,7 +164,7 @@ errno_t ps2_mouse_init(ps2_mouse_t *mouse, ddf_dev_t *dev)
 	}
 
 	/* Probe IntelliMouse extensions. */
-	errno_t (*polling_f)(void*) = polling_ps2;
+	errno_t (*polling_f)(void *) = polling_ps2;
 	if (probe_intellimouse(mouse, false) == EOK) {
 		ddf_msg(LVL_NOTE, "Enabled IntelliMouse extensions");
 		polling_f = polling_intellimouse;
@@ -252,9 +252,9 @@ errno_t polling_ps2(void *arg)
 	ps2_mouse_t *mouse = (ps2_mouse_t *) arg;
 	errno_t rc;
 
-	bool buttons[PS2_BUTTON_COUNT] = {};
-	while (1) {
-		uint8_t packet[PS2_BUFSIZE] = {};
+	bool buttons[PS2_BUTTON_COUNT] = { };
+	while (true) {
+		uint8_t packet[PS2_BUFSIZE] = { };
 		rc = ps2_mouse_read_packet(mouse, packet, PS2_BUFSIZE);
 		if (rc != EOK)
 			continue;
@@ -304,9 +304,9 @@ static errno_t polling_intellimouse(void *arg)
 	ps2_mouse_t *mouse = (ps2_mouse_t *) arg;
 	errno_t rc;
 
-	bool buttons[INTELLIMOUSE_BUTTON_COUNT] = {};
-	while (1) {
-		uint8_t packet[INTELLIMOUSE_BUFSIZE] = {};
+	bool buttons[INTELLIMOUSE_BUTTON_COUNT] = { };
+	while (true) {
+		uint8_t packet[INTELLIMOUSE_BUFSIZE] = { };
 		rc = ps2_mouse_read_packet(mouse, packet, INTELLIMOUSE_BUFSIZE);
 		if (rc != EOK)
 			continue;
@@ -398,12 +398,12 @@ static errno_t probe_intellimouse(ps2_mouse_t *mouse, bool buttons)
 
 /** Default handler for IPC methods not handled by DDF.
  *
- * @param fun Device function handling the call.
- * @param icallid Call id.
- * @param icall Call data.
+ * @param fun           Device function handling the call.
+ * @param icall_handle  Call handle.
+ * @param icall         Call data.
  */
-void default_connection_handler(ddf_fun_t *fun,
-    ipc_callid_t icallid, ipc_call_t *icall)
+void default_connection_handler(ddf_fun_t *fun, cap_call_handle_t icall_handle,
+    ipc_call_t *icall)
 {
 	const sysarg_t method = IPC_GET_IMETHOD(*icall);
 	ps2_mouse_t *mouse = ddf_dev_data_get(ddf_fun_get_dev(fun));
@@ -418,21 +418,21 @@ void default_connection_handler(ddf_fun_t *fun,
 		if (sess == NULL) {
 			ddf_msg(LVL_WARN,
 			    "Failed creating client callback session");
-			async_answer_0(icallid, EAGAIN);
+			async_answer_0(icall_handle, EAGAIN);
 			break;
 		}
 		if (mouse->client_sess == NULL) {
 			mouse->client_sess = sess;
 			ddf_msg(LVL_DEBUG, "Set client session");
-			async_answer_0(icallid, EOK);
+			async_answer_0(icall_handle, EOK);
 		} else {
 			ddf_msg(LVL_ERROR, "Client session already set");
-			async_answer_0(icallid, ELIMIT);
+			async_answer_0(icall_handle, ELIMIT);
 		}
 		break;
 	default:
 		ddf_msg(LVL_ERROR, "Unknown method: %d.", (int)method);
-		async_answer_0(icallid, EINVAL);
+		async_answer_0(icall_handle, EINVAL);
 		break;
 	}
 }

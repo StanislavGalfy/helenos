@@ -71,7 +71,7 @@
 
 #include "../usbhid.h"
 
-static void default_connection_handler(ddf_fun_t *, ipc_callid_t, ipc_call_t *);
+static void default_connection_handler(ddf_fun_t *, cap_call_handle_t, ipc_call_t *);
 static ddf_dev_ops_t kbdops = { .default_handler = default_connection_handler };
 
 
@@ -155,12 +155,13 @@ typedef enum usb_kbd_flags {
  * session to it for later use by the driver to notify about key events.
  * KBDEV_SET_IND sets LED keyboard indicators.
  *
- * @param fun Device function handling the call.
- * @param icallid Call id.
- * @param icall Call data.
+ * @param fun           Device function handling the call.
+ * @param icall_handle  Call handle.
+ * @param icall         Call data.
  */
-static void default_connection_handler(ddf_fun_t *fun,
-    ipc_callid_t icallid, ipc_call_t *icall)
+static void
+default_connection_handler(ddf_fun_t *fun, cap_call_handle_t icall_handle,
+    ipc_call_t *icall)
 {
 	const sysarg_t method = IPC_GET_IMETHOD(*icall);
 	usb_kbd_t *kbd_dev = ddf_fun_data_get(fun);
@@ -170,7 +171,7 @@ static void default_connection_handler(ddf_fun_t *fun,
 	case KBDEV_SET_IND:
 		kbd_dev->mods = IPC_GET_ARG1(*icall);
 		usb_kbd_set_led(kbd_dev->hid_dev, kbd_dev);
-		async_answer_0(icallid, EOK);
+		async_answer_0(icall_handle, EOK);
 		break;
 	/* This might be ugly but async_callback_receive_start makes no
 	 * difference for incorrect call and malloc failure. */
@@ -180,24 +181,24 @@ static void default_connection_handler(ddf_fun_t *fun,
 		if (sess == NULL) {
 			usb_log_warning(
 			    "Failed to create start console session.\n");
-			async_answer_0(icallid, EAGAIN);
+			async_answer_0(icall_handle, EAGAIN);
 			break;
 		}
 		if (kbd_dev->client_sess == NULL) {
 			kbd_dev->client_sess = sess;
 			usb_log_debug("%s: OK", __FUNCTION__);
-			async_answer_0(icallid, EOK);
+			async_answer_0(icall_handle, EOK);
 		} else {
 			usb_log_error("%s: console session already set",
-			   __FUNCTION__);
-			async_answer_0(icallid, ELIMIT);
+			    __FUNCTION__);
+			async_answer_0(icall_handle, ELIMIT);
 		}
 		break;
 	default:
-			usb_log_error("%s: Unknown method: %d.",
-			    __FUNCTION__, (int) method);
-			async_answer_0(icallid, EINVAL);
-			break;
+		usb_log_error("%s: Unknown method: %d.",
+		    __FUNCTION__, (int) method);
+		async_answer_0(icall_handle, EINVAL);
+		break;
 	}
 
 }
@@ -234,24 +235,24 @@ static void usb_kbd_set_led(usb_hid_dev_t *hid_dev, usb_kbd_t *kbd_dev)
 
 	while (field != NULL) {
 
-		if ((field->usage == USB_HID_LED_NUM_LOCK)
-		    && (kbd_dev->mods & KM_NUM_LOCK)){
+		if ((field->usage == USB_HID_LED_NUM_LOCK) &&
+		    (kbd_dev->mods & KM_NUM_LOCK)) {
 			field->value = 1;
 		}
 
-		if ((field->usage == USB_HID_LED_CAPS_LOCK)
-		    && (kbd_dev->mods & KM_CAPS_LOCK)){
+		if ((field->usage == USB_HID_LED_CAPS_LOCK) &&
+		    (kbd_dev->mods & KM_CAPS_LOCK)) {
 			field->value = 1;
 		}
 
-		if ((field->usage == USB_HID_LED_SCROLL_LOCK)
-		    && (kbd_dev->mods & KM_SCROLL_LOCK)){
+		if ((field->usage == USB_HID_LED_SCROLL_LOCK) &&
+		    (kbd_dev->mods & KM_SCROLL_LOCK)) {
 			field->value = 1;
 		}
 
 		field = usb_hid_report_get_sibling(
 		    &hid_dev->report, field, kbd_dev->led_path,
-		USB_HID_PATH_COMPARE_END | USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
+		    USB_HID_PATH_COMPARE_END | USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
 		    USB_HID_REPORT_TYPE_OUTPUT);
 	}
 
@@ -267,7 +268,7 @@ static void usb_kbd_set_led(usb_hid_dev_t *hid_dev, usb_kbd_t *kbd_dev)
 
 	usb_log_debug("Output report buffer: %s",
 	    usb_debug_str_buffer(kbd_dev->output_buffer, kbd_dev->output_size,
-	        0));
+	    0));
 
 	rc = usbhid_req_set_report(
 	    usb_device_get_default_pipe(hid_dev->usb_dev),
@@ -306,9 +307,9 @@ void usb_kbd_push_ev(usb_kbd_t *kbd_dev, int type, unsigned key)
 
 static inline int usb_kbd_is_lock(unsigned int key_code)
 {
-	return (key_code == KC_NUM_LOCK
-	    || key_code == KC_SCROLL_LOCK
-	    || key_code == KC_CAPS_LOCK);
+	return (key_code == KC_NUM_LOCK ||
+	    key_code == KC_SCROLL_LOCK ||
+	    key_code == KC_CAPS_LOCK);
 }
 
 static size_t find_in_array_int32(int32_t val, int32_t *arr, size_t arr_size)
@@ -435,7 +436,7 @@ static void usb_kbd_process_data(usb_hid_dev_t *hid_dev, usb_kbd_t *kbd_dev)
 	}
 
 	errno_t ret =
-	   usb_hid_report_path_append_item(path, USB_HIDUT_PAGE_KEYBOARD, 0);
+	    usb_hid_report_path_append_item(path, USB_HIDUT_PAGE_KEYBOARD, 0);
 	if (ret != EOK) {
 		usb_log_error("Failed to append to hid/kbd report path.");
 		return;
@@ -459,16 +460,15 @@ static void usb_kbd_process_data(usb_hid_dev_t *hid_dev, usb_kbd_t *kbd_dev)
 		/* Save the key usage. */
 		if (field->value != 0) {
 			kbd_dev->keys[i] = field->usage;
-		}
-		else {
+		} else {
 			kbd_dev->keys[i] = 0;
 		}
 		usb_log_debug2("Saved %u. key usage %d", i, kbd_dev->keys[i]);
 
 		++i;
 		field = usb_hid_report_get_sibling(
-		    &hid_dev->report, field, path, USB_HID_PATH_COMPARE_END
-		        | USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
+		    &hid_dev->report, field, path, USB_HID_PATH_COMPARE_END |
+		    USB_HID_PATH_COMPARE_USAGE_PAGE_ONLY,
 		    USB_HID_REPORT_TYPE_INPUT);
 	}
 
@@ -740,7 +740,8 @@ void usb_kbd_destroy(usb_kbd_t *kbd_dev)
 	//assert(!fibril_mutex_is_locked((*kbd_dev)->repeat_mtx));
 	// FIXME - the fibril_mutex_is_locked may not cause
 	// fibril scheduling
-	while (fibril_mutex_is_locked(&kbd_dev->repeat_mtx)) {}
+	while (fibril_mutex_is_locked(&kbd_dev->repeat_mtx)) {
+	}
 
 	/* Free all buffers. */
 	free(kbd_dev->keys);

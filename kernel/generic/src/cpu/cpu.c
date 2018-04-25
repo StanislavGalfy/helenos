@@ -58,7 +58,8 @@ cpu_t *cpus;
  * Initialize kernel CPUs support.
  *
  */
-void cpu_init(void) {
+void cpu_init(void)
+{
 #ifdef CONFIG_SMP
 	if (config.cpu_active == 1) {
 #endif /* CONFIG_SMP */

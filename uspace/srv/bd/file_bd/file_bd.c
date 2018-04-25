@@ -67,7 +67,7 @@ static fibril_mutex_t dev_lock;
 
 static void print_usage(void);
 static errno_t file_bd_init(const char *fname);
-static void file_bd_connection(ipc_callid_t iid, ipc_call_t *icall, void *);
+static void file_bd_connection(cap_call_handle_t icall_handle, ipc_call_t *icall, void *);
 
 static errno_t file_bd_open(bd_srvs_t *, bd_srv_t *);
 static errno_t file_bd_close(bd_srv_t *);
@@ -96,7 +96,8 @@ int main(int argc, char **argv)
 
 	block_size = DEFAULT_BLOCK_SIZE;
 
-	++argv; --argc;
+	++argv;
+	--argc;
 	while (*argv != NULL && (*argv)[0] == '-') {
 		/* Option */
 		if (str_cmp(*argv, "-b") == 0) {
@@ -112,13 +113,15 @@ int main(int argc, char **argv)
 				print_usage();
 				return -1;
 			}
-			++argv; --argc;
+			++argv;
+			--argc;
 		} else {
 			printf("Invalid option '%s'.\n", *argv);
 			print_usage();
 			return -1;
 		}
-		++argv; --argc;
+		++argv;
+		--argc;
 	}
 
 	if (argc < 2) {
@@ -200,9 +203,9 @@ static errno_t file_bd_init(const char *fname)
 	return EOK;
 }
 
-static void file_bd_connection(ipc_callid_t iid, ipc_call_t *icall, void *arg)
+static void file_bd_connection(cap_call_handle_t icall_handle, ipc_call_t *icall, void *arg)
 {
-	bd_conn(iid, icall, &bd_srvs);
+	bd_conn(icall_handle, icall, &bd_srvs);
 }
 
 /** Open device. */

@@ -111,7 +111,7 @@ static bool task_done_walker(avltree_node_t *node, void *arg)
 		(*cnt)++;
 
 #ifdef CONFIG_DEBUG
-		printf("[%"PRIu64"] ", task->taskid);
+		printf("[%" PRIu64 "] ", task->taskid);
 #endif
 
 		task_kill_internal(task);
@@ -244,7 +244,7 @@ task_t *task_create(as_t *as, const char *name)
 
 	if ((ipc_box_0) &&
 	    (container_check(ipc_box_0->task->container, task->container))) {
-		cap_handle_t phone_handle;
+		cap_phone_handle_t phone_handle;
 		errno_t rc = phone_alloc(task, true, &phone_handle, NULL);
 		if (rc != EOK) {
 			task->as = NULL;

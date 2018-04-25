@@ -70,7 +70,7 @@ static driver_t sb_driver = {
  */
 int main(int argc, char *argv[])
 {
-	printf(NAME": HelenOS SB16 audio driver.\n");
+	printf(NAME ": HelenOS SB16 audio driver.\n");
 	ddf_log_init(NAME);
 	return ddf_driver_main(&sb_driver);
 }
@@ -92,7 +92,7 @@ static errno_t sb_add_device(ddf_dev_t *device)
 	const size_t irq_cmd_count = sb16_irq_code_size();
 	irq_cmd_t irq_cmds[irq_cmd_count];
 	irq_pio_range_t irq_ranges[1];
-	int irq_cap;
+	cap_irq_handle_t irq_cap;
 
 	sb16_t *soft_state = ddf_dev_data_alloc(device, sizeof(sb16_t));
 	errno_t rc = soft_state ? EOK : ENOMEM;
@@ -190,8 +190,8 @@ static errno_t sb_get_res(ddf_dev_t *device, addr_range_t **pp_sb_regs,
 
 	/* 1x IRQ, 1-2x DMA(8,16), 1-2x IO (MPU is separate). */
 	if (hw_res.irqs.count != 1 ||
-	   (hw_res.io_ranges.count != 1 && hw_res.io_ranges.count != 2) ||
-	   (hw_res.dma_channels.count != 1 && hw_res.dma_channels.count != 2)) {
+	    (hw_res.io_ranges.count != 1 && hw_res.io_ranges.count != 2) ||
+	    (hw_res.dma_channels.count != 1 && hw_res.dma_channels.count != 2)) {
 		hw_res_list_parsed_clean(&hw_res);
 		return EINVAL;
 	}
@@ -228,8 +228,8 @@ static errno_t sb_get_res(ddf_dev_t *device, addr_range_t **pp_sb_regs,
 			*pp_mpu_regs = NULL;
 	} else {
 		const int sb =
-		    (hw_res.io_ranges.ranges[0].size >= sizeof(sb16_regs_t))
-		        ? 0 : 1;
+		    (hw_res.io_ranges.ranges[0].size >= sizeof(sb16_regs_t)) ?
+		    0 : 1;
 		const int mpu = 1 - sb;
 		if (pp_sb_regs && *pp_sb_regs)
 			**pp_sb_regs = hw_res.io_ranges.ranges[sb];

@@ -43,7 +43,7 @@
 #include <as.h>
 #include <sys/time.h>
 #include <inttypes.h>
-
+#include <stdbool.h>
 #include <stdio.h>
 #include <macros.h>
 
@@ -57,10 +57,10 @@ typedef struct {
 	struct {
 		void *base;
 		size_t size;
-		void* write_ptr;
+		void *write_ptr;
 	} buffer;
 	pcm_format_t f;
-	FILE* source;
+	FILE *source;
 	volatile bool playing;
 	fibril_mutex_t mutex;
 	fibril_condvar_t cv;
@@ -89,40 +89,42 @@ static void playback_initialize(playback_t *pb, audio_pcm_sess_t *sess)
 
 /**
  * Fragment playback callback function.
- * @param iid IPC call id.
- * @param icall Pointer to the call structure
- * @param arg Argument, pointer to the playback helper function
+ *
+ * @param icall_handle  Call capability handle.
+ * @param icall         Pointer to the call structure
+ * @param arg           Argument, pointer to the playback helper function
  */
-static void device_event_callback(ipc_callid_t iid, ipc_call_t *icall, void* arg)
+static void device_event_callback(cap_call_handle_t icall_handle,
+    ipc_call_t *icall, void *arg)
 {
-	async_answer_0(iid, EOK);
+	async_answer_0(icall_handle, EOK);
 	playback_t *pb = arg;
 	const size_t fragment_size = pb->buffer.size / DEFAULT_FRAGMENTS;
-	while (1) {
+	while (true) {
 		ipc_call_t call;
-		ipc_callid_t callid = async_get_call(&call);
-		switch(IPC_GET_IMETHOD(call)) {
+		cap_call_handle_t chandle = async_get_call(&call);
+		switch (IPC_GET_IMETHOD(call)) {
 		case PCM_EVENT_PLAYBACK_STARTED:
 		case PCM_EVENT_FRAMES_PLAYED:
 			printf("%" PRIun " frames: ", IPC_GET_ARG1(call));
-			async_answer_0(callid, EOK);
+			async_answer_0(chandle, EOK);
 			break;
 		case PCM_EVENT_PLAYBACK_TERMINATED:
 			printf("Playback terminated\n");
 			fibril_mutex_lock(&pb->mutex);
 			pb->playing = false;
 			fibril_condvar_signal(&pb->cv);
-			async_answer_0(callid, EOK);
+			async_answer_0(chandle, EOK);
 			fibril_mutex_unlock(&pb->mutex);
 			return;
 		default:
 			printf("Unknown event %" PRIun ".\n", IPC_GET_IMETHOD(call));
-			async_answer_0(callid, ENOTSUP);
+			async_answer_0(chandle, ENOTSUP);
 			continue;
 
 		}
 		const size_t bytes = fread(pb->buffer.write_ptr,
-		   sizeof(uint8_t), fragment_size, pb->source);
+		    sizeof(uint8_t), fragment_size, pb->source);
 		printf("Copied from position %p size %zu/%zu\n",
 		    pb->buffer.write_ptr, bytes, fragment_size);
 		if (bytes == 0) {
@@ -257,7 +259,7 @@ static void play(playback_t *pb)
 	size_t pos = 0;
 	struct timeval time = { 0 };
 	getuptime(&time);
-	do {
+	while (true) {
 		size_t available = buffer_avail(pb, pos);
 		/* Writing might need wrap around the end,
 		 * read directly to device buffer */
@@ -294,7 +296,7 @@ static void play(playback_t *pb)
 			ret = audio_pcm_get_buffer_pos(pb->device, &pos);
 			if (ret != EOK) {
 				printf("Failed to update position indicator "
-				   "%s\n", str_error(ret));
+				    "%s\n", str_error(ret));
 			}
 		}
 		const size_t to_play = buffer_occupied(pb, pos);
@@ -302,8 +304,8 @@ static void play(playback_t *pb)
 		    pcm_format_size_to_usec(to_play, &pb->f);
 
 		/* Compute delay time */
-		const useconds_t real_delay = (usecs > work_time)
-		    ? usecs - work_time : 0;
+		const useconds_t real_delay = (usecs > work_time) ?
+		    usecs - work_time : 0;
 		DPRINTF("POS %zu: %u usecs (%u) to play %zu bytes.\n",
 		    pos, usecs, real_delay, to_play);
 		if (real_delay)
@@ -321,7 +323,7 @@ static void play(playback_t *pb)
 		if (available)
 			break;
 
-	} while (1);
+	}
 	audio_pcm_stop_playback_immediate(pb->device);
 }
 
@@ -353,7 +355,7 @@ int dplay(const char *device, const char *file)
 		goto close_session;
 	}
 
-	char* info = NULL;
+	char *info = NULL;
 	ret = audio_pcm_get_info_str(session, &info);
 	if (ret != EOK) {
 		printf("Failed to get PCM info: %s.\n", str_error(ret));

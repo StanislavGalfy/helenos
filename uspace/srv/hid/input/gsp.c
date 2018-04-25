@@ -50,6 +50,7 @@
 
 #include <adt/hash_table.h>
 #include <adt/hash.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "gsp.h"
@@ -118,11 +119,12 @@ int gsp_insert_defs(gsp_t *p, const int *defs)
 
 	dp = defs;
 
-	while (1) {
+	while (true) {
 		/* Read the output values. */
 		mods = *dp++;
 		key = *dp++;
-		if (key == 0) break;
+		if (key == 0)
+			break;
 
 		/* Insert one sequence. */
 		rc = gsp_insert_seq(p, dp, mods, key);
@@ -251,7 +253,8 @@ static gsp_trans_t *trans_lookup(gsp_t *p, int state, int input)
 	};
 
 	item = hash_table_find(&p->trans, &key);
-	if (item == NULL) return NULL;
+	if (item == NULL)
+		return NULL;
 
 	return hash_table_get_inst(item, gsp_trans_t, link);
 }

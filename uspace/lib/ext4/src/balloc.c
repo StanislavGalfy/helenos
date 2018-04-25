@@ -35,6 +35,7 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include "ext4/balloc.h"
 #include "ext4/bitmap.h"
@@ -273,7 +274,7 @@ uint32_t ext4_balloc_get_first_data_block_in_group(ext4_superblock_t *sb,
 	if (ext4_filesystem_blockaddr2group(sb, ibmap) != bg_ref->index)
 		ibmap = -1;
 
-	while (1) {
+	while (true) {
 		if (r == bbmap || r == ibmap)
 			r++;
 		else if (r >= itable && r < (itable + itable_sz))
@@ -500,7 +501,7 @@ goal_failed:
 			return rc;
 
 		free_blocks =
-		     ext4_block_group_get_free_blocks_count(bg_ref->block_group, sb);
+		    ext4_block_group_get_free_blocks_count(bg_ref->block_group, sb);
 		if (free_blocks == 0) {
 			/* This group has no free blocks */
 			goto next_group;
@@ -572,7 +573,7 @@ goal_failed:
 			return rc;
 		}
 
-next_group:
+	next_group:
 		rc = ext4_filesystem_put_block_group_ref(bg_ref);
 		if (rc != EOK)
 			return rc;

@@ -206,10 +206,10 @@ static void usage(void)
 	printf("Usage: " NAME " <service-name> <link-name>\n");
 }
 
-static void slip_client_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
+static void slip_client_conn(cap_call_handle_t icall_handle, ipc_call_t *icall, void *arg)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "slip_client_conn()");
-	iplink_conn(iid, icall, &slip_iplink);
+	iplink_conn(icall_handle, icall, &slip_iplink);
 }
 
 static uint8_t read_buffered(chardev_t *chardev)
@@ -291,7 +291,7 @@ static errno_t slip_recv_fibril(void *arg)
  		 * artificially empty SLIP datagram and life will go on.
  		 */
 
-pass:
+	pass:
 		rc = iplink_ev_recv(&slip_iplink, &sdu, ip_v4);
 		if (rc != EOK) {
 			log_msg(LOG_DEFAULT, LVL_ERROR,
@@ -381,8 +381,8 @@ static errno_t slip_init(const char *svcstr, const char *linkstr)
 	rc = loc_service_register(linkstr, &linksid);
 	if (rc != EOK) {
 		log_msg(LOG_DEFAULT, LVL_ERROR,
-		   "Failed to register service %s",
-		   linkstr);
+		    "Failed to register service %s",
+		    linkstr);
 		goto fail;
 	}
 

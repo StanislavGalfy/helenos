@@ -387,9 +387,9 @@ int fclose(FILE *stream)
 {
 	int rc = _fclose_nofree(stream);
 
-	if ((stream != &stdin_null)
-	    && (stream != &stdout_kio)
-	    && (stream != &stderr_kio))
+	if ((stream != &stdin_null) &&
+	    (stream != &stdout_kio) &&
+	    (stream != &stderr_kio))
 		free(stream);
 
 	return rc;
@@ -732,7 +732,9 @@ int fputs(const char *str, FILE *stream)
 
 int puts(const char *str)
 {
-	return fputs(str, stdout);
+	if (fputs(str, stdout) < 0)
+		return EOF;
+	return putchar('\n');
 }
 
 int fgetc(FILE *stream)

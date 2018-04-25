@@ -34,7 +34,7 @@
 #include "../segment.h"
 #include "../seq_no.h"
 
-PCUT_INIT
+PCUT_INIT;
 
 PCUT_TEST_SUITE(seq_no);
 
@@ -129,7 +129,7 @@ PCUT_TEST(in_rcv_wnd)
 	conn->rcv_nxt = 20;
 	conn->rcv_wnd = (uint32_t) -10;
 
-	PCUT_ASSERT_FALSE(seq_no_in_rcv_wnd(conn,19));
+	PCUT_ASSERT_FALSE(seq_no_in_rcv_wnd(conn, 19));
 	PCUT_ASSERT_TRUE(seq_no_in_rcv_wnd(conn, 20));
 	PCUT_ASSERT_TRUE(seq_no_in_rcv_wnd(conn, 21));
 	PCUT_ASSERT_TRUE(seq_no_in_rcv_wnd(conn, 9));

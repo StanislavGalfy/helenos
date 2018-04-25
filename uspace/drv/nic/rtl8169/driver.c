@@ -74,7 +74,8 @@ static errno_t rtl8169_on_activated(nic_t *nic_data);
 static errno_t rtl8169_on_stopped(nic_t *nic_data);
 static void rtl8169_send_frame(nic_t *nic_data, void *data, size_t size);
 static void rtl8169_irq_handler(ipc_call_t *icall, ddf_dev_t *dev);
-static inline errno_t rtl8169_register_int_handler(nic_t *nic_data, cap_handle_t *handle);
+static inline errno_t rtl8169_register_int_handler(nic_t *nic_data,
+    cap_irq_handle_t *handle);
 static inline void rtl8169_get_hwaddr(rtl8169_t *rtl8169, nic_address_t *addr);
 static inline void rtl8169_set_hwaddr(rtl8169_t *rtl8169, const nic_address_t *addr);
 
@@ -311,10 +312,10 @@ static rtl8169_t *rtl8169_create_dev_data(ddf_dev_t *dev)
 	nic_set_specific(nic_data, rtl8169);
 	nic_set_send_frame_handler(nic_data, rtl8169_send_frame);
 	nic_set_state_change_handlers(nic_data,
-		rtl8169_on_activated, NULL, rtl8169_on_stopped);
+	    rtl8169_on_activated, NULL, rtl8169_on_stopped);
 	nic_set_filtering_change_handlers(nic_data,
-		rtl8169_unicast_set, rtl8169_multicast_set, rtl8169_broadcast_set,
-		NULL, NULL);
+	    rtl8169_unicast_set, rtl8169_multicast_set, rtl8169_broadcast_set,
+	    NULL, NULL);
 
 	fibril_mutex_initialize(&rtl8169->rx_lock);
 	fibril_mutex_initialize(&rtl8169->tx_lock);
@@ -360,7 +361,8 @@ failed:
 
 }
 
-inline static errno_t rtl8169_register_int_handler(nic_t *nic_data, cap_handle_t *handle)
+inline static errno_t rtl8169_register_int_handler(nic_t *nic_data,
+    cap_irq_handle_t *handle)
 {
 	rtl8169_t *rtl8169 = nic_get_specific(nic_data);
 
@@ -428,8 +430,8 @@ static errno_t rtl8169_dev_add(ddf_dev_t *dev)
 	if (rc != EOK)
 		goto err_pio;
 
-	int irq_cap;
-	rc = rtl8169_register_int_handler(nic_data, &irq_cap);
+	cap_irq_handle_t irq_handle;
+	rc = rtl8169_register_int_handler(nic_data, &irq_handle);
 	if (rc != EOK) {
 		ddf_msg(LVL_ERROR, "Failed to register IRQ handler (%s)", str_error_name(rc));
 		goto err_irq;
@@ -471,7 +473,7 @@ err_fun_create:
 	ddf_fun_destroy(fun);
 err_srv:
 	/* XXX Disconnect from services */
-	unregister_interrupt_handler(dev, irq_cap);
+	unregister_interrupt_handler(dev, irq_handle);
 err_irq:
 err_pio:
 err_destroy:
@@ -547,8 +549,8 @@ static errno_t rtl8169_get_operation_mode(ddf_fun_t *fun, int *speed,
 	rtl8169_t *rtl8169 = nic_get_specific(nic_get_from_ddf_fun(fun));
 	uint8_t phystatus = pio_read_8(rtl8169->regs + PHYSTATUS);
 
-	*duplex = phystatus & PHYSTATUS_FDX
-	    ? NIC_CM_FULL_DUPLEX : NIC_CM_HALF_DUPLEX;
+	*duplex = phystatus & PHYSTATUS_FDX ?
+	    NIC_CM_FULL_DUPLEX : NIC_CM_HALF_DUPLEX;
 
 	if (phystatus & PHYSTATUS_10M)
 		*speed = 10;
@@ -572,7 +574,7 @@ static errno_t rtl8169_set_operation_mode(ddf_fun_t *fun, int speed,
 	if (speed != 10 && speed != 100 && speed != 1000)
 		return EINVAL;
 
- 	if (duplex != NIC_CM_HALF_DUPLEX && duplex != NIC_CM_FULL_DUPLEX)
+	if (duplex != NIC_CM_HALF_DUPLEX && duplex != NIC_CM_FULL_DUPLEX)
 		return EINVAL;
 
 	bmcr = rtl8169_mii_read(rtl8169, MII_BMCR);
@@ -936,7 +938,7 @@ static errno_t rtl8169_broadcast_set(nic_t *nic_data, nic_broadcast_mode_t mode)
 	}
 
 	pio_write_32(rtl8169->regs + RCR, rcr);
-	ddf_msg(LVL_DEBUG," new RCR value: 0x%08x", rcr);
+	ddf_msg(LVL_DEBUG, " new RCR value: 0x%08x", rcr);
 
 	return EOK;
 }
@@ -1170,8 +1172,8 @@ static uint16_t rtl8169_mii_read(rtl8169_t *rtl8169, uint8_t addr)
 {
 	uint32_t phyar;
 
-	phyar = PHYAR_RW_READ
-	    | ((addr & PHYAR_ADDR_MASK) << PHYAR_ADDR_SHIFT);
+	phyar = PHYAR_RW_READ |
+	    ((addr & PHYAR_ADDR_MASK) << PHYAR_ADDR_SHIFT);
 
 	pio_write_32(rtl8169->regs + PHYAR, phyar);
 
@@ -1187,9 +1189,9 @@ static void rtl8169_mii_write(rtl8169_t *rtl8169, uint8_t addr, uint16_t value)
 {
 	uint32_t phyar;
 
-	phyar = PHYAR_RW_WRITE
-	    | ((addr & PHYAR_ADDR_MASK) << PHYAR_ADDR_SHIFT)
-	    | (value & PHYAR_DATA_MASK);
+	phyar = PHYAR_RW_WRITE |
+	    ((addr & PHYAR_ADDR_MASK) << PHYAR_ADDR_SHIFT) |
+	    (value & PHYAR_DATA_MASK);
 
 	pio_write_32(rtl8169->regs + PHYAR, phyar);
 
@@ -1212,7 +1214,7 @@ int main(void)
 	if (rc != EOK)
 		return rc;
 	nic_driver_implement(
-		&rtl8169_driver_ops, &rtl8169_dev_ops, &rtl8169_nic_iface);
+	    &rtl8169_driver_ops, &rtl8169_dev_ops, &rtl8169_nic_iface);
 
 	ddf_log_init(NAME);
 	ddf_msg(LVL_NOTE, "HelenOS RTL8169 driver started");

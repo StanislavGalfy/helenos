@@ -380,8 +380,7 @@ errno_t usb_hid_report_output_translate(usb_hid_report_t *report,
 
 					tmp_value = tmp_value << (offset % 8);
 
-					mask = ~(((1 << (8 - (offset % 8))) - 1)
-					    << (offset % 8));
+					mask = ~(((1 << (8 - (offset % 8))) - 1) << (offset % 8));
 
 					buffer[i] = (buffer[i] & mask) |
 					    tmp_value;
@@ -470,7 +469,7 @@ usb_hid_report_item_t *usb_hid_report_item_clone(
 	if (!(new_report_item = malloc(sizeof(usb_hid_report_item_t)))) {
 		return NULL;
 	}
-	memcpy(new_report_item,item, sizeof(usb_hid_report_item_t));
+	memcpy(new_report_item, item, sizeof(usb_hid_report_item_t));
 	link_initialize(&(new_report_item->link));
 
 	return new_report_item;
@@ -595,7 +594,7 @@ void usb_hid_report_reset_local_items(usb_hid_report_item_t *report_item)
 	}
 
 	report_item->usages_count = 0;
-	memset(report_item->usages, 0, USB_HID_MAX_USAGES);
+	memset(report_item->usages, 0, sizeof(report_item->usages));
 
 	report_item->extended_usage_page = 0;
 	report_item->usage_minimum = 0;

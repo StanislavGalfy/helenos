@@ -123,7 +123,8 @@ static irq_cmd_t ne2k_cmds_prototype[] = {
 
 static void ne2k_interrupt_handler(ipc_call_t *, ddf_dev_t *);
 
-static errno_t ne2k_register_interrupt(nic_t *nic_data, cap_handle_t *handle)
+static errno_t ne2k_register_interrupt(nic_t *nic_data,
+    cap_irq_handle_t *handle)
 {
 	ne2k_t *ne2k = (ne2k_t *) nic_get_specific(nic_data);
 
@@ -160,7 +161,7 @@ static errno_t ne2k_register_interrupt(nic_t *nic_data, cap_handle_t *handle)
 	}
 
 	return register_interrupt_handler(nic_get_ddf_dev(nic_data),
-		ne2k->irq, ne2k_interrupt_handler, &ne2k->code, handle);
+	    ne2k->irq, ne2k_interrupt_handler, &ne2k->code, handle);
 }
 
 static ddf_dev_ops_t ne2k_dev_ops;
@@ -286,8 +287,8 @@ static errno_t ne2k_set_address(ddf_fun_t *fun, const nic_address_t *address)
 }
 
 static errno_t ne2k_on_unicast_mode_change(nic_t *nic_data,
-	nic_unicast_mode_t new_mode,
-	const nic_address_t *address_list, size_t address_count)
+    nic_unicast_mode_t new_mode,
+    const nic_address_t *address_list, size_t address_count)
 {
 	ne2k_t *ne2k = (ne2k_t *) nic_get_specific(nic_data);
 	switch (new_mode) {
@@ -313,8 +314,8 @@ static errno_t ne2k_on_unicast_mode_change(nic_t *nic_data,
 }
 
 static errno_t ne2k_on_multicast_mode_change(nic_t *nic_data,
-	nic_multicast_mode_t new_mode,
-	const nic_address_t *address_list, size_t address_count)
+    nic_multicast_mode_t new_mode,
+    const nic_address_t *address_list, size_t address_count)
 {
 	ne2k_t *ne2k = (ne2k_t *) nic_get_specific(nic_data);
 	switch (new_mode) {
@@ -325,7 +326,7 @@ static errno_t ne2k_on_multicast_mode_change(nic_t *nic_data,
 	case NIC_MULTICAST_LIST:
 		ne2k_set_accept_mcast(ne2k, true);
 		ne2k_set_mcast_hash(ne2k,
-			nic_mcast_hash(address_list, address_count));
+		    nic_mcast_hash(address_list, address_count));
 		nic_report_hw_filtering(nic_data, -1, 0, -1);
 		return EOK;
 	case NIC_MULTICAST_PROMISC:
@@ -339,7 +340,7 @@ static errno_t ne2k_on_multicast_mode_change(nic_t *nic_data,
 }
 
 static errno_t ne2k_on_broadcast_mode_change(nic_t *nic_data,
-	nic_broadcast_mode_t new_mode)
+    nic_broadcast_mode_t new_mode)
 {
 	ne2k_t *ne2k = (ne2k_t *) nic_get_specific(nic_data);
 	switch (new_mode) {
@@ -365,10 +366,10 @@ static errno_t ne2k_dev_add(ddf_dev_t *dev)
 
 	nic_set_send_frame_handler(nic_data, ne2k_send);
 	nic_set_state_change_handlers(nic_data,
-		ne2k_on_activating, NULL, ne2k_on_stopping);
+	    ne2k_on_activating, NULL, ne2k_on_stopping);
 	nic_set_filtering_change_handlers(nic_data,
-		ne2k_on_unicast_mode_change, ne2k_on_multicast_mode_change,
-		ne2k_on_broadcast_mode_change, NULL, NULL);
+	    ne2k_on_unicast_mode_change, ne2k_on_multicast_mode_change,
+	    ne2k_on_broadcast_mode_change, NULL, NULL);
 
 	ne2k_t *ne2k = malloc(sizeof(ne2k_t));
 	if (NULL != ne2k) {

@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <pcut/pcut.h>
 
-PCUT_INIT
+PCUT_INIT;
 
 PCUT_IMPORT(circ_buf);
 PCUT_IMPORT(fibril_timer);
@@ -39,4 +39,4 @@ PCUT_IMPORT(sprintf);
 PCUT_IMPORT(str);
 PCUT_IMPORT(table);
 
-PCUT_MAIN()
+PCUT_MAIN();

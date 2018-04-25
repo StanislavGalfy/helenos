@@ -28,8 +28,8 @@
 
 #include <pcut/pcut.h>
 
-PCUT_INIT
+PCUT_INIT;
 
 PCUT_IMPORT(scanf);
 
-PCUT_MAIN()
+PCUT_MAIN();

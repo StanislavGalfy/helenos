@@ -164,7 +164,7 @@ typedef struct ns8250 {
 	/** The irq assigned to this device. */
 	int irq;
 	/** IRQ capability handle */
-	int irq_cap;
+	cap_irq_handle_t irq_handle;
 	/** The base i/o address of the devices registers. */
 	uintptr_t io_addr;
 	/** The i/o port used to access the serial ports registers. */
@@ -310,7 +310,7 @@ static errno_t ns8250_write(chardev_srv_t *srv, const void *buf, size_t count,
 
 static errno_t ns8250_open(chardev_srvs_t *, chardev_srv_t *);
 static errno_t ns8250_close(chardev_srv_t *);
-static void ns8250_default_handler(chardev_srv_t *, ipc_callid_t, ipc_call_t *);
+static void ns8250_default_handler(chardev_srv_t *, cap_call_handle_t, ipc_call_t *);
 
 /** The character interface's callbacks. */
 static chardev_ops_t ns8250_chardev_ops = {
@@ -321,7 +321,7 @@ static chardev_ops_t ns8250_chardev_ops = {
 	.def_handler = ns8250_default_handler
 };
 
-static void ns8250_char_conn(ipc_callid_t, ipc_call_t *, void *);
+static void ns8250_char_conn(cap_call_handle_t, ipc_call_t *, void *);
 
 static errno_t ns8250_dev_add(ddf_dev_t *dev);
 static errno_t ns8250_dev_remove(ddf_dev_t *dev);
@@ -387,8 +387,8 @@ static bool ns8250_dev_probe(ns8250_t *ns)
 		res = false;
 
 	pio_write_8(&ns->regs->mcr, NS8250_MCR_ALL);
-	if ((pio_read_8(&ns->regs->msr) & NS8250_MSR_SIGNALS)
-	    != NS8250_MSR_SIGNALS)
+	if ((pio_read_8(&ns->regs->msr) & NS8250_MSR_SIGNALS) !=
+	    NS8250_MSR_SIGNALS)
 		res = false;
 
 	pio_write_8(&ns->regs->mcr, olddata);
@@ -449,7 +449,7 @@ static errno_t ns8250_dev_initialize(ns8250_t *ns)
 			ioport = true;
 			ddf_msg(LVL_NOTE, "Device %s was assigned I/O address = "
 			    "0x%#" PRIxn ".", ddf_dev_get_name(ns->dev), ns->io_addr);
-    			break;
+			break;
 
 		default:
 			break;
@@ -482,8 +482,8 @@ static inline void ns8250_port_interrupts_enable(ns8250_regs_t *regs)
 {
 	/* Interrupt when data received. */
 	pio_write_8(&regs->ier, NS8250_IER_RXREADY | NS8250_IER_RXSTATUS);
-	pio_write_8(&regs->mcr, NS8250_MCR_DTR | NS8250_MCR_RTS
-	    | NS8250_MCR_OUT2);
+	pio_write_8(&regs->mcr, NS8250_MCR_DTR | NS8250_MCR_RTS |
+	    NS8250_MCR_OUT2);
 }
 
 /** Disable interrupts on the serial port device.
@@ -713,15 +713,15 @@ static void ns8250_initialize_port(ns8250_t *ns)
 	 * Enable FIFO, clear them, with 4-byte threshold for greater
 	 * reliability.
 	 */
-	pio_write_8(&ns->regs->iid, NS8250_FCR_FIFOENABLE
-	    | NS8250_FCR_RXFIFORESET | NS8250_FCR_TXFIFORESET
-	    | NS8250_FCR_RXTRIGGERLOW);
+	pio_write_8(&ns->regs->iid, NS8250_FCR_FIFOENABLE |
+	    NS8250_FCR_RXFIFORESET | NS8250_FCR_TXFIFORESET |
+	    NS8250_FCR_RXTRIGGERLOW);
 	/*
 	 * RTS/DSR set (Request to Send and Data Terminal Ready lines enabled),
 	 * Aux Output2 set - needed for interrupts.
 	 */
-	pio_write_8(&ns->regs->mcr, NS8250_MCR_DTR | NS8250_MCR_RTS
-	    | NS8250_MCR_OUT2);
+	pio_write_8(&ns->regs->mcr, NS8250_MCR_DTR | NS8250_MCR_RTS |
+	    NS8250_MCR_OUT2);
 }
 
 /** Deinitialize the serial port device.
@@ -803,10 +803,10 @@ static inline void ns8250_interrupt_handler(ipc_call_t *icall, ddf_dev_t *dev)
  * @param ns		Serial port device
  */
 static inline errno_t ns8250_register_interrupt_handler(ns8250_t *ns,
-    cap_handle_t *handle)
+    cap_irq_handle_t *ihandle)
 {
 	return register_interrupt_handler(ns->dev, ns->irq,
-	    ns8250_interrupt_handler, NULL, handle);
+	    ns8250_interrupt_handler, NULL, ihandle);
 }
 
 /** Unregister the interrupt handler for the device.
@@ -815,7 +815,7 @@ static inline errno_t ns8250_register_interrupt_handler(ns8250_t *ns,
  */
 static inline errno_t ns8250_unregister_interrupt_handler(ns8250_t *ns)
 {
-	return unregister_interrupt_handler(ns->dev, ns->irq_cap);
+	return unregister_interrupt_handler(ns->dev, ns->irq_handle);
 }
 
 /** The dev_add callback method of the serial port driver.
@@ -875,7 +875,8 @@ static errno_t ns8250_dev_add(ddf_dev_t *dev)
 	ns8250_initialize_port(ns);
 
 	/* Register interrupt handler. */
-	rc = ns8250_register_interrupt_handler(ns, &ns->irq_cap);
+	ns->irq_handle = CAP_NIL;
+	rc = ns8250_register_interrupt_handler(ns, &ns->irq_handle);
 	if (rc != EOK) {
 		ddf_msg(LVL_ERROR, "Failed to register interrupt handler.");
 		rc = EADDRNOTAVAIL;
@@ -1011,9 +1012,8 @@ static errno_t ns8250_close(chardev_srv_t *srv)
  * @param word_length	The size of one data unit in bits.
  * @param stop_bits	The number of stop bits used.
  */
-static void
-ns8250_get_props(ddf_dev_t *dev, unsigned int *baud_rate, unsigned int *parity,
-    unsigned int *word_length, unsigned int* stop_bits)
+static void ns8250_get_props(ddf_dev_t *dev, unsigned int *baud_rate,
+    unsigned int *parity, unsigned int *word_length, unsigned int *stop_bits)
 {
 	ns8250_t *data = dev_ns8250(dev);
 	ns8250_regs_t *regs = data->regs;
@@ -1066,7 +1066,7 @@ static errno_t ns8250_set_props(ddf_dev_t *dev, unsigned int baud_rate,
  *
  * Configure the parameters of the serial communication.
  */
-static void ns8250_default_handler(chardev_srv_t *srv, ipc_callid_t callid,
+static void ns8250_default_handler(chardev_srv_t *srv, cap_call_handle_t chandle,
     ipc_call_t *call)
 {
 	ns8250_t *ns8250 = srv_ns8250(srv);
@@ -1078,30 +1078,30 @@ static void ns8250_default_handler(chardev_srv_t *srv, ipc_callid_t callid,
 	case SERIAL_GET_COM_PROPS:
 		ns8250_get_props(ns8250->dev, &baud_rate, &parity, &word_length,
 		    &stop_bits);
-		async_answer_4(callid, EOK, baud_rate, parity, word_length,
+		async_answer_4(chandle, EOK, baud_rate, parity, word_length,
 		    stop_bits);
 		break;
 
 	case SERIAL_SET_COM_PROPS:
- 		baud_rate = IPC_GET_ARG1(*call);
+		baud_rate = IPC_GET_ARG1(*call);
 		parity = IPC_GET_ARG2(*call);
 		word_length = IPC_GET_ARG3(*call);
 		stop_bits = IPC_GET_ARG4(*call);
 		ret = ns8250_set_props(ns8250->dev, baud_rate, parity, word_length,
 		    stop_bits);
-		async_answer_0(callid, ret);
+		async_answer_0(chandle, ret);
 		break;
 
 	default:
-		async_answer_0(callid, ENOTSUP);
+		async_answer_0(chandle, ENOTSUP);
 	}
 }
 
-void ns8250_char_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
+void ns8250_char_conn(cap_call_handle_t icall_handle, ipc_call_t *icall, void *arg)
 {
 	ns8250_t *ns8250 = fun_ns8250((ddf_fun_t *)arg);
 
-	chardev_conn(iid, icall, &ns8250->cds);
+	chardev_conn(icall_handle, icall, &ns8250->cds);
 }
 
 /** Initialize the serial port driver.

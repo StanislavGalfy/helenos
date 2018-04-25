@@ -193,7 +193,8 @@ static void term_update_char(terminal_t *term, surface_t *surface,
 		    surface_pixmap_access(surface), bx, by + y);
 		pixel_t *dst_max = pixelmap_pixel_at(
 		    surface_pixmap_access(surface), bx + FONT_WIDTH - 1, by + y);
-		if (!dst || !dst_max) continue;
+		if (!dst || !dst_max)
+			continue;
 		int count = FONT_WIDTH;
 		while (count-- != 0) {
 			*dst++ = (fb_font[glyph][y] & (1 << count)) ? fgcolor : bgcolor;
@@ -676,7 +677,7 @@ static void terminal_handle_position_event(widget_t *widget, pos_event_t pos_eve
 	}
 }
 
-static void term_connection(ipc_callid_t iid, ipc_call_t *icall, void *arg)
+static void term_connection(cap_call_handle_t icall_handle, ipc_call_t *icall, void *arg)
 {
 	terminal_t *term = NULL;
 
@@ -688,14 +689,14 @@ static void term_connection(ipc_callid_t iid, ipc_call_t *icall, void *arg)
 	}
 
 	if (term == NULL) {
-		async_answer_0(iid, ENOENT);
+		async_answer_0(icall_handle, ENOENT);
 		return;
 	}
 
 	if (atomic_postinc(&term->refcnt) == 0)
 		chargrid_set_cursor_visibility(term->frontbuf, true);
 
-	con_conn(iid, icall, &term->srvs);
+	con_conn(icall_handle, icall, &term->srvs);
 }
 
 bool init_terminal(terminal_t *term, widget_t *parent, const void *data,

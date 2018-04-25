@@ -34,9 +34,10 @@
 #define EOK 0
 #endif
 
-PCUT_INIT
+PCUT_INIT;
 
-PCUT_TEST(errno_value) {
+PCUT_TEST(errno_value)
+{
 	errno_t value = EOK;
 	PCUT_ASSERT_ERRNO_VAL(EOK, value);
 	value = ENOENT;
@@ -46,7 +47,8 @@ PCUT_TEST(errno_value) {
 	PCUT_ASSERT_ERRNO_VAL(EOK, value);
 }
 
-PCUT_TEST(errno_variable) {
+PCUT_TEST(errno_variable)
+{
 	errno = ENOENT;
 	PCUT_ASSERT_ERRNO(ENOENT);
 
@@ -54,4 +56,4 @@ PCUT_TEST(errno_variable) {
 	PCUT_ASSERT_ERRNO(EOK);
 }
 
-PCUT_MAIN()
+PCUT_MAIN();

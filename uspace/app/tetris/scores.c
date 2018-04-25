@@ -58,6 +58,7 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <str.h>
 #include <io/console.h>
@@ -127,17 +128,17 @@ void insertscore(int score, int level)
 
 	clear_screen();
 	moveto(10, 10);
-	puts("Insert your name: ");
+	fputs("Insert your name: ", stdout);
 	str_cpy(scores[NUMSPOTS - 1].hs_name, STR_BOUNDS(MAXLOGNAME) + 1,
 	    "Player");
 	i = 6;
 	off = 6;
 
-	moveto(10 , 28);
-	printf("%s%.*s", scores[NUMSPOTS - 1].hs_name, MAXLOGNAME-i,
+	moveto(10, 28);
+	printf("%s%.*s", scores[NUMSPOTS - 1].hs_name, MAXLOGNAME - i,
 	    "........................................");
 
-	while (1) {
+	while (true) {
 		console_flush(console);
 		if (!console_get_event(console, &ev))
 			exit(1);
@@ -189,7 +190,7 @@ void insertscore(int score, int level)
 		i--;
 
 	for (j = NUMSPOTS - 2; j > i; j--)
-		copyhiscore(j, j-1);
+		copyhiscore(j, j - 1);
 
 	copyhiscore(i, NUMSPOTS - 1);
 }
