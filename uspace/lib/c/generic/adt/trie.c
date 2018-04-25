@@ -65,21 +65,6 @@ static errno_t trie_create_node(trie_node_t **trie_node)
 	return EOK;
 }
 
-static void trie_to_array_recursive(trie_node_t *node, void *array,
-    size_t *pos, size_t data_size)
-{
-	if (node->data_node) {
-		memcpy(array + (*pos * data_size), node->data, data_size);
-		(*pos)++;
-	}
-	if (node->left != NULL) {
-		trie_to_array_recursive(node->left, array, pos, data_size);
-	}
-	if (node->right != NULL) {
-		trie_to_array_recursive(node->right, array, pos, data_size);
-	}
-}
-
 errno_t trie_create(trie_t **rtrie)
 {
 	trie_t *trie = calloc(1, sizeof(trie_t));
@@ -127,6 +112,9 @@ errno_t trie_insert(trie_t *trie, void *key, size_t key_bit_len, void *data)
 	node->data_node = true;
 	node->data = data;
 	trie->count++;
+	if (key_bit_len > trie->max_key_len) {
+		trie->max_key_len = key_bit_len;
+	}
 
 	return EOK;
 }
@@ -174,24 +162,6 @@ void *trie_find_exact(trie_t *trie, void *key, size_t key_bit_len)
 		return node->data;
 	}
 	return NULL;
-}
-
-errno_t trie_to_array(trie_t *trie, size_t data_size, void **rarray)
-{
-	if (trie->count == 0) {
-		*rarray = NULL;
-		return EOK;
-	}
-
-	void *array = malloc(trie->count * data_size);
-	if (array == NULL) {
-		return ENOMEM;
-	}
-
-	size_t pos = 0;
-	trie_to_array_recursive(trie->root, array, &pos, data_size);
-	*rarray = array;
-	return EOK;
 }
 
 /** @}

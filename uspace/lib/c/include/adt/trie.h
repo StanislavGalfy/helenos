@@ -51,6 +51,7 @@ typedef struct trie_node {
 typedef struct {
         trie_node_t *root;
         size_t count;
+        size_t max_key_len;
 } trie_t;
 
 extern errno_t trie_create(trie_t **);

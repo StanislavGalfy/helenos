@@ -37,6 +37,7 @@
 
 #include <inet/addr.h>
 #include <stddef.h>
+#include <adt/list.h>
 
 #define RTPROT_UNSPEC	0  /* Route installed by unsepcified source */
 #define RTPROT_KERNEL	2  /* Route installed by OS, not used */
@@ -82,6 +83,7 @@ typedef struct {
 
 /** Static route configuration */
 typedef struct {
+        link_t list_link;
 	/** Destination network */
 	inet_naddr_t dest;
 	/** Router via which to route packets */

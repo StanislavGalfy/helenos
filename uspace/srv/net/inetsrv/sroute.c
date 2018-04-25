@@ -42,6 +42,7 @@
 #include <stdlib.h>
 #include <str.h>
 #include <byteorder.h>
+#include <adt/list.h>
 #include "sroute.h"
 #include "inetsrv.h"
 #include "inet_link.h"
@@ -51,7 +52,46 @@ static FIBRIL_MUTEX_INITIALIZE(sroute_list_lock);
 static LIST_INITIALIZE(sroute_list);
 static LIST_INITIALIZE(del_sroute_list);
 
-trie_t *sroute_table;
+trie_t *ipv4_sroute_table;
+trie_t *ipv6_sroute_table;
+
+inet_sroute_t *sroute_array;
+size_t sroute_array_size;
+size_t sroute_array_count = 0;
+
+static int inet_sroute_compare(inet_sroute_t *a, inet_sroute_t *b)
+{
+	if (inet_naddrs_compare(&a->dest, &b->dest) == 0) {
+		return 0;
+	}
+	return inet_addr_compare(&a->router, &b->router);
+}
+
+static void inet_sroute_copy(inet_sroute_t *dest, inet_sroute_t *source)
+{
+	dest->rtm_protocol = source->rtm_protocol;
+	dest->router = source->router;
+	dest->dest = source->dest;
+	dest->status = source->status;
+}
+
+static errno_t inet_check_sroute_array() {
+	if (sroute_array_count < sroute_array_size) {
+		return EOK;
+	}
+
+	inet_sroute_t * tmp_sroute_array = malloc(
+	    sizeof(inet_sroute_t) * sroute_array_size * 2);
+	if (tmp_sroute_array == NULL) {
+		return ENOMEM;
+	}
+	memcpy(tmp_sroute_array, sroute_array,
+	    sroute_array_size * sizeof(inet_sroute_t));
+	sroute_array_size *= 2;
+	free(sroute_array);
+	sroute_array = tmp_sroute_array;
+	return EOK;
+}
 
 errno_t inet_sroute_batch(void *arg)
 {
@@ -94,27 +134,66 @@ errno_t inet_sroute_batch(void *arg)
 
 errno_t inet_sroute_add(inet_sroute_t *sroute)
 {
+	errno_t rc;
+
 	fibril_mutex_lock(&sroute_list_lock);
 
-	addr32_t dest = htonl(sroute->dest.addr);
-
-	inet_sroute_t *old_sroute = (inet_sroute_t *) trie_find_exact(
-	    sroute_table, &dest, sroute->dest.prefix);
-	if (old_sroute != NULL) {
-		if (old_sroute->status == INET_SROUTE_STATUS_DELETED) {
-			old_sroute->rtm_protocol = sroute->rtm_protocol;
-			old_sroute->router = sroute->router;
-			old_sroute->dest = sroute->dest;
-			old_sroute->status = INET_SROUTE_STATUS_ACTIVE;
-			fibril_mutex_unlock(&sroute_list_lock);
-			return EOK;
-		}
+	rc = inet_check_sroute_array();
+	if (rc != EOK) {
 		fibril_mutex_unlock(&sroute_list_lock);
-		return EEXIST;
+		return rc;
 	}
-	errno_t rc = trie_insert(sroute_table, &dest, sroute->dest.prefix,
-	    sroute);
 
+	uint8_t dest[16];
+	trie_t *sroute_table = NULL;
+	uint8_t prefix = sroute->dest.prefix;
+	if (sroute->dest.version == ip_v4) {
+		sroute_table = ipv4_sroute_table;
+		addr32_t dest_addr = htonl(sroute->dest.addr);
+		memcpy(dest, &dest_addr, sizeof(addr32_t));
+	} if (sroute->dest.version == ip_v6) {
+		sroute_table = ipv6_sroute_table;
+		memcpy(dest, &sroute->dest.addr6, sizeof(addr128_t));
+	}
+
+	inet_sroute_t *new_sroute = &sroute_array[sroute_array_count];
+	inet_sroute_copy(new_sroute, sroute);
+	link_initialize(&new_sroute->list_link);
+
+	list_t *list = (list_t *) trie_find_exact(sroute_table, dest, prefix);
+	if (list != NULL) {
+		list_foreach(*list, list_link, inet_sroute_t, old_sroute) {
+			if (inet_sroute_compare(old_sroute, sroute) != 0) {
+				if (old_sroute->status == INET_SROUTE_STATUS_DELETED) {
+					inet_sroute_copy(old_sroute, sroute);
+					fibril_mutex_unlock(&sroute_list_lock);
+					return EOK;
+				}
+				fibril_mutex_unlock(&sroute_list_lock);
+				return EEXIST;
+			}
+		}
+		list_prepend(&new_sroute->list_link, list);
+		sroute_array_count++;
+		fibril_mutex_unlock(&sroute_list_lock);
+		return EOK;
+	}
+	list = malloc(sizeof(list_t));
+	if (list == NULL) {
+		fibril_mutex_unlock(&sroute_list_lock);
+		return ENOMEM;
+	}
+
+	list_initialize(list);
+
+	list_prepend(&new_sroute->list_link, list);
+	rc = trie_insert(sroute_table, dest, new_sroute->dest.prefix,
+	    list);
+	if (rc != EOK) {
+		fibril_mutex_unlock(&sroute_list_lock);
+		return rc;
+	}
+	sroute_array_count++;
 	fibril_mutex_unlock(&sroute_list_lock);
 
 	return rc;
@@ -128,12 +207,31 @@ inet_sroute_t *inet_sroute_find_longest_match(inet_addr_t *addr)
 {
 	fibril_mutex_lock(&sroute_list_lock);
 
-	addr->addr = htonl(addr->addr);
-	inet_sroute_t *sroute = (inet_sroute_t *) trie_find_longest_match(
-	    sroute_table, &addr->addr, 32);
+	uint8_t dest[16];
+	trie_t *sroute_table = NULL;
+	uint8_t prefix;
+	if (addr->version == ip_v4) {
+		sroute_table = ipv4_sroute_table;
+		addr32_t dest_addr = htonl(addr->addr);
+		memcpy(dest, &dest_addr, sizeof(addr32_t));
+		prefix = 32;
+	} if (addr->version == ip_v6) {
+		sroute_table = ipv6_sroute_table;
+		memcpy(dest, &addr->addr6, sizeof(addr128_t));
+		prefix = 64;
+	}
 
+	list_t *list= (list_t *) trie_find_longest_match(sroute_table, dest,
+	    prefix);
+	if (list == NULL) {
+		fibril_mutex_unlock(&sroute_list_lock);
+		return NULL;
+	}
 	fibril_mutex_unlock(&sroute_list_lock);
-
+	inet_sroute_t *sroute = (inet_sroute_t *) list_first(list);
+	if (sroute == NULL || sroute->status == INET_SROUTE_STATUS_DELETED) {
+		return NULL;
+	}
 	return sroute;
 }
 
@@ -142,30 +240,47 @@ inet_sroute_t *inet_sroute_find_longest_match(inet_addr_t *addr)
  *
  * @param addr	Address
  */
-inet_sroute_t *inet_sroute_find_exact(inet_naddr_t *naddr)
+errno_t inet_sroute_delete(inet_naddr_t *addr, inet_addr_t *router)
 {
 	fibril_mutex_lock(&sroute_list_lock);
 
-	naddr->addr = htonl(naddr->addr);
-	inet_sroute_t *sroute = (inet_sroute_t *) trie_find_exact(
-	    sroute_table, &naddr->addr, naddr->prefix);
+	uint8_t dest[16];
+	trie_t *sroute_table = NULL;
+	uint8_t prefix;
+	if (addr->version == ip_v4) {
+		sroute_table = ipv4_sroute_table;
+		addr32_t dest_addr = htonl(addr->addr);
+		memcpy(dest, &dest_addr, sizeof(addr32_t));
+		prefix = 32;
+	} if (addr->version == ip_v6) {
+		sroute_table = ipv6_sroute_table;
+		memcpy(dest, &addr->addr6, sizeof(addr128_t));
+		prefix = 128;
+	}
 
+	list_t *list = (list_t *) trie_find_exact(sroute_table, dest, prefix);
+	if (list == NULL) {
+		fibril_mutex_unlock(&sroute_list_lock);
+		return ENOENT;
+	}
+
+	inet_sroute_t *dsroute = NULL;
+	list_foreach(*list, list_link, inet_sroute_t, sroute) {
+		if (inet_naddrs_compare(&sroute->dest, addr) != 0
+		    &&inet_addr_compare(&sroute->router, router) != 0) {
+			dsroute = sroute;
+			break;
+		}
+	}
+	if (dsroute != NULL) {
+		dsroute->status = INET_SROUTE_STATUS_DELETED;
+		list_remove(&dsroute->list_link);
+		list_append(&dsroute->list_link, list);
+		fibril_mutex_unlock(&sroute_list_lock);
+		return EOK;
+	}
 	fibril_mutex_unlock(&sroute_list_lock);
-
-	return sroute;
-}
-
-errno_t inet_sroute_to_array(inet_sroute_t **rsroutes, size_t *rcount)
-{
-	fibril_mutex_lock(&sroute_list_lock);
-
-	errno_t rc = trie_to_array(sroute_table, sizeof(inet_sroute_t),
-	    (void **) rsroutes);
-	*rcount = sroute_table->count;
-
-	fibril_mutex_unlock(&sroute_list_lock);
-
-	return rc;
+	return ENOENT;
 }
 
 /** @}

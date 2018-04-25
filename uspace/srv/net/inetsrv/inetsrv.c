@@ -127,12 +127,24 @@ static errno_t inet_init(void)
 		return EEXIST;
 	}
 
-	rc = trie_create(&sroute_table);
+	rc = trie_create(&ipv4_sroute_table);
 	if (rc != EOK) {
-		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed creating routing table: %s.", str_error(rc));
+		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed creating ipv4 routing table: %s.", str_error(rc));
 		return rc;
 	}
 
+	rc = trie_create(&ipv6_sroute_table);
+	if (rc != EOK) {
+		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed creating ipv6 routing table: %s.", str_error(rc));
+		return rc;
+	}
+	sroute_array_size = INITIAL_SROUTE_ARRAY_SIZE;
+	sroute_array_count = 0;
+	sroute_array = malloc(sroute_array_size * sizeof(inet_sroute_t));
+	if (sroute_array == NULL) {
+		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed allocating static route array: %s.", str_error(ENOMEM));
+		return ENOMEM;
+	}
 	return EOK;
 }
 

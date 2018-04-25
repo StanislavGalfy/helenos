@@ -43,18 +43,24 @@
 #include <stdint.h>
 #include "inetsrv.h"
 
+#define INITIAL_SROUTE_ARRAY_SIZE 1024
+
 typedef struct {
 	size_t count;
 	inet_sroute_cmd_t *cmds;
 } inet_sroute_cmds_t;
 
-extern trie_t *sroute_table;
+extern trie_t *ipv4_sroute_table;
+extern trie_t *ipv6_sroute_table;
+
+extern inet_sroute_t *sroute_array;
+extern size_t sroute_array_size;
+extern size_t sroute_array_count;
 
 extern errno_t inet_sroute_batch(void *arg);
 extern errno_t inet_sroute_add(inet_sroute_t *);
 extern inet_sroute_t *inet_sroute_find_longest_match(inet_addr_t *);
-extern inet_sroute_t *inet_sroute_find_exact(inet_naddr_t *);
-extern errno_t inet_sroute_to_array(inet_sroute_t **, size_t *);
+extern errno_t inet_sroute_delete(inet_naddr_t *, inet_addr_t *);
 
 #endif
 

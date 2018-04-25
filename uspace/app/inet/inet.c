@@ -490,7 +490,7 @@ static errno_t sroute_log(void)
 
 	rc = inetcfg_sroute_to_array(&sroute_array, &count);
 	if (rc != EOK) {
-		printf(NAME ": Failed getting address list.\n");
+		printf(NAME ": Failed getting static route array.\n");
 		return rc;
 	}
 
