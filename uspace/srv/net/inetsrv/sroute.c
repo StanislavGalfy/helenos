@@ -48,16 +48,15 @@
 #include "inet_link.h"
 #include "types/inetcfg.h"
 
-static FIBRIL_MUTEX_INITIALIZE(sroute_list_lock);
-static LIST_INITIALIZE(sroute_list);
-static LIST_INITIALIZE(del_sroute_list);
+FIBRIL_MUTEX_INITIALIZE(sroute_list_lock);
 
 trie_t *ipv4_sroute_table;
 trie_t *ipv6_sroute_table;
 
-inet_sroute_t *sroute_array;
-size_t sroute_array_size;
-size_t sroute_array_count = 0;
+list_t sroute_block_list;
+size_t sroute_block_count;
+size_t sroute_count;
+inet_sroute_block_t *sroute_block;
 
 static int inet_sroute_compare(inet_sroute_t *a, inet_sroute_t *b)
 {
@@ -75,21 +74,22 @@ static void inet_sroute_copy(inet_sroute_t *dest, inet_sroute_t *source)
 	dest->status = source->status;
 }
 
-static errno_t inet_check_sroute_array() {
-	if (sroute_array_count < sroute_array_size) {
+static errno_t inet_sroute_init_block() {
+	if (sroute_block->sroute_count  < SROUTE_BLOCK_SIZE) {
 		return EOK;
 	}
 
-	inet_sroute_t * tmp_sroute_array = malloc(
-	    sizeof(inet_sroute_t) * sroute_array_size * 2);
-	if (tmp_sroute_array == NULL) {
+	sroute_block = malloc(sizeof(inet_sroute_block_t));
+	if (sroute_block == NULL) {
 		return ENOMEM;
 	}
-	memcpy(tmp_sroute_array, sroute_array,
-	    sroute_array_size * sizeof(inet_sroute_t));
-	sroute_array_size *= 2;
-	free(sroute_array);
-	sroute_array = tmp_sroute_array;
+	sroute_block->sroutes = malloc(
+	    SROUTE_BLOCK_SIZE * sizeof(inet_sroute_t));
+	link_initialize(&sroute_block->list_link);
+	sroute_block->sroute_count = 0;
+
+	list_append(&sroute_block->list_link, &sroute_block_list);
+	sroute_block_count++;
 	return EOK;
 }
 
@@ -99,7 +99,7 @@ errno_t inet_sroute_add(inet_sroute_t *sroute)
 
 	fibril_mutex_lock(&sroute_list_lock);
 
-	rc = inet_check_sroute_array();
+	rc = inet_sroute_init_block();
 	if (rc != EOK) {
 		fibril_mutex_unlock(&sroute_list_lock);
 		return rc;
@@ -117,7 +117,7 @@ errno_t inet_sroute_add(inet_sroute_t *sroute)
 		memcpy(dest, &sroute->dest.addr6, sizeof(addr128_t));
 	}
 
-	inet_sroute_t *new_sroute = &sroute_array[sroute_array_count];
+	inet_sroute_t *new_sroute = &sroute_block->sroutes[sroute_block->sroute_count];
 	inet_sroute_copy(new_sroute, sroute);
 	link_initialize(&new_sroute->list_link);
 
@@ -135,7 +135,8 @@ errno_t inet_sroute_add(inet_sroute_t *sroute)
 			}
 		}
 		list_prepend(&new_sroute->list_link, list);
-		sroute_array_count++;
+		sroute_block->sroute_count++;
+		sroute_count++;
 		fibril_mutex_unlock(&sroute_list_lock);
 		return EOK;
 	}
@@ -154,7 +155,8 @@ errno_t inet_sroute_add(inet_sroute_t *sroute)
 		fibril_mutex_unlock(&sroute_list_lock);
 		return rc;
 	}
-	sroute_array_count++;
+	sroute_block->sroute_count++;
+	sroute_count++;
 	fibril_mutex_unlock(&sroute_list_lock);
 
 	return rc;

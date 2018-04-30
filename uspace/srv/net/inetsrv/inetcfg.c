@@ -44,6 +44,7 @@
 #include <str.h>
 #include <stddef.h>
 #include <types/inetcfg.h>
+#include <fibril_synch.h>
 
 #include "addrobj.h"
 #include "inetsrv.h"
@@ -603,78 +604,67 @@ static void inetcfg_sroute_to_array_srv(ipc_callid_t iid, ipc_call_t *call)
 	ipc_callid_t callid;
 	size_t size;
 
+	fibril_mutex_lock(&sroute_list_lock);
+
 	if (!async_data_read_receive(&callid, &size)) {
 		async_answer_0(callid, EREFUSED);
 		async_answer_0(iid, EREFUSED);
+		fibril_mutex_unlock(&sroute_list_lock);
 		return;
 	}
 
 	if (size != sizeof(size_t)) {
 		async_answer_0(callid, EINVAL);
 		async_answer_0(iid, EINVAL);
+		fibril_mutex_unlock(&sroute_list_lock);
 		return;
 	}
 
-	errno_t rc = async_data_read_finalize(callid, &sroute_array_count, size);
+	errno_t rc = async_data_read_finalize(callid, &sroute_count, size);
 	if (rc != EOK) {
 		async_answer_0(callid, rc);
 		async_answer_0(iid, rc);
+		fibril_mutex_unlock(&sroute_list_lock);
 		return;
 	}
 
-	if (sroute_array_count == 0) {
+	if (sroute_count == 0) {
 		async_answer_0(iid, EOK);
+		fibril_mutex_unlock(&sroute_list_lock);
 		return;
 	}
 
-	size_t nparts = (sroute_array_count * sizeof(inet_sroute_t)) / DATA_XFER_LIMIT;
-	for (size_t i = 0; i < nparts; i++) {
+	list_foreach(sroute_block_list, list_link, inet_sroute_block_t,
+	    sroute_block) {
+		if (sroute_block->sroute_count == 0) {
+			break;
+		}
 		if (!async_data_read_receive(&callid, &size)) {
 			async_answer_0(callid, EREFUSED);
 			async_answer_0(iid, EREFUSED);
+			fibril_mutex_unlock(&sroute_list_lock);
 			return;
 		}
 
-		if (size != DATA_XFER_LIMIT) {
+		if (size != sroute_block->sroute_count * sizeof(inet_sroute_t)) {
 			async_answer_0(callid, EINVAL);
 			async_answer_0(iid, EINVAL);
+			fibril_mutex_unlock(&sroute_list_lock);
 			return;
 		}
 
-		rc = async_data_read_finalize(callid, ((void *) sroute_array) +
-		    (i * DATA_XFER_LIMIT), size);
+		rc = async_data_read_finalize(callid, sroute_block->sroutes,
+		    size);
 		if (rc != EOK) {
 			async_answer_0(callid, rc);
 			async_answer_0(iid, rc);
+			fibril_mutex_unlock(&sroute_list_lock);
 			return;
 		}
+
 	}
-
-	size_t last_part_size = (sroute_array_count * sizeof(inet_sroute_t)) %
-	    DATA_XFER_LIMIT;
-	if (last_part_size > 0) {
-		if (!async_data_read_receive(&callid, &size)) {
-			async_answer_0(callid, EREFUSED);
-			async_answer_0(iid, EREFUSED);
-			return;
-		}
-
-		if (size != last_part_size) {
-			async_answer_0(callid, EINVAL);
-			async_answer_0(iid, EINVAL);
-			return;
-		}
-
-		rc = async_data_read_finalize(callid, ((void *) sroute_array) +
-		    (nparts * DATA_XFER_LIMIT), size);
-		if (rc != EOK) {
-			async_answer_0(callid, rc);
-			async_answer_0(iid, rc);
-			return;
-		}
-	}
-
 	async_answer_0(iid, EOK);
+	fibril_mutex_unlock(&sroute_list_lock);
 }
 
 void inet_cfg_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)

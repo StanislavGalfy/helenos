@@ -43,8 +43,6 @@
 #include <stdint.h>
 #include "inetsrv.h"
 
-#define INITIAL_SROUTE_ARRAY_SIZE 1024
-
 /** Static route configuration */
 typedef struct {
         link_t list_link;
@@ -58,12 +56,24 @@ typedef struct {
         inet_sroute_status_t status;
 } inet_sroute_t;
 
+/** Static route configuration */
+typedef struct {
+        link_t list_link;
+
+        size_t sroute_count;
+
+        inet_sroute_t *sroutes;
+} inet_sroute_block_t;
+
+extern fibril_mutex_t sroute_list_lock;
+
 extern trie_t *ipv4_sroute_table;
 extern trie_t *ipv6_sroute_table;
 
-extern inet_sroute_t *sroute_array;
-extern size_t sroute_array_size;
-extern size_t sroute_array_count;
+extern list_t sroute_block_list;
+extern size_t sroute_block_count;
+extern size_t sroute_count;
+extern inet_sroute_block_t *sroute_block;
 
 extern errno_t inet_sroute_add(inet_sroute_t *);
 extern inet_sroute_t *inet_sroute_find_longest_match(inet_addr_t *);

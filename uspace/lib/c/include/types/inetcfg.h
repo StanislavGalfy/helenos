@@ -43,6 +43,8 @@
 #define RTPROT_STATIC	4  /* Route installed by administrator */
 #define RTPROT_BIRD	12 /* Route installed by BIRD */
 
+#define SROUTE_BLOCK_SIZE 1024
+
 typedef enum {
         INET_ADDR_STATUS_ACTIVE = 0, /* Active network address assigned to ineterface */
         INET_ADDR_STATUS_DELETED /* Network address deleted from interface */

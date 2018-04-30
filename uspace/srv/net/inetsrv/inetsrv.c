@@ -138,13 +138,25 @@ static errno_t inet_init(void)
 		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed creating ipv6 routing table: %s.", str_error(rc));
 		return rc;
 	}
-	sroute_array_size = INITIAL_SROUTE_ARRAY_SIZE;
-	sroute_array_count = 0;
-	sroute_array = malloc(sroute_array_size * sizeof(inet_sroute_t));
-	if (sroute_array == NULL) {
+
+	list_initialize(&sroute_block_list);
+
+	sroute_block = malloc(sizeof(inet_sroute_block_t));
+	if (sroute_block == NULL) {
+		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed allocating static route block: %s.", str_error(ENOMEM));
+		return ENOMEM;
+	}
+	sroute_block->sroutes = malloc(sizeof(inet_sroute_t) * SROUTE_BLOCK_SIZE);
+	if (sroute_block->sroutes == NULL) {
 		log_msg(LOG_DEFAULT, LVL_ERROR, "Failed allocating static route array: %s.", str_error(ENOMEM));
 		return ENOMEM;
 	}
+	sroute_block->sroute_count = 0;
+	link_initialize(&sroute_block->list_link);
+	list_append(&sroute_block->list_link, &sroute_block_list);
+
+	sroute_block_count = 1;
+	sroute_count = 0;
 	return EOK;
 }
 
@@ -558,10 +570,8 @@ errno_t inet_recv_dgram(inet_dgram_t *dgram, uint8_t proto, uint8_t ttl, bool df
         if (ttl == 1) {
                 return EREFUSED;
         }
-        log_msg(LOG_DEFAULT, LVL_FATAL, "Routing ...");
         dgram->iplink = 0;
-	return EOK;
-        //return inet_route_packet(dgram, proto, ttl - 1, df);
+	return inet_route_packet(dgram, proto, ttl - 1, df);
 }
 
 int inet_recv_packet(inet_packet_t *packet)

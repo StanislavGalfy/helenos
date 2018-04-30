@@ -51,7 +51,7 @@ extern int inetcfg_get_sroute_list(sysarg_t **, size_t *,
 extern int inetcfg_link_get(sysarg_t, inet_link_info_t *);
 extern int inetcfg_sroute_create(inet_naddr_t *, inet_addr_t *, sysarg_t);
 extern int inetcfg_sroute_delete(inet_naddr_t *, inet_addr_t *);
-extern int inetcfg_sroute_to_array(inet_sroute_t *, size_t *);
+extern int inetcfg_sroute_to_array(inet_sroute_info_t *, size_t *);
 
 #endif
 

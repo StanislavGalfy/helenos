@@ -418,32 +418,30 @@ errno_t inetcfg_sroute_to_array(inet_sroute_info_t **rsroutes, size_t *rcount)
 		return ENOMEM;
 	}
 
-	aid_t req_part;
-	ipc_call_t answer_part;
-	size_t nparts = (count * sizeof(inet_sroute_info_t)) / DATA_XFER_LIMIT;
-	for (size_t i = 0; i < nparts; i++) {
-		req_part = async_data_read(exch, ((void *) sroutes) +
-		    (i * DATA_XFER_LIMIT), DATA_XFER_LIMIT, &answer_part);
-		async_wait_for(req_part, &retval);
-		if (retval != EOK) {
-			async_exchange_end(exch);
-			async_forget(req);
-			free(sroutes);
-			return retval;
-		}
+	aid_t req_block;
+	ipc_call_t answer_block;
+	void *pos = (void *) sroutes;
+	size_t nblocks = count / SROUTE_BLOCK_SIZE;
+	if (count % SROUTE_BLOCK_SIZE != 0) {
+		nblocks++;
 	}
-	size_t last_part_size = (count * sizeof(inet_sroute_info_t)) %
-	    DATA_XFER_LIMIT;
-	if (last_part_size > 0) {
-		req_part = async_data_read(exch, ((void *) sroutes) +
-		    (nparts * DATA_XFER_LIMIT), last_part_size, &answer_part);
-		async_wait_for(req_part, &retval);
+
+	for (size_t i = 0; i < nblocks; i++) {
+		size_t size = SROUTE_BLOCK_SIZE * sizeof(inet_sroute_info_t);
+		if (i == nblocks - 1 && count % SROUTE_BLOCK_SIZE != 0) {
+			size = (count % SROUTE_BLOCK_SIZE) * sizeof(
+			    inet_sroute_info_t);
+		}
+
+		req_block = async_data_read(exch, pos, size, &answer_block);
+		async_wait_for(req_block, &retval);
 		if (retval != EOK) {
 			async_exchange_end(exch);
 			async_forget(req);
 			free(sroutes);
 			return retval;
 		}
+		pos += size;
 	}
 
 	async_exchange_end(exch);
