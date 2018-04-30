@@ -37,7 +37,6 @@
 
 #include <inet/addr.h>
 #include <stddef.h>
-#include <adt/list.h>
 
 #define RTPROT_UNSPEC	0  /* Route installed by unsepcified source */
 #define RTPROT_KERNEL	2  /* Route installed by OS, not used */
@@ -81,29 +80,17 @@ typedef struct {
         sysarg_t nic_svcid;
 } inet_link_info_t;
 
-/** Static route configuration */
+/** Static route info */
 typedef struct {
-        link_t list_link;
+        unsigned char padding[2 * sizeof(void *)];
 	/** Destination network */
 	inet_naddr_t dest;
 	/** Router via which to route packets */
 	inet_addr_t router;
-
+        /** Origin */
         unsigned char rtm_protocol;
-
+        /** Status - active/deleted*/
         inet_sroute_status_t status;
-} inet_sroute_t;
-
-/** Static route info */
-typedef struct {
-	/** Destination network address */
-	inet_naddr_t dest;
-	/** Router address */
-	inet_addr_t router;
-	/** Static route name */
-	char *name;
-
-        unsigned char rtm_protocol;
 } inet_sroute_info_t;
 
 typedef struct {

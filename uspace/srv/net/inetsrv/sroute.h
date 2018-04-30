@@ -45,10 +45,18 @@
 
 #define INITIAL_SROUTE_ARRAY_SIZE 1024
 
+/** Static route configuration */
 typedef struct {
-	size_t count;
-	inet_sroute_cmd_t *cmds;
-} inet_sroute_cmds_t;
+        link_t list_link;
+	/** Destination network */
+	inet_naddr_t dest;
+	/** Router via which to route packets */
+	inet_addr_t router;
+        /** Origin */
+        unsigned char rtm_protocol;
+        /** Status - active/deleted*/
+        inet_sroute_status_t status;
+} inet_sroute_t;
 
 extern trie_t *ipv4_sroute_table;
 extern trie_t *ipv6_sroute_table;
@@ -57,7 +65,6 @@ extern inet_sroute_t *sroute_array;
 extern size_t sroute_array_size;
 extern size_t sroute_array_count;
 
-extern errno_t inet_sroute_batch(void *arg);
 extern errno_t inet_sroute_add(inet_sroute_t *);
 extern inet_sroute_t *inet_sroute_find_longest_match(inet_addr_t *);
 extern errno_t inet_sroute_delete(inet_naddr_t *, inet_addr_t *);

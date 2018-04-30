@@ -404,7 +404,7 @@ out:
 
 static errno_t sroute_list(void)
 {
-	inet_sroute_t *sroute_array = NULL;
+	inet_sroute_info_t *sroute_array = NULL;
 	table_t *table = NULL;
 
 	size_t count;
@@ -479,7 +479,7 @@ out:
 
 static errno_t sroute_log(void)
 {
-	inet_sroute_t *sroute_array = NULL;
+	inet_sroute_info_t *sroute_array = NULL;
 
 	size_t count;
 	size_t i;

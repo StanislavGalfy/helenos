@@ -103,7 +103,6 @@ static errno_t inetcfg_addr_delete(sysarg_t addr_id)
 		return ENOENT;
 
 	inet_addrobj_remove(addr);
-	inet_addrobj_delete(addr);
 
 	return EOK;
 }
@@ -495,48 +494,6 @@ static void inetcfg_link_remove_srv(ipc_callid_t callid, ipc_call_t *call)
 	async_answer_0(callid, rc);
 }
 
-static void inetcfg_sroute_batch_srv(ipc_callid_t iid, ipc_call_t *icall)
-{
-	ipc_callid_t callid;
-	size_t size;
-	if (!async_data_write_receive(&callid, &size)) {
-		async_answer_0(callid, EINVAL);
-		async_answer_0(iid, EINVAL);
-		return;
-	}
-
-	inet_sroute_cmds_t *inet_sroute_cmds = malloc(sizeof (
-	    inet_sroute_cmds_t));
-	if (inet_sroute_cmds == NULL) {
-		async_answer_0(callid, ENOMEM);
-		async_answer_0(iid, ENOMEM);
-		return;
-	}
-
-	inet_sroute_cmds->count = size / sizeof (inet_sroute_cmd_t);
-	inet_sroute_cmds->cmds = malloc(size);
-	if (inet_sroute_cmds->cmds == NULL) {
-		async_answer_0(callid, ENOMEM);
-		async_answer_0(iid, ENOMEM);
-		return;
-	}
-
-	errno_t rc = async_data_write_finalize(callid, inet_sroute_cmds->cmds,
-	    size);
-	if (rc != EOK) {
-		async_answer_0(callid, rc);
-		async_answer_0(iid, rc);
-		return;
-	}
-	fid_t fid = fibril_create(inet_sroute_batch, inet_sroute_cmds);
-	if (fid == 0) {
-		async_answer_0(iid, ENOMEM);
-		return;
-	}
-
-	async_answer_0(iid, rc);
-}
-
 static void inetcfg_sroute_create_srv(ipc_callid_t iid, ipc_call_t *icall)
 {
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "inetcfg_sroute_create_srv()");
@@ -766,9 +723,6 @@ void inet_cfg_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
 			break;
 		case INETCFG_LINK_REMOVE:
 			inetcfg_link_remove_srv(callid, &call);
-			break;
-		case INETCFG_SROUTE_BATCH:
-			inetcfg_sroute_batch_srv(callid, &call);
 			break;
 		case INETCFG_SROUTE_CREATE:
 			inetcfg_sroute_create_srv(callid, &call);

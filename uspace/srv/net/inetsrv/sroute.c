@@ -93,45 +93,6 @@ static errno_t inet_check_sroute_array() {
 	return EOK;
 }
 
-errno_t inet_sroute_batch(void *arg)
-{
-	/*
-	fibril_mutex_lock(&sroute_list_lock);
-	inet_sroute_cmds_t *inet_sroute_cmds = (inet_sroute_cmds_t*) arg;
-	log_msg(LOG_DEFAULT, LVL_FATAL, "Processing %d routes ...",
-	    inet_sroute_cmds->count);
-	inet_sroute_t *sroute = NULL;
-	for (size_t i = 0; i < inet_sroute_cmds->count; i++) {
-		inet_sroute_cmd_t cmd = inet_sroute_cmds->cmds[i];
-		switch (cmd.sroute_cmd_type) {
-		case INET_SROUTE_CMD_CREATE:
-			sroute = calloc(1, sizeof(inet_sroute_t));
-			if (sroute == NULL) {
-				return ENOMEM;
-			}
-			link_initialize(&sroute->sroute_list);
-			sroute->id = ++sroute_id;
-			list_append(&sroute->sroute_list, &sroute_list);
-			break;
-		case INET_SROUTE_CMD_DELETE:
-			sroute = inet_sroute_find_exact(&cmd.dest, &cmd.router,
-			    cmd.rtm_protocol, INET_ADDR_STATUS_ACTIVE);
-
-			if (sroute != NULL) {
-				list_remove(&sroute->sroute_list);
-				if (sroute->name != NULL)
-					free(sroute->name);
-				free(sroute);
-			}
-			break;
-		}
-	}
-	log_msg(LOG_DEFAULT, LVL_FATAL, "... done");
-	fibril_mutex_unlock(&sroute_list_lock);
-	*/
-	return EOK;
-}
-
 errno_t inet_sroute_add(inet_sroute_t *sroute)
 {
 	errno_t rc;
@@ -246,16 +207,14 @@ errno_t inet_sroute_delete(inet_naddr_t *addr, inet_addr_t *router)
 
 	uint8_t dest[16];
 	trie_t *sroute_table = NULL;
-	uint8_t prefix;
+	uint8_t prefix = addr->prefix;
 	if (addr->version == ip_v4) {
 		sroute_table = ipv4_sroute_table;
 		addr32_t dest_addr = htonl(addr->addr);
 		memcpy(dest, &dest_addr, sizeof(addr32_t));
-		prefix = 32;
 	} if (addr->version == ip_v6) {
 		sroute_table = ipv6_sroute_table;
 		memcpy(dest, &addr->addr6, sizeof(addr128_t));
-		prefix = 128;
 	}
 
 	list_t *list = (list_t *) trie_find_exact(sroute_table, dest, prefix);

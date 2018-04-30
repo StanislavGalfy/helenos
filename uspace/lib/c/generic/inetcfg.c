@@ -383,28 +383,7 @@ errno_t inetcfg_sroute_delete(inet_naddr_t *dest, inet_addr_t *router)
 	return retval;
 }
 
-errno_t inetcfg_sroute_batch(inet_sroute_cmd_t *inet_sroute_cmds, size_t count)
-{
-	ipc_call_t answer;
-	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
-	aid_t req = async_send_0(exch, INETCFG_SROUTE_BATCH, &answer);
-
-	errno_t rc = async_data_write_start(exch, inet_sroute_cmds,
-	    count * sizeof (inet_sroute_cmd_t));
-	async_exchange_end(exch);
-
-	if (rc != EOK) {
-		async_forget(req);
-		return rc;
-	}
-
-	errno_t retval;
-	async_wait_for(req, &retval);
-
-	return retval;
-}
-
-errno_t inetcfg_sroute_to_array(inet_sroute_t **rsroutes, size_t *rcount)
+errno_t inetcfg_sroute_to_array(inet_sroute_info_t **rsroutes, size_t *rcount)
 {
 	async_exch_t *exch = async_exchange_begin(inetcfg_sess);
 
@@ -432,7 +411,7 @@ errno_t inetcfg_sroute_to_array(inet_sroute_t **rsroutes, size_t *rcount)
 		return EOK;
 	}
 
-	inet_sroute_t *sroutes = malloc(count * sizeof(inet_sroute_t));
+	inet_sroute_info_t *sroutes = malloc(count * sizeof(inet_sroute_info_t));
 	if (sroutes == NULL) {
 		async_exchange_end(exch);
 		async_forget(req);
@@ -441,7 +420,7 @@ errno_t inetcfg_sroute_to_array(inet_sroute_t **rsroutes, size_t *rcount)
 
 	aid_t req_part;
 	ipc_call_t answer_part;
-	size_t nparts = (count * sizeof(inet_sroute_t)) / DATA_XFER_LIMIT;
+	size_t nparts = (count * sizeof(inet_sroute_info_t)) / DATA_XFER_LIMIT;
 	for (size_t i = 0; i < nparts; i++) {
 		req_part = async_data_read(exch, ((void *) sroutes) +
 		    (i * DATA_XFER_LIMIT), DATA_XFER_LIMIT, &answer_part);
@@ -453,7 +432,7 @@ errno_t inetcfg_sroute_to_array(inet_sroute_t **rsroutes, size_t *rcount)
 			return retval;
 		}
 	}
-	size_t last_part_size = (count * sizeof(inet_sroute_t)) %
+	size_t last_part_size = (count * sizeof(inet_sroute_info_t)) %
 	    DATA_XFER_LIMIT;
 	if (last_part_size > 0) {
 		req_part = async_data_read(exch, ((void *) sroutes) +

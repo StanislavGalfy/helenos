@@ -52,7 +52,7 @@ extern errno_t inetcfg_link_remove(sysarg_t);
 extern errno_t inetcfg_sroute_batch(inet_sroute_cmd_t *, size_t);
 extern errno_t inetcfg_sroute_create(inet_naddr_t *, inet_addr_t *, sysarg_t);
 extern errno_t inetcfg_sroute_delete(inet_naddr_t *, inet_addr_t *);
-extern errno_t inetcfg_sroute_to_array(inet_sroute_t **, size_t *);
+extern errno_t inetcfg_sroute_to_array(inet_sroute_info_t **, size_t *);
 
 #endif
 

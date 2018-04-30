@@ -471,3 +471,10 @@ uspace/srv/sys/socket/socket
 tools/sycek/
 uspace/lib/posix/gcc.specs
 uspace/lib/posix/link.ld
+kernel/arch/ia32/include/arch/boot/memmap_struct.check.c
+kernel/arch/ia32/include/arch/context_struct.check.c
+kernel/arch/ia32/include/arch/istate_struct.check.c
+kernel/genarch/include/genarch/multiboot/multiboot_info_struct.check.c
+kernel/genarch/include/genarch/multiboot/multiboot_memmap_struct.check.c
+uspace/lib/c/arch/ia32/include/libarch/fibril_context.check.c
+
