@@ -97,6 +97,14 @@ static int socket_init()
 
 /** Creates new socket.
  *
+ * Following combinations of domain, type, protocol are implemented:
+ *
+ * AF_INET, SOCK_RAW, IPPROTO_OSPF	OSPF socket.
+ * AF_INET, SOCK_DGRAM, IPPROTO_UDP	UDP socket.
+ * AF_INET, SOCK_STREAM, IPPROTO_TCP	TCP socket.
+ * AF_UNIX, SOCK_STREAM, 0		UNIX socket.
+ *
+ *
  * Socket structure  is created on service side. It can be accessed through
  * returned file descriptor. If the function fails, error code is stored in
  * errno.
@@ -132,14 +140,28 @@ int socket(int domain, int type, int protocol)
 
 /** Sets option on socket.
  *
- * Option is set on socket structure on service side looked up by given socket
- * file descriptor. If the function fails, error code is stored in errno.
+ * Options can be set on TCP, UDP and OSPF sockets. Each of them has the same
+ * set of options. Option level is SOL_IP for all of them. They are as follows.
+ * If the function fails, error code is stored in errno.
+ *
+ * SO_BINDTODEVICE	Binds a socket to an interface. Option value is a
+ *			pointer to string with a name of the interface. Option
+ *			length is length of the string.
+ *
+ * IP_MULTICAST_IF	Enables multicast on an interface the socket is bound
+ *			to. Option value and option length are not used.
+ *
+ * SO_REUSEADDR		Socket addresses are reusable by default. Does nothing,
+ *			returns EOK (BIRD compatibility).
+ *
+ * IP_TOS		Does nothing, returns EOK (BIRD compatibility).
+ *
  *
  * @param sockfd	Socket file descriptor.
- * @param level		Level at which the option reside.
- * @param optname	Name of the option.
- * @param optval	Value of option to set.
- * @param optlen	Length of optval.
+ * @param level		Option level.
+ * @param optname	Option name.
+ * @param optval	Option value.
+ * @param optlen	Option length.
  * @return		EOK on success, SOCK_ERR on failure.
  */
 int setsockopt(int sockfd, int level, int optname, const void *optval,
@@ -167,12 +189,19 @@ int setsockopt(int sockfd, int level, int optname, const void *optval,
 
 /** Binds socket to given address.
  *
- * Bound is socket structure looked up by sockfd on service side. If the
- * function fails, error code is stored in errno.
+ * Implemented for UDP, TCP and UNIX sockets. If called on UNIX socket, the
+ * function does nothing and returns EOK (BIRD compatibility).
+ *
+ * For TCP and UDP sockets, address is expected to be sockaddr_in structure and
+ * address length size of the structure. The structure specifies a local port
+ * and a local address of the socket. In case of UDP socket, the function
+ * creates UDP association. In case of TCP socket, the function only prepares
+ * address and port which will be used during connect. If the function fails,
+ * error code is stored in errno.
  *
  * @param sockfd	Socket file descriptor.
- * @param addr		Address to which the socket will be bound.
- * @param addrlen	Length of addr.
+ * @param addr		Socket address.
+ * @param addrlen	Socket address length.
  * @return		EOK on success, SOCK_ERR on failure.
  */
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
@@ -196,16 +225,34 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 	return retval;
 }
 
-/** Sends message through socket.
+/** Sends a message through a socket.
  *
- * How the message will be send is decided according to socket structure given
- * by @a sockfd. The structure is looked up on service side. If the function
- * fails, error code is stored in errno.
+ * Implemented for OSPF and UDP sockets. The message attributes are expected to
+ * be as follows.
+ *
+ * msg_name		Destination of the message, a pointer to a sockaddr_in
+ *			structure. It specifies remote address (OSPF socket) /
+ *			remote address and port(UDP socket).
+ *
+ * msg_namelen		Size of the sockaddr_in structure.
+ *
+ * msg_iov		Array of input/output vectors. Each vector specifies
+ *			pointer to data and their size. Only the first vector is
+ *			used.
+ *
+ * msg_iov_len		Number of input/output vectors.
+ *
+ * msg_control		Pointer to array of control messages, not used.
+ *
+ * msg_controllen	Size of the control message array, not used.
+ *
+ * The function sends data from the first input/output vector to the destination
+ * given by msg_name. Flags are not used. If the function fails, error code is
+ * stored in errno.
  *
  * @param sockfd	Sockets file descriptor.
- * @param msg		Pointer to message that will be sent.
- * @param flags		Flags to further configure sending - currently
- *			unsupported.
+ * @param msg		Message.
+ * @param flags		Flags.
  * @return		Number of sent bytes on success, SOCK_ERR on failure.
  */
 ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)
@@ -243,16 +290,44 @@ ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags)
 	return nsent;
 }
 
-/** Receives message from a socket.
+/** Receives a message from a socket.
  *
- * Message that will be received is determined by socket structure looked up by
- * @a sockfd. The structure is looked up on service side. If the function
- * fails, error code is stored in errno.
+ * Implemented for OSPF and UDP sockets. The function reads one packet from
+ * a socket and stores its data and info about it into the message. All parts
+ * of the message must be preallocated. The message is filled as follows.
+ *
+ * msg_name		Points to a sockaddr_in structure. The function fills it
+ *			with packet's remote address (OSPF socket) / remote
+ *			address and port(UDP socket) in it.
+ *
+ * msg_namelen		It should be at least size of a sockaddr_in structure.
+ *			The function sets it to the size of returned msg_name,
+ *			which is the size of sockaddr_in structure.
+ *
+ * msg_iov		Array of input/output vectors. Each vector specifies
+ *			pointer to a buffer and its size. The function stores
+ *			data of the packet in the first vector and sets its size
+ *			to the size of the received data. Other vectors are not
+ *			used.
+ *
+ * msg_iovlen		Number of input/output vectors.
+ *
+ * msg_control		Pointer to array of cmsghdr structures. Data of the
+ *			first should point to a in_pktinfo structure. The packet
+ *			info is filled with local address and local interface id
+ *			(OSPF socket) / local address, local port and local
+ *			interface id (UDP socket). Other control messages are
+ *			not used
+ *
+ * msg_controllen	Size of the control message array.
+ *
+ * First input/output vector is filled with packet's
+ * data. Attribute msg_control should point to one  Flags are not used.
+ * If the function fails, error code is stored in errno.
  *
  * @param sockfd	Sockets file descriptor.
- * @param msg		Pointer where will be stored the received message.
- * @param flags		Flags to further configure receiving - currently not
- *			supported.
+ * @param msg		Message.
+ * @param flags		Flags.
  * @return		Number recived bytes on sucess, SOCK_ERR on failure.
  */
 ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
@@ -301,12 +376,15 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
 	return nrecv;
 }
 
-/** Writes data to socket. Implemented for TCP sockets only. If the function
- * fails, error code is stored in errno.
+/** Writes data to a socket.
+ *
+ * Implemented for TCP sockets only. Sends data from buffer over TCP. The number
+ * of bytes to send is specified by byte count. If the function fails, error
+ * code is stored in errno.
  *
  * @param sockfd	Socket file descriptor.
- * @param buf		Data to send.
- * @param count		Byte count to send.
+ * @param buf		Buffer.
+ * @param count		Byte count.
  * @return		Actually sent byte count on success, SOCK_ERR on
  *			failure.
  */
@@ -331,8 +409,11 @@ ssize_t sockwrite(int sockfd, const void *buf, size_t count)
 	return nsent;
 }
 
-/** Reads data from socket. Implemented for TCP sockets only. If the function
- * fails, error code is stored in errno.
+/** Reads data from socket.
+ *
+ * Implemented for TCP sockets only. Reads at most byte count bytes from TCP
+ * connection and stores them in the buffer. If the function fails, error code
+ * is stored in errno.
  *
  * @param sockfd	Socket file descriptor.
  * @param buf		Buffer where read data will be stored.
@@ -361,8 +442,12 @@ ssize_t sockread(int sockfd, void *buf, size_t count)
 	return nrecv;
 }
 
-/** Listens for incoming connections on a socket. If the function fails, error
- *  code is stored in errno.
+/** Listens for incoming connections on a socket.
+ *
+ * Implemented for TCP and UNIX sockets. If called on UNIX socket, the function
+ * does nothing and returns EOK (BIRD compatibility). If called on a TCP
+ * socket, it starts listening for incoming TCP connections. If the function
+ * fails, error code is stored in errno.
  *
  * @param sockfd	Socket file descriptor.
  * @param backlog	Maximum number of connections to put in queue.
@@ -386,13 +471,19 @@ int listen(int sockfd, int backlog)
 	return retval;
 }
 
-/** Connects socket.
+/** Connects a socket.
  *
- * If the function fails, error code is stored in errno.
+ * Implemented for TCP and UNIX sockets. If called on UNIX socket, the function
+ * does nothing and returns ECONNREFUSED (BIRD compatibility). If called on a TCP
+ * socket, it creates a TCP connection to destination given by socket address.
+ * The socket address is expected to be sockaddr_in structure specifying remote
+ * address and port the TCP connection. The socket address length is expected to
+ * be size of the sockaddr_in structure. If the function fails, error code is
+ * stored in errno.
  *
  * @param sockfd	Sockets file descriptor
- * @param addr		Address to which socket should be connected.
- * @param addrlen	Length of address.
+ * @param addr		Socket address.
+ * @param addrlen	Socket address length.
  * @return		EOK on success, SOCK_ERR on failure.
  */
 int connect(int sockfd, const struct sockaddr *addr,
@@ -419,9 +510,14 @@ int connect(int sockfd, const struct sockaddr *addr,
 
 /** Return socket local address.
  *
+ * Implemented for TCP sockets only. Socket address is expected to be a
+ * sockaddr_in structure and socket address length to be size of sockaddr_in.
+ * The function fill the socket address with local address and local port of the
+ * socket. If the function fails, error code is stored in errno.
+ *
  * @param sockfd	Socket file descriptor.
- * @param addr		Pointer where will be returned address stored.
- * @param addrlen	Address length.
+ * @param addr		Socket address.
+ * @param addrlen	Socket address length.
  * @return		EOK on success, SOCK_ERR on failure.
  */
 int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
@@ -450,10 +546,16 @@ int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 
 /** Accepts socket connection.
  *
+ * Implemented for TCP sockets only. Accepts first TCP connection from
+ * connection queue of the TCP listener socket. Listen must have been called
+ * previously on the socket.  Socket address is expected to be a sockaddr_in
+ * structure and socket address length to be size of sockaddr_in. The function
+ * fills the socket address with remote address and remote port of the
+ * connection. If the function fails, error code is stored in errno.
+ *
  * @param sockfd	Socket file descriptor.
- * @param addr		Pointer where will be store remote address of the
- *			connection.
- * @param addrlen	Address length.
+ * @param addr		Socket address.
+ * @param addrlen	Socket address length.
  * @return		EOK on success, SOCK_ERR on failure.
  */
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
@@ -481,10 +583,12 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 	return new_sockfd;
 }
 
-/** Closes socket.
+/** Closes a socket.
  *
- * Socket to close is looked up by sockfd on service side. If the function
- * fails, error code is stored in errno.
+ * Implemented for OSPF, UDP, TCP and UNIX socket. Socket to close is looked up
+ * by sockfd on service side. OSPF and UDP sockets deallocate pending messages.
+ * TCP listener sockets destroy their TCP listener. Connected TCP sockets destroy
+ * their connection.
  *
  * @param sockfd	Socket file descriptor.
  * @return		EOK on success, SOCK_ERR on failure.
@@ -507,13 +611,24 @@ int sockclose(int sockfd)
 
 /** Socket select.
  *
+ * Initially, the read set contains file socket file descriptors to be checked
+ * for read availability . Read availablity is checked for OSPF, UDP and TCP
+ * sockets. After the call, the set contains OSPF, UDP and TCP socket file
+ * descriptors that were initially in the set, and have data available for
+ * reading.
+ *
+ * Initially, the write set contains socket file descriptors to be checked for
+ * write availability. Read availablity is checked for TCP sockets. After
+ * the call, the set contains TCP socket file descriptors that were initially in
+ * the set, and have established TCP connection.
+ *
+ * Nfds, except set and timeout are not used.
+ *
  * @param nfds		Highest file descriptor in all three sets.
- * @param readfds	Socket file descriptors to check availability for
- *			reading.
- * @param writefds	Socket file descriptors to check availability for
- *			writing.
- * @param exceptfds	UNUSED.
- * @param timeout	UNUSED.
+ * @param readfds	Read set.
+ * @param writefds	Write set.
+ * @param exceptfds	Except set
+ * @param timeout	Timeout.
  * @return		Number of file descriptors contained in all sets after
  *			select.
  */
