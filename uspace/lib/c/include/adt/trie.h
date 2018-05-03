@@ -55,12 +55,9 @@ typedef struct {
 } trie_t;
 
 extern errno_t trie_create(trie_t **);
-extern void trie_destroy(trie_t *);
 extern errno_t trie_insert(trie_t *, void *, size_t, void *);
 extern void *trie_find_longest_match(trie_t *, void *, size_t);
 extern void *trie_find_exact(trie_t *, void *, size_t);
-extern void *trie_remove(trie_t *, void *, size_t);
-extern errno_t trie_to_array(trie_t *, size_t, void **);
 
 #endif
 

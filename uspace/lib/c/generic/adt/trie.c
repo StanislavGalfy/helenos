@@ -39,6 +39,12 @@
 #include <io/log.h>
 #include <types/inetcfg.h>
 
+/** Returns a bit at given position from the start of the key.
+ *
+ * @param key	Key.
+ * @param pos	Position.
+ * @return	Bit from key at given position.
+ */
 static uint8_t get_bit(void *key, uint32_t pos)
 {
 	uint32_t byte_pos = pos / 8;
@@ -49,6 +55,11 @@ static uint8_t get_bit(void *key, uint32_t pos)
 	return bit;
 }
 
+/** Allocates and initializes trie node.
+ *
+ * @param trie_node	Pointer where will be stored new trie node.
+ * @return		EOK on success, ENOMEM if allocation fails.
+ */
 static errno_t trie_create_node(trie_node_t **trie_node)
 {
 	*trie_node = malloc(sizeof(trie_node_t));
@@ -64,7 +75,11 @@ static errno_t trie_create_node(trie_node_t **trie_node)
 
 	return EOK;
 }
-
+/** Creates a new trie.
+ *
+ * @param rtrie	Pointer where will be stored new trie.
+ * @return	EOK on success, ENOMEM if allocation fails.
+ */
 errno_t trie_create(trie_t **rtrie)
 {
 	trie_t *trie = calloc(1, sizeof(trie_t));
@@ -79,8 +94,15 @@ errno_t trie_create(trie_t **rtrie)
 	return EOK;
 }
 
-void trie_destroy(trie_t * trie) { }
-
+/** Inserts a new data under given key. First key bit length bits from the bit
+ * are used to determine node where the data will be store.
+ *
+ * @param trie		Trie.
+ * @param key		Key.
+ * @param key_bit_len	Key bit length.
+ * @param data		Data.
+ * @return		EOK on success, ENOMEM if allocation fails.
+ */
 errno_t trie_insert(trie_t *trie, void *key, size_t key_bit_len, void *data)
 {
 	trie_node_t *node = trie->root;
@@ -119,6 +141,15 @@ errno_t trie_insert(trie_t *trie, void *key, size_t key_bit_len, void *data)
 	return EOK;
 }
 
+/** Finds data stored under the node that matches most bits of the key. Key bit
+ * length bits of the key are considered. If there is no data node matching key
+ * bits, NULL is returned.
+ *
+ * @param trie		Trie.
+ * @param key		Key.
+ * @param key_bit_len	Key bit length.
+ * @return		Data if found, NULL otherwise.
+ */
 void *trie_find_longest_match(trie_t *trie, void *key, size_t key_bit_len)
 {
 	trie_node_t *node = trie->root;
@@ -144,6 +175,14 @@ void *trie_find_longest_match(trie_t *trie, void *key, size_t key_bit_len)
 	return NULL;
 }
 
+/** Finds data stored under a node matching all the bits of the key. Key bit
+ * length bits of the key are considered.
+ *
+ * @param trie		Trie.
+ * @param key		Key.
+ * @param key_bit_len	Key bit length.
+ * @return		Data if found, NULL otherwise.
+ */
 void *trie_find_exact(trie_t *trie, void *key, size_t key_bit_len)
 {
 	trie_node_t *node = trie->root;
