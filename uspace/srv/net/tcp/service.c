@@ -227,7 +227,7 @@ static void tcp_ev_connected(tcp_cconn_t *cconn)
 	async_exch_t *exch;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_ev_connected()");
-        
+
 	exch = async_exchange_begin(cconn->client->sess);
 	aid_t req = async_send_1(exch, TCP_EV_CONNECTED, cconn->id, NULL);
 	async_exchange_end(exch);
@@ -279,14 +279,14 @@ static void tcp_ev_new_conn(tcp_clst_t *clst, tcp_cconn_t *cconn)
 	async_exch_t *exch;
 
 	log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_ev_new_conn()");
-        
+
 	exch = async_exchange_begin(clst->client->sess);
 	aid_t req = async_send_2(exch, TCP_EV_NEW_CONN, clst->id, cconn->id,
 	    NULL);
-        
+
         async_data_write_start(exch, &cconn->conn->ident, sizeof(
                 inet_ep2_t));
-        
+
 	async_exchange_end(exch);
 
 	async_forget(req);
@@ -677,6 +677,25 @@ static errno_t tcp_conn_send_impl(tcp_client_t *client, sysarg_t conn_id,
 	return EOK;
 }
 
+static errno_t tcp_conn_data_avail_impl(tcp_client_t *client,
+    sysarg_t conn_id, bool *data_avail)
+{
+	tcp_cconn_t *cconn;
+	tcp_error_t trc;
+
+	errno_t rc = tcp_cconn_get(client, conn_id, &cconn);
+	if (rc != EOK) {
+		log_msg(LOG_DEFAULT, LVL_DEBUG, "tcp_conn_recv_impl() - conn not found");
+		return rc;
+	}
+
+	trc = tcp_uc_data_avail(cconn->conn, data_avail);
+	if (trc != TCP_EOK) {
+		return EIO;
+	}
+	return EOK;
+}
+
 /** Receive data from connection.
  *
  * Handle client request to receive data (with parameters unmarshalled).
@@ -1006,6 +1025,22 @@ static void tcp_conn_send_srv(tcp_client_t *client, ipc_callid_t iid,
 	free(data);
 }
 
+static void tcp_conn_data_avail_srv(tcp_client_t *client, ipc_callid_t iid,
+    ipc_call_t *icall)
+{
+	sysarg_t conn_id;
+	bool data_avail;
+	errno_t rc;
+
+	conn_id = IPC_GET_ARG1(*icall);
+	rc = tcp_conn_data_avail_impl(client, conn_id, &data_avail);
+	if (rc != EOK) {
+		async_answer_0(iid, rc);
+		return;
+	}
+	async_answer_1(iid, EOK, data_avail);
+}
+
 /** Read received data from connection without blocking.
  *
  * Handle client request to read received data via connection without blocking.
@@ -1148,7 +1183,7 @@ static void tcp_client_fini(tcp_client_t *client)
 	if (n != 0) {
 		log_msg(LOG_DEFAULT, LVL_WARN, "Client with %lu active "
 		    "connections closed session", n);
-                
+
 		while (!list_empty(&client->cconn)) {
 			cconn = list_get_instance(list_first(&client->cconn),
 			    tcp_cconn_t, lclient);
@@ -1228,6 +1263,9 @@ static void tcp_client_conn(ipc_callid_t iid, ipc_call_t *icall, void *arg)
 			break;
 		case TCP_CONN_SEND:
 			tcp_conn_send_srv(&client, callid, &call);
+			break;
+		case TCP_CONN_DATA_AVAIL:
+			tcp_conn_data_avail_srv(&client, callid, &call);
 			break;
 		case TCP_CONN_RECV:
 			tcp_conn_recv_srv(&client, callid, &call);

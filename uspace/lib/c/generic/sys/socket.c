@@ -563,13 +563,16 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 	async_exch_t *exch = async_exchange_begin(sess);
 
 	ipc_call_t answer;
+	bool is_addr = addr != NULL;
 	/* Send parameters that can be sent as sysarg_t */
-	aid_t req = async_send_2(exch, SOCKET_ACCEPT, sockfd, *addrlen,
+	aid_t req = async_send_3(exch, SOCKET_ACCEPT, sockfd, *addrlen, is_addr,
 	    &answer);
 
 	/* Receive socket address */
-	int rc = async_data_read_start(exch, addr, *addrlen);
-	CHECK_RC();
+	if (is_addr) {
+		int rc = async_data_read_start(exch, addr, *addrlen);
+		CHECK_RC();
+	}
 
 	async_exchange_end(exch);
 

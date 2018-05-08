@@ -305,8 +305,8 @@ errno_t tcp_socket_accept(common_socket_t *socket, const struct sockaddr *addr,
 	tcp_socket_t *tcp_listener_socket = (tcp_socket_t*) socket;
 
 	if (list_empty(&tcp_listener_socket->tcp_conn_queue)) {
-		log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * empty connection queue");
-		return EWOULDBLOCK;
+		log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * empty connection queue");
+		return EAGAIN;
 	}
 
 	/* Create new socket */
@@ -334,19 +334,21 @@ errno_t tcp_socket_accept(common_socket_t *socket, const struct sockaddr *addr,
 
 	*fd = tcp_socket->socket.id;
 
-	struct sockaddr_in *sa = (struct sockaddr_in*) addr;
-	sa->sin_addr.s_addr = htonl(
-	    tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.addr.addr);
-	sa->sin_port = htons(
-	    tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.port);
-	sa->sin_family = AF_INET;
+	if (addr != NULL) {
+		struct sockaddr_in *sa = (struct sockaddr_in*) addr;
+		sa->sin_addr.s_addr = htonl(
+		    tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.addr.addr);
+		sa->sin_port = htons(
+		    tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.port);
+		sa->sin_family = AF_INET;
 
-	*addrlen = sizeof(struct sockaddr_in);
+		*addrlen = sizeof(struct sockaddr_in);
+	}
 
-	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * new socket id: %d", *fd);
-	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection remote addr: %d",
+	log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * new socket id: %d", *fd);
+	log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * connection remote addr: %d",
 	    tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.addr.addr);
-	log_msg(LOG_DEFAULT, LVL_DEBUG2, "  * connection remote port: %d",
+	log_msg(LOG_DEFAULT, LVL_DEBUG2, "   * connection remote port: %d",
 	    tcp_socket->tcp_sock_conn->tcp_conn->ident.remote.port);
 
 	return EOK;
@@ -398,6 +400,9 @@ errno_t tcp_socket_read_avail(common_socket_t *socket, bool *read_avail)
 	tcp_socket_t* tcp_socket = (tcp_socket_t*) socket;
 	if (tcp_socket->is_listener) {
 		*read_avail = !list_empty(&tcp_socket->tcp_conn_queue);
+		if (*read_avail) {
+			log_msg(LOG_DEFAULT, LVL_DEBUG2, "Non empty connection queue!!!");
+		}
 		return EOK;
 	} else {
 		if (tcp_socket->tcp_sock_conn == NULL ||
@@ -405,8 +410,8 @@ errno_t tcp_socket_read_avail(common_socket_t *socket, bool *read_avail)
 			*read_avail = false;
 			return EOK;
 		}
-		*read_avail = tcp_socket->tcp_sock_conn->tcp_conn->data_avail;
-		return EOK;
+		return tcp_conn_data_avail(
+		    tcp_socket->tcp_sock_conn->tcp_conn, read_avail);
 	}
 }
 

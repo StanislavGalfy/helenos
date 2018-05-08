@@ -363,14 +363,18 @@ static void socket_accept_srv(ipc_callid_t iid, ipc_call_t *icall)
 	/* Get parameters transfered as sysarg_t */
 	int sockfd = IPC_GET_ARG1(*icall);
 	size_t addrlen = IPC_GET_ARG2(*icall);
+	bool is_addr = IPC_GET_ARG3(*icall);
 
 	ipc_callid_t callid;
 
-	void *addr = malloc(addrlen);
-	if (addr == NULL) {
-		async_answer_0(callid, ENOMEM);
-		async_answer_0(iid, ENOMEM);
-		return;
+	void *addr = NULL;
+	if (is_addr) {
+		addr = malloc(addrlen);
+		if (addr == NULL) {
+			async_answer_0(callid, ENOMEM);
+			async_answer_0(iid, ENOMEM);
+			return;
+		}
 	}
 
 	/* Find socket and call accept implementation based on domain and
@@ -396,21 +400,23 @@ static void socket_accept_srv(ipc_callid_t iid, ipc_call_t *icall)
 	errno_t retval = socket_accept[socket->domain][socket->type](socket,
 	    addr, &addrlen, &fd);
 
-	bool rv = async_data_read_receive(&callid, &addrlen);
-	if (!rv) {
-		fibril_mutex_unlock(&socket_lock);
-		async_answer_0(callid, EREFUSED);
-		async_answer_0(iid, EREFUSED);
-		free(addr);
-		return;
-	}
-	errno_t rc = async_data_read_finalize(callid, addr, addrlen);
-	if (rc != EOK) {
-		fibril_mutex_unlock(&socket_lock);
-		async_answer_0(callid, rc);
-		async_answer_0(iid, rc);
-		free(addr);
-		return;
+	if (is_addr) {
+		bool rv = async_data_read_receive(&callid, &addrlen);
+		if (!rv) {
+			fibril_mutex_unlock(&socket_lock);
+			async_answer_0(callid, EREFUSED);
+			async_answer_0(iid, EREFUSED);
+			free(addr);
+			return;
+		}
+		errno_t rc = async_data_read_finalize(callid, addr, addrlen);
+		if (rc != EOK) {
+			fibril_mutex_unlock(&socket_lock);
+			async_answer_0(callid, rc);
+			async_answer_0(iid, rc);
+			free(addr);
+			return;
+		}
 	}
 	fibril_mutex_unlock(&socket_lock);
 
@@ -1283,7 +1289,10 @@ errno_t socket_service_init(void)
 	socket_bind[AF_UNIX][SOCK_STREAM] = unix_socket_bind;
 	socket_listen[AF_UNIX][SOCK_STREAM] = unix_socket_listen;
 	socket_connect[AF_UNIX][SOCK_STREAM] = unix_socket_connect;
+	socket_accept[AF_UNIX][SOCK_STREAM] = unix_socket_accept;
 	socket_read_avail[AF_UNIX][SOCK_STREAM] = unix_socket_read_avail;
+	socket_write[AF_UNIX][SOCK_STREAM] = unix_socket_write;
+	socket_read[AF_UNIX][SOCK_STREAM] = unix_socket_read;
 	socket_close[AF_UNIX][SOCK_STREAM] = unix_socket_close;
 
 	return EOK;

@@ -35,6 +35,8 @@
 #ifndef UN_H_
 #define UN_H_
 
+#include <types/socket/socket.h>
+
 #define UNIX_PATH_MAX 108 /* Maximum length of unix socket pathname */
 
 /** OS socket address family type*/

@@ -177,6 +177,21 @@ tcp_error_t tcp_uc_send(tcp_conn_t *conn, void *data, size_t size,
 	return TCP_EOK;
 }
 
+/** DATA AVAILABLE user call */
+tcp_error_t tcp_uc_data_avail(tcp_conn_t *conn, bool *data_avail)
+{
+	tcp_conn_lock(conn);
+	if (conn->rcv_buf_used == 0 || conn->rcv_buf_fin || conn->reset) {
+		*data_avail = false;
+		tcp_conn_unlock(conn);
+		return TCP_EOK;
+	}
+	log_msg(LOG_DEFAULT, LVL_FATAL, "Data available!!!");
+	*data_avail = true;
+	tcp_conn_unlock(conn);
+	return TCP_EOK;
+}
+
 /** RECEIVE user call */
 tcp_error_t tcp_uc_receive(tcp_conn_t *conn, void *buf, size_t size,
     size_t *rcvd, xflags_t *xflags)

@@ -168,7 +168,7 @@ static errno_t tcp_conn_new(tcp_t *tcp, sysarg_t id, tcp_cb_t *cb, void *arg,
 	tcp_conn_t *conn;
 
 	conn = calloc(1, sizeof(tcp_conn_t));
-        
+
 	if (conn == NULL)
 		return ENOMEM;
 
@@ -526,6 +526,31 @@ errno_t tcp_conn_reset(tcp_conn_t *conn)
 	return rc;
 }
 
+errno_t tcp_conn_data_avail(tcp_conn_t *conn, bool *read_avail)
+{
+	async_exch_t *exch;
+	ipc_call_t answer;
+
+	fibril_mutex_lock(&conn->lock);
+
+	exch = async_exchange_begin(conn->tcp->sess);
+	aid_t req = async_send_1(exch, TCP_CONN_DATA_AVAIL, conn->id, &answer);
+	async_exchange_end(exch);
+
+
+	errno_t retval;
+	async_wait_for(req, &retval);
+	if (retval != EOK) {
+		fibril_mutex_unlock(&conn->lock);
+		return retval;
+	}
+
+	*read_avail = IPC_GET_ARG1(answer);
+	fibril_mutex_unlock(&conn->lock);
+	return EOK;
+
+}
+
 /** Read received data from connection without blocking.
  *
  * If any received data is pending on the connection, up to @a bsize bytes
@@ -779,7 +804,7 @@ static void tcp_ev_new_conn(tcp_t *tcp, ipc_callid_t iid, ipc_call_t *icall)
 
 	lst_id = IPC_GET_ARG1(*icall);
 	conn_id = IPC_GET_ARG2(*icall);
-        
+
         ipc_callid_t callid;
         size_t len;
         inet_ep2_t ident;
@@ -789,20 +814,20 @@ static void tcp_ev_new_conn(tcp_t *tcp, ipc_callid_t iid, ipc_call_t *icall)
                 async_answer_0(iid, EREFUSED);
                 return;
         }
-        
+
         if (len != sizeof(inet_ep2_t)) {
                 async_answer_0(callid, EREFUSED);
                 async_answer_0(iid, EREFUSED);
-                return;           
+                return;
         }
-        
+
         rc = async_data_write_finalize(callid, &ident, len);
         if (rc != EOK) {
                 async_answer_0(callid, rc);
                 async_answer_0(iid, rc);
                 return;
         }
-        
+
 	rc = tcp_listener_get(tcp, lst_id, &lst);
 	if (rc != EOK) {
 		async_answer_0(iid, ENOENT);
