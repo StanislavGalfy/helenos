@@ -103,21 +103,18 @@ errno_t unix_socket_bind(common_socket_t *socket, const struct sockaddr *addr,
 	((struct sockaddr_in*)&saddr)->sin_family = AF_INET;
 
 	struct sockaddr_un *addr_un = (struct sockaddr_un *) addr;
+	size_t path_len = addrlen - sizeof(__kernel_sa_family_t);
 	list_foreach(unix_socket_listener_mapping, list_link,
 	    unix_socket_ident_t, ident) {
-		if (str_cmp(addr_un->sun_path, ident->path) == 0) {
+		if (str_lcmp(addr_un->sun_path, ident->path, path_len) == 0) {
 			return EADDRINUSE;
 		}
 	}
 
 
-	size_t path_len = str_size(addr_un->sun_path) + 1;
-	unix_socket->ident.path = malloc(path_len);
+	unix_socket->ident.path = calloc(1, path_len + 1);
 	memcpy(unix_socket->ident.path, addr_un->sun_path, path_len);
 	unix_socket->ident.port = local_port;
-
-	log_msg(LOG_DEFAULT, LVL_FATAL, "UNIX bind path: %s, port: %d", unix_socket->ident.path, local_port);
-
 	local_port++;
 
 	return tcp_socket_bind(unix_socket->tcp_socket, &saddr,
@@ -153,6 +150,21 @@ errno_t unix_socket_connect(common_socket_t *socket,
 {
 	unix_socket_t *unix_socket = (unix_socket_t *) socket;
 
+	struct sockaddr_un *addr_un = (struct sockaddr_un *) addr;
+	uint16_t remote_port = 0;
+
+	size_t path_len = addrlen - sizeof(__kernel_sa_family_t);
+	list_foreach(unix_socket_listener_mapping, list_link,
+	    unix_socket_ident_t, ident) {
+		if (str_lcmp(addr_un->sun_path, ident->path, path_len) == 0) {
+			remote_port = ident->port;
+			break;
+		}
+	}
+	if (remote_port == 0) {
+		return ECONNREFUSED;
+	}
+
 	struct sockaddr local_addr;
 	((struct sockaddr_in*)&local_addr)->sin_addr.s_addr = ntohl(localhost);
 	((struct sockaddr_in*)&local_addr)->sin_port = ntohs(local_port);
@@ -163,20 +175,6 @@ errno_t unix_socket_connect(common_socket_t *socket,
 	    sizeof(struct sockaddr_in));
 	if (rc != EOK) {
 		return rc;
-	}
-
-	struct sockaddr_un *addr_un = (struct sockaddr_un *) addr;
-	uint16_t remote_port = 0;
-	list_foreach(unix_socket_listener_mapping, list_link,
-	    unix_socket_ident_t, ident) {
-		if (str_cmp(addr_un->sun_path, ident->path) == 0) {
-			remote_port = ident->port;
-			break;
-		}
-	}
-	log_msg(LOG_DEFAULT, LVL_FATAL, "UNIX connect port: %d", remote_port);
-	if (remote_port == 0) {
-		return ECONNREFUSED;
 	}
 
 	struct sockaddr remote_addr;
@@ -190,7 +188,6 @@ errno_t unix_socket_connect(common_socket_t *socket,
 	if (rc == EINPROGRESS) {
 		rc = tcp_conn_wait_connected(((tcp_socket_t *)
 		    unix_socket->tcp_socket)->tcp_sock_conn->tcp_conn);
-		log_msg(LOG_DEFAULT, LVL_FATAL, "Returning: %d", rc);
 		return rc;
 	}
 	return rc;
@@ -207,8 +204,31 @@ errno_t unix_socket_connect(common_socket_t *socket,
 errno_t unix_socket_accept(common_socket_t *socket, const struct sockaddr *addr,
     socklen_t *addrlen, int *fd)
 {
+	int tcp_socket_id;
 	unix_socket_t *unix_socket = (unix_socket_t *) socket;
-	return tcp_socket_accept(unix_socket->tcp_socket, addr, addrlen, fd);
+	errno_t rc =  tcp_socket_accept(unix_socket->tcp_socket, addr, addrlen,
+	    &tcp_socket_id);
+	if (rc != EOK) {
+		return rc;
+	}
+	common_socket_t *tcp_socket = get_socket_by_id(tcp_socket_id);
+	unix_socket_t *new_unix_socket = (unix_socket_t *) calloc(1,
+	    sizeof(unix_socket_t));
+	if (new_unix_socket == NULL) {
+		tcp_socket_close(tcp_socket);
+		return ENOMEM;
+	}
+
+	common_socket_init(&new_unix_socket->socket, socket->domain,
+	    socket->type, socket->protocol, socket->session_id);
+
+	new_unix_socket->tcp_socket = tcp_socket;
+	link_initialize(&new_unix_socket->ident.list_link);
+	new_unix_socket->ident.path = NULL;
+	new_unix_socket->ident.port = 0;
+	*fd = new_unix_socket->socket.id;
+
+	return EOK;
 }
 
 /** Sets read_avail to false and returns EOK for BIRD compatibility. */

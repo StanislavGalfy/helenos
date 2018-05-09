@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <types/socket/socket.h>
 #include <types/socket/select.h>
+#include <types/socket/un.h>
 #include <macros.h>
 #include <stdio.h>
 #include <mem.h>
@@ -342,8 +343,8 @@ static void socket_connect_srv(ipc_callid_t iid, ipc_call_t *icall)
 		free(addr);
 		return;
 	}
-	errno_t retval = socket_connect[socket->domain][socket->type](socket, addr,
-	    addrlen);
+	errno_t retval = socket_connect[socket->domain][socket->type](socket,
+	    addr, addrlen);
 	fibril_mutex_unlock(&socket_lock);
 
 	async_answer_0(iid, retval);

@@ -43,6 +43,7 @@
 #include <types/socket/in.h>
 #include <stdio.h>
 #include <time.h>
+#include <types/socket/un.h>
 
 /** Macro to handle return code from async_data_write_start call */
 #define CHECK_RC() \
@@ -99,11 +100,13 @@ static int socket_init()
  *
  * Following combinations of domain, type, protocol are implemented:
  *
- * AF_INET, SOCK_RAW, IPPROTO_OSPF	OSPF socket.
- * AF_INET, SOCK_DGRAM, IPPROTO_UDP	UDP socket.
- * AF_INET, SOCK_STREAM, IPPROTO_TCP	TCP socket.
- * AF_UNIX, SOCK_STREAM, 0		UNIX socket.
- *
+ * AF_INET, SOCK_RAW, IPPROTO_OSPF	Creates OSPF socket.
+ * AF_INET, SOCK_DGRAM, IPPROTO_UDP	Creates UDP socket.
+ * AF_INET, SOCK_STREAM, IPPROTO_TCP	Creates TCP socket.
+ * AF_UNIX, SOCK_STREAM, 0		Creates UNIX socket and a TCP socket
+ *					that will emulate the UNIX socket. User
+ *					has access only to UNIX socket file
+ *					descriptor.
  *
  * Socket structure  is created on service side. It can be accessed through
  * returned file descriptor. If the function fails, error code is stored in
@@ -189,8 +192,7 @@ int setsockopt(int sockfd, int level, int optname, const void *optval,
 
 /** Binds socket to given address.
  *
- * Implemented for UDP, TCP and UNIX sockets. If called on UNIX socket, the
- * function does nothing and returns EOK (BIRD compatibility).
+ * Implemented for UDP, TCP and UNIX sockets.
  *
  * For TCP and UDP sockets, address is expected to be sockaddr_in structure and
  * address length size of the structure. The structure specifies a local port
@@ -198,6 +200,11 @@ int setsockopt(int sockfd, int level, int optname, const void *optval,
  * creates UDP association. In case of TCP socket, the function only prepares
  * address and port which will be used during connect. If the function fails,
  * error code is stored in errno.
+ *
+ * For UNIX sockets, address is expected to be sockaddr_un structure and
+ * address length size of the structure. The server maps the path from
+ * sockaddr_un to localhost address and a local port and calls bind on the TCP
+ * socket that emulates the UNIX socket.
  *
  * @param sockfd	Socket file descriptor.
  * @param addr		Socket address.
@@ -378,9 +385,9 @@ ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags)
 
 /** Writes data to a socket.
  *
- * Implemented for TCP sockets only. Sends data from buffer over TCP. The number
- * of bytes to send is specified by byte count. If the function fails, error
- * code is stored in errno.
+ * Implemented for TCP and UNIX sockets. Sends data from buffer over TCP.
+ * The number of bytes to send is specified by byte count. If the function
+ * fails, error code is stored in errno.
  *
  * @param sockfd	Socket file descriptor.
  * @param buf		Buffer.
@@ -411,7 +418,7 @@ ssize_t sockwrite(int sockfd, const void *buf, size_t count)
 
 /** Reads data from socket.
  *
- * Implemented for TCP sockets only. Reads at most byte count bytes from TCP
+ * Implemented for TCP and UNIX sockets. Reads at most byte count bytes from TCP
  * connection and stores them in the buffer. If the function fails, error code
  * is stored in errno.
  *
@@ -444,10 +451,12 @@ ssize_t sockread(int sockfd, void *buf, size_t count)
 
 /** Listens for incoming connections on a socket.
  *
- * Implemented for TCP and UNIX sockets. If called on UNIX socket, the function
- * does nothing and returns EOK (BIRD compatibility). If called on a TCP
+ * Implemented for TCP and UNIX sockets. If called on a TCP
  * socket, it starts listening for incoming TCP connections. If the function
  * fails, error code is stored in errno.
+ *
+ * If called on a UNIX socket, the server calls listen on the TCP
+ * socket that emulates the UNIX socket.
  *
  * @param sockfd	Socket file descriptor.
  * @param backlog	Maximum number of connections to put in queue.
@@ -473,13 +482,18 @@ int listen(int sockfd, int backlog)
 
 /** Connects a socket.
  *
- * Implemented for TCP and UNIX sockets. If called on UNIX socket, the function
- * does nothing and returns ECONNREFUSED (BIRD compatibility). If called on a TCP
+ * Implemented for TCP and UNIX sockets. If called on a TCP
  * socket, it creates a TCP connection to destination given by socket address.
  * The socket address is expected to be sockaddr_in structure specifying remote
  * address and port the TCP connection. The socket address length is expected to
  * be size of the sockaddr_in structure. If the function fails, error code is
  * stored in errno.
+ *
+ * For UNIX sockets, address is expected to be sockaddr_un structure and
+ * address length size of the structure. The server tries to find a port
+ * of a TCP socket that was previous bound to the same path as given by
+ * sockaddr_un. If found, the server connects the TCP socket to the localhost
+ * and the port endpoint.
  *
  * @param sockfd	Sockets file descriptor
  * @param addr		Socket address.
@@ -546,12 +560,17 @@ int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 
 /** Accepts socket connection.
  *
- * Implemented for TCP sockets only. Accepts first TCP connection from
+ * Implemented for TCP and UNIX sockets. Accepts first TCP connection from
  * connection queue of the TCP listener socket. Listen must have been called
  * previously on the socket.  Socket address is expected to be a sockaddr_in
  * structure and socket address length to be size of sockaddr_in. The function
  * fills the socket address with remote address and remote port of the
  * connection. If the function fails, error code is stored in errno.
+ *
+ * For UNIX sockets, the address is expected to be NULL. Server calls accept on
+ * the TCP socket emulating the UNIX socket. If the call returns a new TCP
+ * socket, a new UNIX socket is created and the new TCP socket is set to emulate
+ * it. File descriptor of the new UNIX socket is returned.
  *
  * @param sockfd	Socket file descriptor.
  * @param addr		Socket address.
